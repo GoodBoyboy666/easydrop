@@ -2,8 +2,8 @@ package di
 
 import (
 	"easydrop/internal/config"
-	emailpkg "easydrop/internal/pkg/email"
-	jwtpkg "easydrop/internal/pkg/jwt"
+	"easydrop/internal/pkg/email"
+	"easydrop/internal/pkg/jwt"
 
 	red "github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
@@ -15,8 +15,8 @@ type App struct {
 	DB       *gorm.DB
 	DBConfig *config.DBConfig
 	Redis    *red.Client
-	Email    *emailpkg.Client
-	JWT      *jwtpkg.Manager
+	Email    *email.Client
+	JWT      *jwt.Manager
 }
 
 // NewApp 构造 App 聚合对象。
@@ -25,8 +25,8 @@ func NewApp(
 	db *gorm.DB,
 	dbConfig *config.DBConfig,
 	redisClient *red.Client,
-	emailClient *emailpkg.Client,
-	jwtManager *jwtpkg.Manager,
+	emailClient *email.Client,
+	jwtManager *jwt.Manager,
 ) *App {
 	return &App{
 		Config:   cfg,
