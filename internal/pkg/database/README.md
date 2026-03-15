@@ -11,7 +11,6 @@
 ## 核心接口
 
 - `NewDB(cfg *Config) (*gorm.DB, error)`
-- `ProviderSet = wire.NewSet(NewDB)`
 
 ## 配置说明
 

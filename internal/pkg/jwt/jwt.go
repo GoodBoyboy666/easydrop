@@ -6,6 +6,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"time"
 
@@ -14,8 +15,8 @@ import (
 
 var (
 	ErrNilConfig         = errors.New("jwt 配置不能为空")
-	ErrEmptyPrivateKey   = errors.New("jwt 私钥不能为空")
-	ErrEmptyPublicKey    = errors.New("jwt 公钥不能为空")
+	ErrEmptyPrivateKey   = errors.New("jwt 私钥路径不能为空")
+	ErrEmptyPublicKey    = errors.New("jwt 公钥路径不能为空")
 	ErrInvalidPrivateKey = errors.New("jwt 私钥格式不合法")
 	ErrInvalidPublicKey  = errors.New("jwt 公钥格式不合法")
 	ErrInvalidExpire     = errors.New("jwt 过期时间必须大于 0")
@@ -32,10 +33,10 @@ type Claims struct {
 }
 
 type Config struct {
-	PrivateKeyPEM string
-	PublicKeyPEM  string
-	Issuer        string
-	Expire        time.Duration
+	PrivateKeyPath string        `mapstructure:"private_key_path" yaml:"private_key_path"`
+	PublicKeyPath  string        `mapstructure:"public_key_path" yaml:"public_key_path"`
+	Issuer         string        `mapstructure:"issuer" yaml:"issuer"`
+	Expire         time.Duration `mapstructure:"expire" yaml:"expire"`
 }
 
 type Manager struct {
@@ -51,22 +52,32 @@ func NewManager(cfg *Config) (*Manager, error) {
 		return nil, ErrNilConfig
 	}
 
-	if cfg.PrivateKeyPEM == "" {
+	if cfg.PrivateKeyPath == "" {
 		return nil, ErrEmptyPrivateKey
 	}
-	if cfg.PublicKeyPEM == "" {
+	if cfg.PublicKeyPath == "" {
 		return nil, ErrEmptyPublicKey
 	}
 	if cfg.Expire <= 0 {
 		return nil, ErrInvalidExpire
 	}
 
-	privateKey, err := parseRSAPrivateKey([]byte(cfg.PrivateKeyPEM))
+	privatePEM, err := os.ReadFile(cfg.PrivateKeyPath)
+	if err != nil {
+		return nil, fmt.Errorf("读取 jwt 私钥失败: %w", err)
+	}
+
+	publicPEM, err := os.ReadFile(cfg.PublicKeyPath)
+	if err != nil {
+		return nil, fmt.Errorf("读取 jwt 公钥失败: %w", err)
+	}
+
+	privateKey, err := parseRSAPrivateKey(privatePEM)
 	if err != nil {
 		return nil, err
 	}
 
-	publicKey, err := parseRSAPublicKey([]byte(cfg.PublicKeyPEM))
+	publicKey, err := parseRSAPublicKey(publicPEM)
 	if err != nil {
 		return nil, err
 	}

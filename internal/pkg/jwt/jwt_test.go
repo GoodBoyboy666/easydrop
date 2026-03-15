@@ -6,6 +6,8 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -14,7 +16,7 @@ import (
 )
 
 var (
-	testKeyOnce   sync.Once
+	testKeyOnce    sync.Once
 	testPrivatePEM string
 	testPublicPEM  string
 	testKeyErr     error
@@ -48,36 +50,59 @@ func testRSAKeyPair(t *testing.T) (string, string) {
 	return testPrivatePEM, testPublicPEM
 }
 
+func writeKeyFile(t *testing.T, dir, name, content string) string {
+	t.Helper()
+
+	path := filepath.Join(dir, name)
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatalf("写入测试密钥失败: %v", err)
+	}
+	return path
+}
+
+func testKeyPairPaths(t *testing.T) (string, string) {
+	t.Helper()
+
+	privateKeyPEM, publicKeyPEM := testRSAKeyPair(t)
+	dir := t.TempDir()
+	privatePath := writeKeyFile(t, dir, "private.pem", privateKeyPEM)
+	publicPath := writeKeyFile(t, dir, "public.pem", publicKeyPEM)
+	return privatePath, publicPath
+}
+
 func TestNewManager(t *testing.T) {
 	t.Parallel()
-	privateKeyPEM, publicKeyPEM := testRSAKeyPair(t)
+	privatePath, publicPath := testKeyPairPaths(t)
 
 	_, err := NewManager(nil)
 	if !errors.Is(err, ErrNilConfig) {
 		t.Fatalf("期望错误 ErrNilConfig，实际为: %v", err)
 	}
 
-	_, err = NewManager(&Config{PublicKeyPEM: publicKeyPEM, Issuer: "easydrop", Expire: time.Hour})
+	_, err = NewManager(&Config{PublicKeyPath: publicPath, Issuer: "easydrop", Expire: time.Hour})
 	if !errors.Is(err, ErrEmptyPrivateKey) {
 		t.Fatalf("期望错误 ErrEmptyPrivateKey，实际为: %v", err)
 	}
 
-	_, err = NewManager(&Config{PrivateKeyPEM: privateKeyPEM, Issuer: "easydrop", Expire: time.Hour})
+	_, err = NewManager(&Config{PrivateKeyPath: privatePath, Issuer: "easydrop", Expire: time.Hour})
 	if !errors.Is(err, ErrEmptyPublicKey) {
 		t.Fatalf("期望错误 ErrEmptyPublicKey，实际为: %v", err)
 	}
 
-	_, err = NewManager(&Config{PrivateKeyPEM: "bad-key", PublicKeyPEM: publicKeyPEM, Issuer: "easydrop", Expire: time.Hour})
+	badDir := t.TempDir()
+	badPrivatePath := writeKeyFile(t, badDir, "bad-private.pem", "bad-key")
+	_, err = NewManager(&Config{PrivateKeyPath: badPrivatePath, PublicKeyPath: publicPath, Issuer: "easydrop", Expire: time.Hour})
 	if !errors.Is(err, ErrInvalidPrivateKey) {
 		t.Fatalf("期望错误 ErrInvalidPrivateKey，实际为: %v", err)
 	}
 
-	_, err = NewManager(&Config{PrivateKeyPEM: privateKeyPEM, PublicKeyPEM: "bad-key", Issuer: "easydrop", Expire: time.Hour})
+	badPublicPath := writeKeyFile(t, badDir, "bad-public.pem", "bad-key")
+	_, err = NewManager(&Config{PrivateKeyPath: privatePath, PublicKeyPath: badPublicPath, Issuer: "easydrop", Expire: time.Hour})
 	if !errors.Is(err, ErrInvalidPublicKey) {
 		t.Fatalf("期望错误 ErrInvalidPublicKey，实际为: %v", err)
 	}
 
-	_, err = NewManager(&Config{PrivateKeyPEM: privateKeyPEM, PublicKeyPEM: publicKeyPEM, Issuer: "easydrop", Expire: 0})
+	_, err = NewManager(&Config{PrivateKeyPath: privatePath, PublicKeyPath: publicPath, Issuer: "easydrop", Expire: 0})
 	if !errors.Is(err, ErrInvalidExpire) {
 		t.Fatalf("期望错误 ErrInvalidExpire，实际为: %v", err)
 	}
@@ -85,9 +110,9 @@ func TestNewManager(t *testing.T) {
 
 func TestIssueAndParseToken(t *testing.T) {
 	t.Parallel()
-	privateKeyPEM, publicKeyPEM := testRSAKeyPair(t)
+	privatePath, publicPath := testKeyPairPaths(t)
 
-	manager, err := NewManager(&Config{PrivateKeyPEM: privateKeyPEM, PublicKeyPEM: publicKeyPEM, Issuer: "easydrop", Expire: time.Hour})
+	manager, err := NewManager(&Config{PrivateKeyPath: privatePath, PublicKeyPath: publicPath, Issuer: "easydrop", Expire: time.Hour})
 	if err != nil {
 		t.Fatalf("创建管理器失败: %v", err)
 	}
@@ -115,9 +140,9 @@ func TestIssueAndParseToken(t *testing.T) {
 
 func TestParseExpiredToken(t *testing.T) {
 	t.Parallel()
-	privateKeyPEM, publicKeyPEM := testRSAKeyPair(t)
+	privatePath, publicPath := testKeyPairPaths(t)
 
-	manager, err := NewManager(&Config{PrivateKeyPEM: privateKeyPEM, PublicKeyPEM: publicKeyPEM, Issuer: "easydrop", Expire: time.Minute})
+	manager, err := NewManager(&Config{PrivateKeyPath: privatePath, PublicKeyPath: publicPath, Issuer: "easydrop", Expire: time.Minute})
 	if err != nil {
 		t.Fatalf("创建管理器失败: %v", err)
 	}
@@ -140,14 +165,15 @@ func TestParseExpiredToken(t *testing.T) {
 
 func TestParseTokenWithWrongPublicKey(t *testing.T) {
 	t.Parallel()
-	privateKeyPEM, publicKeyPEM := testRSAKeyPair(t)
+	privatePath, publicPath := testKeyPairPaths(t)
 	_, otherPublicPEM := testNewRSAKeyPair(t)
+	otherPublicPath := writeKeyFile(t, t.TempDir(), "other-public.pem", otherPublicPEM)
 
-	issuer, err := NewManager(&Config{PrivateKeyPEM: privateKeyPEM, PublicKeyPEM: publicKeyPEM, Issuer: "easydrop", Expire: time.Hour})
+	issuer, err := NewManager(&Config{PrivateKeyPath: privatePath, PublicKeyPath: publicPath, Issuer: "easydrop", Expire: time.Hour})
 	if err != nil {
 		t.Fatalf("创建签发方管理器失败: %v", err)
 	}
-	verifier, err := NewManager(&Config{PrivateKeyPEM: privateKeyPEM, PublicKeyPEM: otherPublicPEM, Issuer: "easydrop", Expire: time.Hour})
+	verifier, err := NewManager(&Config{PrivateKeyPath: privatePath, PublicKeyPath: otherPublicPath, Issuer: "easydrop", Expire: time.Hour})
 	if err != nil {
 		t.Fatalf("创建校验方管理器失败: %v", err)
 	}
@@ -169,13 +195,13 @@ func TestParseTokenWithWrongPublicKey(t *testing.T) {
 
 func TestParseTokenWithWrongIssuer(t *testing.T) {
 	t.Parallel()
-	privateKeyPEM, publicKeyPEM := testRSAKeyPair(t)
+	privatePath, publicPath := testKeyPairPaths(t)
 
-	issuer, err := NewManager(&Config{PrivateKeyPEM: privateKeyPEM, PublicKeyPEM: publicKeyPEM, Issuer: "issuer-a", Expire: time.Hour})
+	issuer, err := NewManager(&Config{PrivateKeyPath: privatePath, PublicKeyPath: publicPath, Issuer: "issuer-a", Expire: time.Hour})
 	if err != nil {
 		t.Fatalf("创建签发方管理器失败: %v", err)
 	}
-	verifier, err := NewManager(&Config{PrivateKeyPEM: privateKeyPEM, PublicKeyPEM: publicKeyPEM, Issuer: "issuer-b", Expire: time.Hour})
+	verifier, err := NewManager(&Config{PrivateKeyPath: privatePath, PublicKeyPath: publicPath, Issuer: "issuer-b", Expire: time.Hour})
 	if err != nil {
 		t.Fatalf("创建校验方管理器失败: %v", err)
 	}
@@ -197,9 +223,9 @@ func TestParseTokenWithWrongIssuer(t *testing.T) {
 
 func TestParseMalformedToken(t *testing.T) {
 	t.Parallel()
-	privateKeyPEM, publicKeyPEM := testRSAKeyPair(t)
+	privatePath, publicPath := testKeyPairPaths(t)
 
-	manager, err := NewManager(&Config{PrivateKeyPEM: privateKeyPEM, PublicKeyPEM: publicKeyPEM, Issuer: "easydrop", Expire: time.Hour})
+	manager, err := NewManager(&Config{PrivateKeyPath: privatePath, PublicKeyPath: publicPath, Issuer: "easydrop", Expire: time.Hour})
 	if err != nil {
 		t.Fatalf("创建管理器失败: %v", err)
 	}
@@ -212,9 +238,9 @@ func TestParseMalformedToken(t *testing.T) {
 
 func TestParseHS256Token(t *testing.T) {
 	t.Parallel()
-	privateKeyPEM, publicKeyPEM := testRSAKeyPair(t)
+	privatePath, publicPath := testKeyPairPaths(t)
 
-	manager, err := NewManager(&Config{PrivateKeyPEM: privateKeyPEM, PublicKeyPEM: publicKeyPEM, Issuer: "easydrop", Expire: time.Hour})
+	manager, err := NewManager(&Config{PrivateKeyPath: privatePath, PublicKeyPath: publicPath, Issuer: "easydrop", Expire: time.Hour})
 	if err != nil {
 		t.Fatalf("创建管理器失败: %v", err)
 	}
@@ -266,4 +292,3 @@ func testNewRSAKeyPair(t *testing.T) (string, string) {
 
 	return privatePEM, publicPEM
 }
-

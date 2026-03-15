@@ -1,0 +1,48 @@
+# Example configuration for easydrop.
+# Copy to data/config.yaml and edit for your environment.
+
+db:
+  driver: sqlite
+  sqlite_path: data/easydrop.db
+  # host: "127.0.0.1"
+  # port: 3306
+  # username: "root"
+  # password: ""
+  # database_name: "easydrop"
+  # ssl_mode: "disable"
+  # charset: "utf8mb4"
+  # parse_time: true
+  # loc: "Local"
+  # time_zone: "Asia/Shanghai"
+  # max_open_conns: 20
+  # max_idle_conns: 10
+  # conn_max_lifetime: 1h
+  # conn_max_idle_time: 10m
+
+redis:
+  addr: "localhost:6379"
+  # username: ""
+  # password: ""
+  # db: 0
+  # dial_timeout: 5s
+  # read_timeout: 3s
+  # write_timeout: 3s
+  # pool_size: 10
+  # min_idle_conns: 2
+  # max_retries: 3
+
+email:
+  host: "smtp.example.com"
+  port: 587
+  username: "user"
+  password: ""
+  from_email: "noreply@example.com"
+  tls_mode: "starttls"
+  connect_timeout: 10s
+  send_timeout: 10s
+
+jwt:
+  private_key_path: "data/jwt/private.pem"
+  public_key_path: "data/jwt/public.pem"
+  issuer: "easydrop"
+  expire: 1h

@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/wire"
 	mail "github.com/xhit/go-simple-mail/v2"
 )
 
@@ -21,28 +20,26 @@ const (
 )
 
 var (
-	ErrNilConfig       = errors.New("邮件配置不能为空")
-	ErrEmptyHost       = errors.New("邮件服务器地址不能为空")
-	ErrInvalidPort     = errors.New("邮件服务器端口必须大于 0")
-	ErrEmptyUsername   = errors.New("邮件用户名不能为空")
-	ErrEmptyFromEmail  = errors.New("发件人邮箱不能为空")
-	ErrInvalidTLSMode  = errors.New("不支持的邮件 TLS 模式")
-	ErrEmptyRecipient  = errors.New("收件人不能为空")
-	ErrEmptySubject    = errors.New("邮件主题不能为空")
-	ErrEmptyHTMLBody   = errors.New("邮件 HTML 内容不能为空")
+	ErrNilConfig      = errors.New("邮件配置不能为空")
+	ErrEmptyHost      = errors.New("邮件服务器地址不能为空")
+	ErrInvalidPort    = errors.New("邮件服务器端口必须大于 0")
+	ErrEmptyUsername  = errors.New("邮件用户名不能为空")
+	ErrEmptyFromEmail = errors.New("发件人邮箱不能为空")
+	ErrInvalidTLSMode = errors.New("不支持的邮件 TLS 模式")
+	ErrEmptyRecipient = errors.New("收件人不能为空")
+	ErrEmptySubject   = errors.New("邮件主题不能为空")
+	ErrEmptyHTMLBody  = errors.New("邮件 HTML 内容不能为空")
 )
 
-var ProviderSet = wire.NewSet(NewClient)
-
 type Config struct {
-	Host           string
-	Port           int
-	Username       string
-	Password       string
-	FromEmail      string
-	TLSMode        string
-	ConnectTimeout time.Duration
-	SendTimeout    time.Duration
+	Host           string        `mapstructure:"host" yaml:"host"`
+	Port           int           `mapstructure:"port" yaml:"port"`
+	Username       string        `mapstructure:"username" yaml:"username"`
+	Password       string        `mapstructure:"password" yaml:"password"`
+	FromEmail      string        `mapstructure:"from_email" yaml:"from_email"`
+	TLSMode        string        `mapstructure:"tls_mode" yaml:"tls_mode"`
+	ConnectTimeout time.Duration `mapstructure:"connect_timeout" yaml:"connect_timeout"`
+	SendTimeout    time.Duration `mapstructure:"send_timeout" yaml:"send_timeout"`
 }
 
 type Client struct {
@@ -209,4 +206,3 @@ func defaultOr(value, fallback time.Duration) time.Duration {
 	}
 	return fallback
 }
-

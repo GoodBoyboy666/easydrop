@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/wire"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
@@ -31,25 +30,23 @@ var (
 	ErrUnsupportedDriver = errors.New("不支持的数据库类型")
 )
 
-var ProviderSet = wire.NewSet(NewDB)
-
 type Config struct {
-	Driver          string
-	Host            string
-	Port            int
-	Username        string
-	Password        string
-	DatabaseName    string
-	SSLMode         string
-	Charset         string
-	ParseTime       bool
-	Loc             string
-	TimeZone        string
-	SQLitePath      string
-	MaxOpenConns    int
-	MaxIdleConns    int
-	ConnMaxLifetime time.Duration
-	ConnMaxIdleTime time.Duration
+	Driver          string        `mapstructure:"driver" yaml:"driver"`
+	Host            string        `mapstructure:"host" yaml:"host"`
+	Port            int           `mapstructure:"port" yaml:"port"`
+	Username        string        `mapstructure:"username" yaml:"username"`
+	Password        string        `mapstructure:"password" yaml:"password"`
+	DatabaseName    string        `mapstructure:"database_name" yaml:"database_name"`
+	SSLMode         string        `mapstructure:"ssl_mode" yaml:"ssl_mode"`
+	Charset         string        `mapstructure:"charset" yaml:"charset"`
+	ParseTime       bool          `mapstructure:"parse_time" yaml:"parse_time"`
+	Loc             string        `mapstructure:"loc" yaml:"loc"`
+	TimeZone        string        `mapstructure:"time_zone" yaml:"time_zone"`
+	SQLitePath      string        `mapstructure:"sqlite_path" yaml:"sqlite_path"`
+	MaxOpenConns    int           `mapstructure:"max_open_conns" yaml:"max_open_conns"`
+	MaxIdleConns    int           `mapstructure:"max_idle_conns" yaml:"max_idle_conns"`
+	ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime" yaml:"conn_max_lifetime"`
+	ConnMaxIdleTime time.Duration `mapstructure:"conn_max_idle_time" yaml:"conn_max_idle_time"`
 }
 
 func NewDB(cfg *Config) (*gorm.DB, error) {
@@ -212,4 +209,3 @@ func buildSQLiteDSN(cfg *Config) (string, error) {
 	}
 	return sqlitePath, nil
 }
-

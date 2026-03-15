@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/wire"
 	red "github.com/redis/go-redis/v9"
 )
 
@@ -20,19 +19,17 @@ var (
 	ErrEmptyAddr = errors.New("redis 地址不能为空")
 )
 
-var ProviderSet = wire.NewSet(NewClient)
-
 type Config struct {
-	Addr         string
-	Username     string
-	Password     string
-	DB           int
-	DialTimeout  time.Duration
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
-	PoolSize     int
-	MinIdleConns int
-	MaxRetries   int
+	Addr         string        `mapstructure:"addr" yaml:"addr"`
+	Username     string        `mapstructure:"username" yaml:"username"`
+	Password     string        `mapstructure:"password" yaml:"password"`
+	DB           int           `mapstructure:"db" yaml:"db"`
+	DialTimeout  time.Duration `mapstructure:"dial_timeout" yaml:"dial_timeout"`
+	ReadTimeout  time.Duration `mapstructure:"read_timeout" yaml:"read_timeout"`
+	WriteTimeout time.Duration `mapstructure:"write_timeout" yaml:"write_timeout"`
+	PoolSize     int           `mapstructure:"pool_size" yaml:"pool_size"`
+	MinIdleConns int           `mapstructure:"min_idle_conns" yaml:"min_idle_conns"`
+	MaxRetries   int           `mapstructure:"max_retries" yaml:"max_retries"`
 }
 
 func NewClient(cfg *Config) (*red.Client, error) {
@@ -67,4 +64,3 @@ func defaultOr(value, fallback time.Duration) time.Duration {
 	}
 	return fallback
 }
-

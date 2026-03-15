@@ -20,14 +20,14 @@ const (
 )
 
 var (
-	ErrEmptyProvider      = errors.New("验证码类型不能为空")
+	ErrEmptyProvider       = errors.New("验证码类型不能为空")
 	ErrUnsupportedProvider = errors.New("不支持的验证码类型")
-	ErrEmptySecretKey     = errors.New("验证码密钥不能为空")
-	ErrEmptyToken         = errors.New("验证码 token 不能为空")
-	ErrEmptyVerifyURL     = errors.New("验证码校验地址不能为空")
-	ErrRequestFailed      = errors.New("验证码请求失败")
-	ErrDecodeResponse     = errors.New("验证码响应解析失败")
-	ErrVerifyFailed       = errors.New("验证码校验失败")
+	ErrEmptySecretKey      = errors.New("验证码密钥不能为空")
+	ErrEmptyToken          = errors.New("验证码 token 不能为空")
+	ErrEmptyVerifyURL      = errors.New("验证码校验地址不能为空")
+	ErrRequestFailed       = errors.New("验证码请求失败")
+	ErrDecodeResponse      = errors.New("验证码响应解析失败")
+	ErrVerifyFailed        = errors.New("验证码校验失败")
 
 	ErrEmptyGeetestCaptchaID = errors.New("Geetest captcha_id 不能为空")
 	ErrEmptyLotNumber        = errors.New("Geetest lot_number 不能为空")
@@ -111,5 +111,3 @@ func defaultOr(value, fallback time.Duration) time.Duration {
 	}
 	return fallback
 }
-
-
