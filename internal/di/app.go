@@ -12,17 +12,18 @@ import (
 
 // App 聚合应用运行所需的依赖。
 type App struct {
-	Config   *config.StaticConfig
-	DB       *gorm.DB
-	DBConfig *config.DBConfig
-	Redis    *red.Client
-	Email    *email.Client
-	JWT      *jwt.Manager
-	Auth     service.AuthService
-	Comment  service.CommentService
-	Post     service.PostService
-	Tag      service.TagService
-	User     service.UserService
+	Config     *config.StaticConfig
+	DB         *gorm.DB
+	DBConfig   *config.DBConfig
+	Redis      *red.Client
+	Email      *email.Client
+	JWT        *jwt.Manager
+	Attachment service.AttachmentService
+	Auth       service.AuthService
+	Comment    service.CommentService
+	Post       service.PostService
+	Tag        service.TagService
+	User       service.UserService
 }
 
 // NewApp 构造 App 聚合对象。
@@ -34,22 +35,24 @@ func NewApp(
 	emailClient *email.Client,
 	jwtManager *jwt.Manager,
 	authService service.AuthService,
+	attachmentService service.AttachmentService,
 	commentService service.CommentService,
 	postService service.PostService,
 	tagService service.TagService,
 	userService service.UserService,
 ) *App {
 	return &App{
-		Config:   cfg,
-		DB:       db,
-		DBConfig: dbConfig,
-		Redis:    redisClient,
-		Email:    emailClient,
-		JWT:      jwtManager,
-		Auth:     authService,
-		Comment:  commentService,
-		Post:     postService,
-		Tag:      tagService,
-		User:     userService,
+		Config:     cfg,
+		DB:         db,
+		DBConfig:   dbConfig,
+		Redis:      redisClient,
+		Email:      emailClient,
+		JWT:        jwtManager,
+		Attachment: attachmentService,
+		Auth:       authService,
+		Comment:    commentService,
+		Post:       postService,
+		Tag:        tagService,
+		User:       userService,
 	}
 }

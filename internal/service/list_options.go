@@ -89,3 +89,15 @@ func normalizeCommentListOrder(order string) string {
 		return "created_at asc"
 	}
 }
+
+// normalizeAttachmentListOrder 将附件列表排序参数映射为允许的排序表达式。
+func normalizeAttachmentListOrder(order string) string {
+	switch strings.ToLower(strings.TrimSpace(order)) {
+	case "created_at_asc":
+		return "created_at asc"
+	case "created_at_desc", "":
+		return "created_at desc"
+	default:
+		return "created_at desc"
+	}
+}
