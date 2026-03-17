@@ -34,7 +34,9 @@ var (
 )
 
 type AuthService interface {
+	// Register 注册用户并返回登录态信息。
 	Register(ctx context.Context, input dto.RegisterInput) (*dto.AuthResult, error)
+	// Login 使用用户名或邮箱登录并返回登录态信息。
 	Login(ctx context.Context, input dto.LoginInput) (*dto.AuthResult, error)
 }
 
@@ -45,6 +47,7 @@ type authService struct {
 	captcha  captcha.Verifier
 }
 
+// NewAuthService 创建认证服务实例。
 func NewAuthService(userRepo repo.UserRepo, dbConfig *config.DBConfig, jwtManager *jwt.Manager, captchaVerifier captcha.Verifier) AuthService {
 	return &authService{
 		userRepo: userRepo,
@@ -54,6 +57,7 @@ func NewAuthService(userRepo repo.UserRepo, dbConfig *config.DBConfig, jwtManage
 	}
 }
 
+// Register 校验注册参数、创建用户并签发访问令牌。
 func (s *authService) Register(ctx context.Context, input dto.RegisterInput) (*dto.AuthResult, error) {
 	username := strings.TrimSpace(input.Username)
 	if err := validator.ValidateUsername(username); err != nil {
@@ -122,6 +126,7 @@ func (s *authService) Register(ctx context.Context, input dto.RegisterInput) (*d
 	return result, nil
 }
 
+// Login 校验账号密码与验证码，并在成功后签发访问令牌。
 func (s *authService) Login(ctx context.Context, input dto.LoginInput) (*dto.AuthResult, error) {
 	account := strings.TrimSpace(input.Account)
 	if account == "" {
@@ -160,6 +165,7 @@ func (s *authService) Login(ctx context.Context, input dto.LoginInput) (*dto.Aut
 	return result, nil
 }
 
+// buildAuthResult 将用户模型转换为认证结果并签发访问令牌。
 func (s *authService) buildAuthResult(user *model.User) (*dto.AuthResult, error) {
 	token, err := s.jwt.IssueAccessToken(user.ID, user.Username, user.Admin)
 	if err != nil {
@@ -172,6 +178,7 @@ func (s *authService) buildAuthResult(user *model.User) (*dto.AuthResult, error)
 	}, nil
 }
 
+// ensureRegisterEnabled 检查站点是否允许新用户注册。
 func (s *authService) ensureRegisterEnabled(ctx context.Context) error {
 	if s.dbConfig == nil {
 		return ErrInvalidSiteSetting
@@ -197,6 +204,7 @@ func (s *authService) ensureRegisterEnabled(ctx context.Context) error {
 	return nil
 }
 
+// ensureUserUnique 检查用户名和邮箱是否都未被占用。
 func (s *authService) ensureUserUnique(ctx context.Context, username, email string) error {
 	if _, err := s.userRepo.GetByUsername(ctx, username); err == nil {
 		return ErrUsernameExists
@@ -215,6 +223,7 @@ func (s *authService) ensureUserUnique(ctx context.Context, username, email stri
 	return nil
 }
 
+// verifyCaptcha 在启用验证码时执行人机校验。
 func (s *authService) verifyCaptcha(ctx context.Context, input *dto.CaptchaInput) error {
 	if s.captcha == nil || !s.captcha.Enabled() {
 		return nil
@@ -240,6 +249,7 @@ func (s *authService) verifyCaptcha(ctx context.Context, input *dto.CaptchaInput
 	return nil
 }
 
+// toUserDTO 将用户模型转换为对外返回的 DTO。
 func toUserDTO(user *model.User) dto.UserDTO {
 	return dto.UserDTO{
 		ID:            user.ID,

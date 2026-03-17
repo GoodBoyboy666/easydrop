@@ -20,12 +20,6 @@ type PostListInput struct {
 	Order  string `json:"order"`
 }
 
-type TagDTO struct {
-	ID        uint      `json:"id"`
-	Name      string    `json:"name"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
 type PostDTO struct {
 	ID        uint      `json:"id"`
 	Content   string    `json:"content"`

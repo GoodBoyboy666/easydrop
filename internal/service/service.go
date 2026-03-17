@@ -2,4 +2,5 @@ package service
 
 import "github.com/google/wire"
 
-var ServiceSet = wire.NewSet(NewAuthService, NewPostService)
+// ServiceSet 汇总 service 层依赖提供器。
+var ServiceSet = wire.NewSet(NewAuthService, NewPostService, NewTagService)

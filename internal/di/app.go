@@ -20,6 +20,7 @@ type App struct {
 	JWT      *jwt.Manager
 	Auth     service.AuthService
 	Post     service.PostService
+	Tag      service.TagService
 }
 
 // NewApp 构造 App 聚合对象。
@@ -32,6 +33,7 @@ func NewApp(
 	jwtManager *jwt.Manager,
 	authService service.AuthService,
 	postService service.PostService,
+	tagService service.TagService,
 ) *App {
 	return &App{
 		Config:   cfg,
@@ -42,5 +44,6 @@ func NewApp(
 		JWT:      jwtManager,
 		Auth:     authService,
 		Post:     postService,
+		Tag:      tagService,
 	}
 }

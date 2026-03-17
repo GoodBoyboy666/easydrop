@@ -25,10 +25,15 @@ var (
 var tagPattern = regexp.MustCompile(`#([^\s]+)`)
 
 type PostService interface {
+	// Create 创建说说并自动关联正文中解析出的标签。
 	Create(ctx context.Context, input dto.PostCreateInput) (*dto.PostDTO, error)
+	// Get 按 ID 获取单条说说详情。
 	Get(ctx context.Context, id uint) (*dto.PostDTO, error)
+	// Update 更新说说内容并同步刷新标签关联。
 	Update(ctx context.Context, input dto.PostUpdateInput) (*dto.PostDTO, error)
+	// Delete 删除说说并异步清理可能失效的标签。
 	Delete(ctx context.Context, id uint) error
+	// List 按条件查询说说列表。
 	List(ctx context.Context, input dto.PostListInput) (*dto.PostListResult, error)
 }
 
@@ -37,6 +42,7 @@ type postService struct {
 	tagRepo  repo.TagRepo
 }
 
+// NewPostService 创建说说服务实例。
 func NewPostService(postRepo repo.PostRepo, tagRepo repo.TagRepo) PostService {
 	return &postService{
 		postRepo: postRepo,
@@ -44,6 +50,7 @@ func NewPostService(postRepo repo.PostRepo, tagRepo repo.TagRepo) PostService {
 	}
 }
 
+// Create 校验输入内容并创建新的说说记录。
 func (s *postService) Create(ctx context.Context, input dto.PostCreateInput) (*dto.PostDTO, error) {
 	if input.UserID == 0 {
 		return nil, ErrInvalidPostUser
@@ -70,6 +77,7 @@ func (s *postService) Create(ctx context.Context, input dto.PostCreateInput) (*d
 	return toPostDTO(post), nil
 }
 
+// Get 根据说说 ID 查询详情。
 func (s *postService) Get(ctx context.Context, id uint) (*dto.PostDTO, error) {
 	if id == 0 {
 		return nil, ErrPostNotFound
@@ -85,6 +93,7 @@ func (s *postService) Get(ctx context.Context, id uint) (*dto.PostDTO, error) {
 	return toPostDTO(post), nil
 }
 
+// Update 更新说说内容，并在内容变化时重建标签关系。
 func (s *postService) Update(ctx context.Context, input dto.PostUpdateInput) (*dto.PostDTO, error) {
 	if input.ID == 0 {
 		return nil, ErrPostNotFound
@@ -123,6 +132,7 @@ func (s *postService) Update(ctx context.Context, input dto.PostUpdateInput) (*d
 	return toPostDTO(post), nil
 }
 
+// Delete 删除说说并在后台尝试清理孤儿标签。
 func (s *postService) Delete(ctx context.Context, id uint) error {
 	if id == 0 {
 		return ErrPostNotFound
@@ -146,14 +156,15 @@ func (s *postService) Delete(ctx context.Context, id uint) error {
 	return nil
 }
 
+// List 根据用户、标签和分页条件返回说说列表。
 func (s *postService) List(ctx context.Context, input dto.PostListInput) (*dto.PostListResult, error) {
 	posts, total, err := s.postRepo.List(ctx, repo.PostFilter{
 		UserID: input.UserID,
 		TagID:  input.TagID,
 	}, repo.ListOptions{
-		Limit:  input.Limit,
-		Offset: input.Offset,
-		Order:  input.Order,
+		Limit:  normalizeServiceListLimit(input.Limit),
+		Offset: normalizeServiceListOffset(input.Offset),
+		Order:  normalizePostListOrder(input.Order),
 	})
 	if err != nil {
 		log.Printf("查询说说列表失败: %v", err)
@@ -166,6 +177,7 @@ func (s *postService) List(ctx context.Context, input dto.PostListInput) (*dto.P
 	}, nil
 }
 
+// buildTagsFromContent 从正文中提取标签，不存在时自动创建。
 func (s *postService) buildTagsFromContent(ctx context.Context, content string) ([]model.Tag, error) {
 	cleanNames := extractTagNames(content)
 	if len(cleanNames) == 0 {
@@ -196,6 +208,7 @@ func (s *postService) buildTagsFromContent(ctx context.Context, content string) 
 	return tags, nil
 }
 
+// asyncCleanupOrphanTags 异步删除不再被任何说说引用的标签。
 func (s *postService) asyncCleanupOrphanTags(tagIDs []uint) {
 	ids := append([]uint(nil), tagIDs...)
 	go func() {
@@ -205,6 +218,7 @@ func (s *postService) asyncCleanupOrphanTags(tagIDs []uint) {
 	}()
 }
 
+// extractTagNames 使用标签正则从正文中提取原始标签名。
 func extractTagNames(content string) []string {
 	if content == "" {
 		return nil
@@ -229,6 +243,7 @@ func extractTagNames(content string) []string {
 	return normalizeTagNames(names)
 }
 
+// normalizeTagNames 清理空白并去重，得到规范化标签名列表。
 func normalizeTagNames(names []string) []string {
 	if len(names) == 0 {
 		return nil
@@ -250,6 +265,7 @@ func normalizeTagNames(names []string) []string {
 	return cleaned
 }
 
+// collectTagIDs 提取标签 ID 列表，忽略无效 ID。
 func collectTagIDs(tags []model.Tag) []uint {
 	if len(tags) == 0 {
 		return nil
@@ -264,6 +280,7 @@ func collectTagIDs(tags []model.Tag) []uint {
 	return ids
 }
 
+// toPostDTO 将说说模型转换为单个 DTO。
 func toPostDTO(post *model.Post) *dto.PostDTO {
 	if post == nil {
 		return nil
@@ -278,6 +295,7 @@ func toPostDTO(post *model.Post) *dto.PostDTO {
 	}
 }
 
+// toPostDTOs 将说说模型切片转换为 DTO 列表。
 func toPostDTOs(posts []model.Post) []dto.PostDTO {
 	if len(posts) == 0 {
 		return nil
@@ -293,6 +311,7 @@ func toPostDTOs(posts []model.Post) []dto.PostDTO {
 	return items
 }
 
+// toTagDTOs 将标签模型切片转换为 DTO 列表。
 func toTagDTOs(tags []model.Tag) []dto.TagDTO {
 	if len(tags) == 0 {
 		return nil
