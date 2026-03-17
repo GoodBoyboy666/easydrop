@@ -13,16 +13,16 @@ import (
 type TagRepo interface {
 	Create(ctx context.Context, tag *model.Tag) error
 	GetByID(ctx context.Context, id uint) (*model.Tag, error)
-	GetByName(ctx context.Context, userID uint, name string) (*model.Tag, error)
+	GetByName(ctx context.Context, name string) (*model.Tag, error)
 	Update(ctx context.Context, tag *model.Tag) error
 	Delete(ctx context.Context, id uint) error
 	List(ctx context.Context, filter TagFilter, opts ListOptions) ([]model.Tag, int64, error)
+	CleanupOrphanTags(ctx context.Context, tagIDs []uint) (int64, error)
 }
 
 // TagFilter 标签查询过滤条件。
 type TagFilter struct {
-	UserID *uint
-	Name   string
+	Name string
 }
 
 // GormTagRepo 基于 Gorm 的标签仓储实现。
@@ -31,7 +31,7 @@ type GormTagRepo struct {
 }
 
 // NewTagRepo 创建标签仓储实例。
-func NewTagRepo(db *gorm.DB) *GormTagRepo {
+func NewTagRepo(db *gorm.DB) TagRepo {
 	return &GormTagRepo{db: db}
 }
 
@@ -48,10 +48,10 @@ func (r *GormTagRepo) GetByID(ctx context.Context, id uint) (*model.Tag, error) 
 	return &tag, nil
 }
 
-func (r *GormTagRepo) GetByName(ctx context.Context, userID uint, name string) (*model.Tag, error) {
+func (r *GormTagRepo) GetByName(ctx context.Context, name string) (*model.Tag, error) {
 	var tag model.Tag
 	err := r.db.WithContext(withContext(ctx)).
-		Where("user_id = ? AND name = ?", userID, strings.TrimSpace(name)).
+		Where("name = ?", strings.TrimSpace(name)).
 		First(&tag).Error
 	if err != nil {
 		return nil, err
@@ -70,9 +70,6 @@ func (r *GormTagRepo) Delete(ctx context.Context, id uint) error {
 func (r *GormTagRepo) List(ctx context.Context, filter TagFilter, opts ListOptions) ([]model.Tag, int64, error) {
 	db := r.db.WithContext(withContext(ctx)).Model(&model.Tag{})
 
-	if filter.UserID != nil {
-		db = db.Where("user_id = ?", *filter.UserID)
-	}
 	if name := strings.TrimSpace(filter.Name); name != "" {
 		db = db.Where("name LIKE ?", "%"+name+"%")
 	}
@@ -88,4 +85,58 @@ func (r *GormTagRepo) List(ctx context.Context, filter TagFilter, opts ListOptio
 		return nil, 0, err
 	}
 	return tags, total, nil
+}
+
+func (r *GormTagRepo) CleanupOrphanTags(ctx context.Context, tagIDs []uint) (int64, error) {
+	ids := uniqueUintIDs(tagIDs)
+	if len(ids) == 0 {
+		return 0, nil
+	}
+
+	var usedIDs []uint
+	if err := r.db.WithContext(withContext(ctx)).
+		Table("post_tags").
+		Distinct("tag_id").
+		Where("tag_id IN ?", ids).
+		Pluck("tag_id", &usedIDs).Error; err != nil {
+		return 0, err
+	}
+
+	used := make(map[uint]struct{}, len(usedIDs))
+	for _, id := range usedIDs {
+		used[id] = struct{}{}
+	}
+
+	orphans := make([]uint, 0, len(ids))
+	for _, id := range ids {
+		if _, ok := used[id]; !ok {
+			orphans = append(orphans, id)
+		}
+	}
+	if len(orphans) == 0 {
+		return 0, nil
+	}
+
+	result := r.db.WithContext(withContext(ctx)).Where("id IN ?", orphans).Delete(&model.Tag{})
+	return result.RowsAffected, result.Error
+}
+
+func uniqueUintIDs(ids []uint) []uint {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	seen := make(map[uint]struct{}, len(ids))
+	unique := make([]uint, 0, len(ids))
+	for _, id := range ids {
+		if id == 0 {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		unique = append(unique, id)
+	}
+	return unique
 }

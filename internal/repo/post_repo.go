@@ -29,7 +29,7 @@ type GormPostRepo struct {
 }
 
 // NewPostRepo 创建帖子仓储实例。
-func NewPostRepo(db *gorm.DB) *GormPostRepo {
+func NewPostRepo(db *gorm.DB) PostRepo {
 	return &GormPostRepo{db: db}
 }
 
@@ -56,7 +56,13 @@ func (r *GormPostRepo) Update(ctx context.Context, post *model.Post) error {
 }
 
 func (r *GormPostRepo) Delete(ctx context.Context, id uint) error {
-	return r.db.WithContext(withContext(ctx)).Delete(&model.Post{}, id).Error
+	return r.db.WithContext(withContext(ctx)).Transaction(func(tx *gorm.DB) error {
+		post := model.Post{ID: id}
+		if err := tx.Model(&post).Association("Tags").Clear(); err != nil {
+			return err
+		}
+		return tx.Delete(&model.Post{}, id).Error
+	})
 }
 
 func (r *GormPostRepo) List(ctx context.Context, filter PostFilter, opts ListOptions) ([]model.Post, int64, error) {

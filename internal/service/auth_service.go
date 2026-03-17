@@ -79,7 +79,7 @@ func (s *authService) Register(ctx context.Context, input dto.RegisterInput) (*d
 		if errors.Is(err, ErrRegisterClosed) || errors.Is(err, ErrInvalidSiteSetting) {
 			return nil, err
 		}
-		log.Printf("auth.register: ensure register enabled failed: %v", err)
+		log.Printf("检查注册开关失败: %v", err)
 		return nil, ErrInternal
 	}
 
@@ -91,13 +91,13 @@ func (s *authService) Register(ctx context.Context, input dto.RegisterInput) (*d
 		if errors.Is(err, ErrUsernameExists) || errors.Is(err, ErrEmailExists) {
 			return nil, err
 		}
-		log.Printf("auth.register: ensure user unique failed: %v", err)
+		log.Printf("校验用户唯一性失败: %v", err)
 		return nil, ErrInternal
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		log.Printf("auth.register: generate password failed: %v", err)
+		log.Printf("生成密码哈希失败: %v", err)
 		return nil, ErrInternal
 	}
 
@@ -110,13 +110,13 @@ func (s *authService) Register(ctx context.Context, input dto.RegisterInput) (*d
 	}
 
 	if err := s.userRepo.Create(ctx, user); err != nil {
-		log.Printf("auth.register: create user failed: %v", err)
+		log.Printf("创建用户失败: %v", err)
 		return nil, ErrInternal
 	}
 
 	result, err := s.buildAuthResult(user)
 	if err != nil {
-		log.Printf("auth.register: issue token failed: %v", err)
+		log.Printf("签发令牌失败: %v", err)
 		return nil, ErrInternal
 	}
 	return result, nil
@@ -140,7 +140,7 @@ func (s *authService) Login(ctx context.Context, input dto.LoginInput) (*dto.Aut
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound
 		}
-		log.Printf("auth.login: get user failed: %v", err)
+		log.Printf("获取用户失败: %v", err)
 		return nil, ErrInternal
 	}
 
@@ -154,7 +154,7 @@ func (s *authService) Login(ctx context.Context, input dto.LoginInput) (*dto.Aut
 
 	result, err := s.buildAuthResult(user)
 	if err != nil {
-		log.Printf("auth.login: issue token failed: %v", err)
+		log.Printf("签发令牌失败: %v", err)
 		return nil, ErrInternal
 	}
 	return result, nil
@@ -179,7 +179,7 @@ func (s *authService) ensureRegisterEnabled(ctx context.Context) error {
 
 	value, ok, err := s.dbConfig.GetValue(ctx, "site.allow_register")
 	if err != nil {
-		log.Printf("auth.register: read site.allow_register failed: %v", err)
+		log.Printf("读取注册配置失败: %v", err)
 		return ErrInternal
 	}
 	if !ok {
@@ -188,7 +188,7 @@ func (s *authService) ensureRegisterEnabled(ctx context.Context) error {
 
 	allow, err := strconv.ParseBool(strings.TrimSpace(value))
 	if err != nil {
-		log.Printf("auth.register: parse site.allow_register failed: %v", err)
+		log.Printf("解析注册配置失败: %v", err)
 		return ErrInvalidSiteSetting
 	}
 	if !allow {
@@ -201,14 +201,14 @@ func (s *authService) ensureUserUnique(ctx context.Context, username, email stri
 	if _, err := s.userRepo.GetByUsername(ctx, username); err == nil {
 		return ErrUsernameExists
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
-		log.Printf("auth.register: get by username failed: %v", err)
+		log.Printf("按用户名查询失败: %v", err)
 		return ErrInternal
 	}
 
 	if _, err := s.userRepo.GetByEmail(ctx, email); err == nil {
 		return ErrEmailExists
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
-		log.Printf("auth.register: get by email failed: %v", err)
+		log.Printf("按邮箱查询失败: %v", err)
 		return ErrInternal
 	}
 
@@ -234,7 +234,7 @@ func (s *authService) verifyCaptcha(ctx context.Context, input *dto.CaptchaInput
 
 	_, err := s.captcha.Verify(ctx, payload)
 	if err != nil {
-		log.Printf("auth.captcha: verify failed: %v", err)
+		log.Printf("验证码校验失败: %v", err)
 		return ErrCaptchaFailed
 	}
 	return nil

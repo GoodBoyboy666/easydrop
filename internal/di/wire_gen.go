@@ -57,6 +57,9 @@ func Initialize(configDir string, strict bool) (*App, error) {
 		return nil, err
 	}
 	authService := service.NewAuthService(userRepo, dbConfig, manager, verifier)
-	app := NewApp(staticConfig, db, dbConfig, client, emailClient, manager, authService)
+	postRepo := repo.NewPostRepo(db)
+	tagRepo := repo.NewTagRepo(db)
+	postService := service.NewPostService(postRepo, tagRepo)
+	app := NewApp(staticConfig, db, dbConfig, client, emailClient, manager, authService, postService)
 	return app, nil
 }

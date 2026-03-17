@@ -19,6 +19,7 @@ type App struct {
 	Email    *email.Client
 	JWT      *jwt.Manager
 	Auth     service.AuthService
+	Post     service.PostService
 }
 
 // NewApp 构造 App 聚合对象。
@@ -30,6 +31,7 @@ func NewApp(
 	emailClient *email.Client,
 	jwtManager *jwt.Manager,
 	authService service.AuthService,
+	postService service.PostService,
 ) *App {
 	return &App{
 		Config:   cfg,
@@ -39,5 +41,6 @@ func NewApp(
 		Email:    emailClient,
 		JWT:      jwtManager,
 		Auth:     authService,
+		Post:     postService,
 	}
 }

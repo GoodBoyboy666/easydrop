@@ -30,7 +30,7 @@ type GormSettingRepo struct {
 }
 
 // NewSettingRepo 创建设置仓储实例。
-func NewSettingRepo(db *gorm.DB) *GormSettingRepo {
+func NewSettingRepo(db *gorm.DB) SettingRepo {
 	return &GormSettingRepo{db: db}
 }
 

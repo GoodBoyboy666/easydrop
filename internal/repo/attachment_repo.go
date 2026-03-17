@@ -30,7 +30,7 @@ type GormAttachmentRepo struct {
 }
 
 // NewAttachmentRepo 创建附件仓储实例。
-func NewAttachmentRepo(db *gorm.DB) *GormAttachmentRepo {
+func NewAttachmentRepo(db *gorm.DB) AttachmentRepo {
 	return &GormAttachmentRepo{db: db}
 }
 
