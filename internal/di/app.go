@@ -21,6 +21,7 @@ type App struct {
 	Auth     service.AuthService
 	Post     service.PostService
 	Tag      service.TagService
+	User     service.UserService
 }
 
 // NewApp 构造 App 聚合对象。
@@ -34,6 +35,7 @@ func NewApp(
 	authService service.AuthService,
 	postService service.PostService,
 	tagService service.TagService,
+	userService service.UserService,
 ) *App {
 	return &App{
 		Config:   cfg,
@@ -45,5 +47,6 @@ func NewApp(
 		Auth:     authService,
 		Post:     postService,
 		Tag:      tagService,
+		User:     userService,
 	}
 }

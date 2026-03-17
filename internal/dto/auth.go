@@ -1,7 +1,5 @@
 package dto
 
-import "time"
-
 type CaptchaInput struct {
 	Provider      string `json:"provider"`
 	Token         string `json:"token"`
@@ -24,21 +22,6 @@ type LoginInput struct {
 	Account  string        `json:"account"`
 	Password string        `json:"password"`
 	Captcha  *CaptchaInput `json:"captcha"`
-}
-
-type UserDTO struct {
-	ID            uint      `json:"id"`
-	Username      string    `json:"username"`
-	Nickname      string    `json:"nickname"`
-	Email         string    `json:"email"`
-	Admin         bool      `json:"admin"`
-	Status        int       `json:"status"`
-	Avatar        *string   `json:"avatar"`
-	EmailVerified bool      `json:"email_verified"`
-	StorageQuota  *int64    `json:"storage_quota"`
-	StorageUsed   int64     `json:"storage_used"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 type AuthResult struct {

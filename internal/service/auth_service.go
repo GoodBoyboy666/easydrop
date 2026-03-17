@@ -248,21 +248,3 @@ func (s *authService) verifyCaptcha(ctx context.Context, input *dto.CaptchaInput
 	}
 	return nil
 }
-
-// toUserDTO 将用户模型转换为对外返回的 DTO。
-func toUserDTO(user *model.User) dto.UserDTO {
-	return dto.UserDTO{
-		ID:            user.ID,
-		Username:      user.Username,
-		Nickname:      user.Nickname,
-		Email:         user.Email,
-		Admin:         user.Admin,
-		Status:        user.Status,
-		Avatar:        user.Avatar,
-		EmailVerified: user.EmailVerified,
-		StorageQuota:  user.StorageQuota,
-		StorageUsed:   user.StorageUsed,
-		CreatedAt:     user.CreatedAt,
-		UpdatedAt:     user.UpdatedAt,
-	}
-}

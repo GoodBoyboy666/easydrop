@@ -57,3 +57,23 @@ func normalizeTagListOrder(order string) string {
 		return "created_at desc"
 	}
 }
+
+// normalizeUserListOrder 将用户列表排序参数映射为允许的排序表达式。
+func normalizeUserListOrder(order string) string {
+	switch strings.ToLower(strings.TrimSpace(order)) {
+	case "created_at_asc":
+		return "created_at asc"
+	case "username_asc":
+		return "username asc"
+	case "username_desc":
+		return "username desc"
+	case "status_asc":
+		return "status asc"
+	case "status_desc":
+		return "status desc"
+	case "created_at_desc", "":
+		return "created_at desc"
+	default:
+		return "created_at desc"
+	}
+}
