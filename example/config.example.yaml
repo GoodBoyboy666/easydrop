@@ -46,3 +46,24 @@ jwt:
   public_key_path: "data/jwt/public.pem"
   issuer: "easydrop"
   expire: 1h
+
+captcha:
+  enabled: false
+  provider: "turnstile"
+  timeout: 5s
+  turnstile:
+    site_key: ""
+    secret_key: ""
+    verify_url: ""
+  recaptcha:
+    site_key: ""
+    secret_key: ""
+    verify_url: ""
+  hcaptcha:
+    site_key: ""
+    secret_key: ""
+    verify_url: ""
+  geetest_v4:
+    site_key: ""
+    secret_key: ""
+    verify_url: ""

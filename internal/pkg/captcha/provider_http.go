@@ -9,7 +9,11 @@ import (
 	"strings"
 )
 
-func verifyByForm(ctx context.Context, cfg Config, verifyURL string, form url.Values) (map[string]any, error) {
+func NewHttpClient() *http.Client {
+	return http.DefaultClient
+}
+
+func verifyByForm(ctx context.Context, cfg VerifyConfig, verifyURL string, form url.Values) (map[string]any, error) {
 	if strings.TrimSpace(verifyURL) == "" {
 		return nil, ErrEmptyVerifyURL
 	}
@@ -52,4 +56,3 @@ func buildGenericResult(provider Provider, raw map[string]any) (Result, error) {
 	}
 	return result, ErrVerifyFailed
 }
-

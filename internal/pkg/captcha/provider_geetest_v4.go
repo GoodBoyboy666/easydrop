@@ -9,11 +9,11 @@ import (
 	"strings"
 )
 
-func verifyGeetestV4(ctx context.Context, cfg Config, payload Payload) (Result, error) {
-	if strings.TrimSpace(cfg.SiteKey) == "" {
+func verifyGeetestV4(ctx context.Context, cfg VerifyConfig, payload Payload) (Result, error) {
+	if strings.TrimSpace(cfg.ProviderConfig.SiteKey) == "" {
 		return Result{}, ErrEmptyGeetestCaptchaID
 	}
-	if strings.TrimSpace(cfg.SecretKey) == "" {
+	if strings.TrimSpace(cfg.ProviderConfig.SecretKey) == "" {
 		return Result{}, ErrEmptySecretKey
 	}
 	if strings.TrimSpace(payload.LotNumber) == "" {
@@ -29,18 +29,18 @@ func verifyGeetestV4(ctx context.Context, cfg Config, payload Payload) (Result, 
 		return Result{}, ErrEmptyGenTime
 	}
 
-	verifyURL := strings.TrimSpace(cfg.VerifyURL)
+	verifyURL := strings.TrimSpace(cfg.ProviderConfig.VerifyURL)
 	if verifyURL == "" {
 		verifyURL = "https://gcaptcha4.geetest.com/validate"
 	}
 
 	raw, err := verifyByForm(ctx, cfg, verifyURL, url.Values{
-		"captcha_id":     []string{cfg.SiteKey},
+		"captcha_id":     []string{cfg.ProviderConfig.SiteKey},
 		"lot_number":     []string{payload.LotNumber},
 		"captcha_output": []string{payload.CaptchaOutput},
 		"pass_token":     []string{payload.PassToken},
 		"gen_time":       []string{payload.GenTime},
-		"sign_token":     []string{signGeetestToken(payload.LotNumber, cfg.SecretKey)},
+		"sign_token":     []string{signGeetestToken(payload.LotNumber, cfg.ProviderConfig.SecretKey)},
 	})
 	if err != nil {
 		return Result{}, err
@@ -62,4 +62,3 @@ func signGeetestToken(lotNumber, secret string) string {
 	_, _ = h.Write([]byte(lotNumber))
 	return hex.EncodeToString(h.Sum(nil))
 }
-

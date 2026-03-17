@@ -15,6 +15,7 @@ type UserRepo interface {
 	GetByID(ctx context.Context, id uint) (*model.User, error)
 	GetByUsername(ctx context.Context, username string) (*model.User, error)
 	GetByEmail(ctx context.Context, email string) (*model.User, error)
+	GetByUsernameOrEmail(ctx context.Context, value string) (*model.User, error)
 	Update(ctx context.Context, user *model.User) error
 	Delete(ctx context.Context, id uint) error
 	List(ctx context.Context, filter UserFilter, opts ListOptions) ([]model.User, int64, error)
@@ -33,7 +34,7 @@ type GormUserRepo struct {
 }
 
 // NewUserRepo 创建用户仓储实例。
-func NewUserRepo(db *gorm.DB) *GormUserRepo {
+func NewUserRepo(db *gorm.DB) UserRepo {
 	return &GormUserRepo{db: db}
 }
 
@@ -62,6 +63,15 @@ func (r *GormUserRepo) GetByUsername(ctx context.Context, username string) (*mod
 func (r *GormUserRepo) GetByEmail(ctx context.Context, email string) (*model.User, error) {
 	var user model.User
 	err := r.db.WithContext(withContext(ctx)).Where("email = ?", email).First(&user).Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *GormUserRepo) GetByUsernameOrEmail(ctx context.Context, value string) (*model.User, error) {
+	var user model.User
+	err := r.db.WithContext(withContext(ctx)).Where("username = ? OR email = ?", value, value).First(&user).Error
 	if err != nil {
 		return nil, err
 	}

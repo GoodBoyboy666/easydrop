@@ -5,11 +5,13 @@ package di
 
 import (
 	"easydrop/internal/config"
+	"easydrop/internal/pkg/captcha"
 	"easydrop/internal/pkg/database"
 	"easydrop/internal/pkg/email"
 	"easydrop/internal/pkg/jwt"
 	"easydrop/internal/pkg/redis"
 	"easydrop/internal/repo"
+	"easydrop/internal/service"
 
 	"github.com/google/wire"
 )
@@ -23,7 +25,9 @@ func Initialize(configDir string, strict bool) (*App, error) {
 		redis.NewClient,
 		email.NewClient,
 		jwt.NewManager,
+		captcha.CaptchaSet,
 		repo.RepositorySet,
+		service.ServiceSet,
 		NewApp,
 	)
 	return &App{}, nil

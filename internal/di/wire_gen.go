@@ -8,10 +8,13 @@ package di
 
 import (
 	"easydrop/internal/config"
+	"easydrop/internal/pkg/captcha"
 	"easydrop/internal/pkg/database"
 	"easydrop/internal/pkg/email"
 	"easydrop/internal/pkg/jwt"
 	"easydrop/internal/pkg/redis"
+	"easydrop/internal/repo"
+	"easydrop/internal/service"
 )
 
 // Injectors from wire.go:
@@ -46,6 +49,14 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	app := NewApp(staticConfig, db, dbConfig, client, emailClient, manager)
+	userRepo := repo.NewUserRepo(db)
+	allCaptchaConfig := config.ProvideCaptchaConfig(staticConfig)
+	httpClient := captcha.NewHttpClient()
+	verifier, err := captcha.NewVerifier(allCaptchaConfig, httpClient)
+	if err != nil {
+		return nil, err
+	}
+	authService := service.NewAuthService(userRepo, dbConfig, manager, verifier)
+	app := NewApp(staticConfig, db, dbConfig, client, emailClient, manager, authService)
 	return app, nil
 }

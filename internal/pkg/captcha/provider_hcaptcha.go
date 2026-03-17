@@ -6,23 +6,23 @@ import (
 	"strings"
 )
 
-func verifyHCaptcha(ctx context.Context, cfg Config, payload Payload) (Result, error) {
-	if strings.TrimSpace(cfg.SecretKey) == "" {
+func verifyHCaptcha(ctx context.Context, cfg VerifyConfig, payload Payload) (Result, error) {
+	if strings.TrimSpace(cfg.ProviderConfig.SecretKey) == "" {
 		return Result{}, ErrEmptySecretKey
 	}
 	if strings.TrimSpace(payload.Token) == "" {
 		return Result{}, ErrEmptyToken
 	}
 
-	verifyURL := strings.TrimSpace(cfg.VerifyURL)
+	verifyURL := strings.TrimSpace(cfg.ProviderConfig.VerifyURL)
 	if verifyURL == "" {
 		verifyURL = "https://hcaptcha.com/siteverify"
 	}
 
 	raw, err := verifyByForm(ctx, cfg, verifyURL, url.Values{
-		"secret":   []string{cfg.SecretKey},
+		"secret":   []string{cfg.ProviderConfig.SecretKey},
 		"response": []string{payload.Token},
-		"remoteip": []string{cfg.RemoteIP},
+		"remoteip": []string{payload.RemoteIP},
 	})
 	if err != nil {
 		return Result{}, err
@@ -30,4 +30,3 @@ func verifyHCaptcha(ctx context.Context, cfg Config, payload Payload) (Result, e
 
 	return buildGenericResult(ProviderHCaptcha, raw)
 }
-

@@ -9,6 +9,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 
+	"easydrop/internal/pkg/captcha"
 	"easydrop/internal/pkg/database"
 	"easydrop/internal/pkg/email"
 	"easydrop/internal/pkg/jwt"
@@ -17,14 +18,15 @@ import (
 
 // StaticConfig 是应用的根配置结构。
 type StaticConfig struct {
-	DB    database.Config `mapstructure:"db" yaml:"db"`
-	Redis redis.Config    `mapstructure:"redis" yaml:"redis"`
-	Email email.Config    `mapstructure:"email" yaml:"email"`
-	JWT   jwt.Config      `mapstructure:"jwt" yaml:"jwt"`
+	DB      database.Config          `mapstructure:"db" yaml:"db"`
+	Redis   redis.Config             `mapstructure:"redis" yaml:"redis"`
+	Email   email.Config             `mapstructure:"email" yaml:"email"`
+	JWT     jwt.Config               `mapstructure:"jwt" yaml:"jwt"`
+	Captcha captcha.AllCaptchaConfig `mapstructure:"captcha" yaml:"captcha"`
 }
 
 // StaticProviderSet 提供配置加载的 Wire 注入入口。
-var StaticProviderSet = wire.NewSet(Load, ProvideDBConfig, ProvideRedisConfig, ProvideEmailConfig, ProvideJWTConfig)
+var StaticProviderSet = wire.NewSet(Load, ProvideDBConfig, ProvideRedisConfig, ProvideEmailConfig, ProvideJWTConfig, ProvideCaptchaConfig)
 
 // Load 从 configDir/config.yaml 读取配置，并支持环境变量覆盖。
 // strict 为 true 时，配置文件缺失会返回错误。
@@ -51,6 +53,8 @@ func Load(configDir string, strict bool) (*StaticConfig, error) {
 	v.SetDefault("redis.addr", "localhost:6379")
 	v.SetDefault("jwt.expire", time.Hour)
 	v.SetDefault("email.tls_mode", email.TLSModeStartTLS)
+	v.SetDefault("captcha.enabled", false)
+	v.SetDefault("captcha.timeout", 5*time.Second)
 
 	if err := v.ReadInConfig(); err != nil {
 		if strict {
@@ -88,4 +92,9 @@ func ProvideEmailConfig(cfg *StaticConfig) *email.Config {
 // ProvideJWTConfig 提供 JWT 配置。
 func ProvideJWTConfig(cfg *StaticConfig) *jwt.Config {
 	return &cfg.JWT
+}
+
+// ProvideCaptchaConfig 提供验证码配置。
+func ProvideCaptchaConfig(cfg *StaticConfig) *captcha.AllCaptchaConfig {
+	return &cfg.Captcha
 }

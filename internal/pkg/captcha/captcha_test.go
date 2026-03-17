@@ -15,27 +15,27 @@ import (
 	"time"
 )
 
-func TestVerify_ConfigValidation(t *testing.T) {
+func TestNewVerifier_ConfigValidation(t *testing.T) {
 	t.Parallel()
 
-	_, err := Verify(context.Background(), Config{}, Payload{})
+	_, err := NewVerifier(&AllCaptchaConfig{Enabled: true}, nil)
 	if !errors.Is(err, ErrEmptyProvider) {
 		t.Fatalf("期望错误 ErrEmptyProvider，实际为: %v", err)
 	}
 
-	_, err = Verify(context.Background(), Config{Provider: "unknown"}, Payload{})
+	_, err = NewVerifier(&AllCaptchaConfig{Enabled: true, Provider: "unknown"}, nil)
 	if !errors.Is(err, ErrUnsupportedProvider) {
 		t.Fatalf("期望错误 ErrUnsupportedProvider，实际为: %v", err)
 	}
 
-	_, err = Verify(context.Background(), Config{Provider: ProviderHCaptcha}, Payload{Token: "ok"})
+	_, err = NewVerifier(&AllCaptchaConfig{Enabled: true, Provider: ProviderHCaptcha}, nil)
 	if !errors.Is(err, ErrEmptySecretKey) {
 		t.Fatalf("期望错误 ErrEmptySecretKey，实际为: %v", err)
 	}
 
-	_, err = Verify(context.Background(), Config{Provider: ProviderHCaptcha, SecretKey: "secret"}, Payload{})
-	if !errors.Is(err, ErrEmptyToken) {
-		t.Fatalf("期望错误 ErrEmptyToken，实际为: %v", err)
+	_, err = NewVerifier(&AllCaptchaConfig{Enabled: true, Provider: ProviderHCaptcha, HCaptcha: ProviderConfig{SecretKey: "secret"}}, nil)
+	if !errors.Is(err, ErrEmptySiteKey) {
+		t.Fatalf("期望错误 ErrEmptySiteKey，实际为: %v", err)
 	}
 }
 
@@ -53,10 +53,12 @@ func TestVerify_HCaptchaSuccess(t *testing.T) {
 	}))
 	defer server.Close()
 
-	result, err := Verify(context.Background(), Config{
-		Provider:   ProviderHCaptcha,
-		SecretKey:  "secret-h",
-		VerifyURL:  server.URL,
+	result, err := verifyHCaptcha(context.Background(), VerifyConfig{
+		ProviderConfig: ProviderConfig{
+			SecretKey: "secret-h",
+			SiteKey:   "site-h",
+			VerifyURL: server.URL,
+		},
 		HTTPClient: server.Client(),
 	}, Payload{Token: "token-h"})
 	if err != nil {
@@ -75,10 +77,12 @@ func TestVerify_RecaptchaFail(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := Verify(context.Background(), Config{
-		Provider:   ProviderRecaptcha,
-		SecretKey:  "secret-r",
-		VerifyURL:  server.URL,
+	_, err := verifyRecaptcha(context.Background(), VerifyConfig{
+		ProviderConfig: ProviderConfig{
+			SecretKey: "secret-r",
+			SiteKey:   "site-r",
+			VerifyURL: server.URL,
+		},
 		HTTPClient: server.Client(),
 	}, Payload{Token: "bad"})
 	if !errors.Is(err, ErrVerifyFailed) {
@@ -94,10 +98,12 @@ func TestVerify_TurnstileSuccessWithScore(t *testing.T) {
 	}))
 	defer server.Close()
 
-	result, err := Verify(context.Background(), Config{
-		Provider:   ProviderTurnstile,
-		SecretKey:  "secret-t",
-		VerifyURL:  server.URL,
+	result, err := verifyTurnstile(context.Background(), VerifyConfig{
+		ProviderConfig: ProviderConfig{
+			SecretKey: "secret-t",
+			SiteKey:   "site-t",
+			VerifyURL: server.URL,
+		},
 		HTTPClient: server.Client(),
 	}, Payload{Token: "ok"})
 	if err != nil {
@@ -126,11 +132,12 @@ func TestVerify_GeetestV4Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	result, err := Verify(context.Background(), Config{
-		Provider:   ProviderGeetestV4,
-		SiteKey:    "captcha-id",
-		SecretKey:  secret,
-		VerifyURL:  server.URL,
+	result, err := verifyGeetestV4(context.Background(), VerifyConfig{
+		ProviderConfig: ProviderConfig{
+			SecretKey: secret,
+			SiteKey:   "captcha-id",
+			VerifyURL: server.URL,
+		},
 		HTTPClient: server.Client(),
 	}, Payload{
 		LotNumber:     lotNumber,
@@ -146,15 +153,16 @@ func TestVerify_GeetestV4Success(t *testing.T) {
 	}
 }
 
-
 func TestVerify_HTTPRequestFailed(t *testing.T) {
 	t.Parallel()
 
-	_, err := Verify(context.Background(), Config{
-		Provider:  ProviderHCaptcha,
-		SecretKey: "secret-h",
-		VerifyURL: "http://127.0.0.1:1",
-		Timeout:   50 * time.Millisecond,
+	_, err := verifyHCaptcha(context.Background(), VerifyConfig{
+		ProviderConfig: ProviderConfig{
+			SecretKey: "secret-h",
+			SiteKey:   "site-h",
+			VerifyURL: "http://127.0.0.1:1",
+		},
+		Timeout: 50 * time.Millisecond,
 	}, Payload{Token: "token"})
 	if err == nil || !strings.Contains(err.Error(), ErrRequestFailed.Error()) {
 		t.Fatalf("期望请求失败错误，实际为: %v", err)
@@ -169,24 +177,24 @@ func TestNormalizeProvider(t *testing.T) {
 	}
 }
 
-
-
 func geetestSignForTest(lotNumber, secret string) string {
 	h := hmac.New(sha256.New, []byte(secret))
 	_, _ = h.Write([]byte(lotNumber))
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func ExampleVerify_hCaptcha() {
+func Example_verifyHCaptcha() {
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"success":true}`))
 	}))
 	defer mockServer.Close()
 
-	result, err := Verify(context.Background(), Config{
-		Provider:   ProviderHCaptcha,
-		SecretKey:  "secret",
-		VerifyURL:  mockServer.URL,
+	result, err := verifyHCaptcha(context.Background(), VerifyConfig{
+		ProviderConfig: ProviderConfig{
+			SecretKey: "secret",
+			SiteKey:   "site",
+			VerifyURL: mockServer.URL,
+		},
 		HTTPClient: mockServer.Client(),
 	}, Payload{Token: "token"})
 
@@ -211,14 +219,15 @@ func TestVerify_RequestBodyForm(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := Verify(context.Background(), Config{
-		Provider:   ProviderHCaptcha,
-		SecretKey:  "secret",
-		VerifyURL:  server.URL,
+	_, err := verifyHCaptcha(context.Background(), VerifyConfig{
+		ProviderConfig: ProviderConfig{
+			SecretKey: "secret",
+			SiteKey:   "site",
+			VerifyURL: server.URL,
+		},
 		HTTPClient: server.Client(),
 	}, Payload{Token: "token-form"})
 	if err != nil {
 		t.Fatalf("验证码校验失败: %v", err)
 	}
 }
-
