@@ -13,6 +13,7 @@ import (
 	"easydrop/internal/pkg/email"
 	"easydrop/internal/pkg/jwt"
 	"easydrop/internal/pkg/redis"
+	"easydrop/internal/pkg/storage"
 	"easydrop/internal/repo"
 	"easydrop/internal/service"
 )
@@ -49,6 +50,11 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	storageConfig := config.ProvideStorageConfig(staticConfig)
+	storageManager, err := storage.NewManager(storageConfig)
+	if err != nil {
+		return nil, err
+	}
 	userRepo := repo.NewUserRepo(db)
 	allCaptchaConfig := config.ProvideCaptchaConfig(staticConfig)
 	httpClient := captcha.NewHttpClient()
@@ -58,7 +64,7 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	}
 	authService := service.NewAuthService(userRepo, dbConfig, manager, verifier)
 	attachmentRepo := repo.NewAttachmentRepo(db)
-	attachmentService := service.NewAttachmentService(attachmentRepo, userRepo)
+	attachmentService := service.NewAttachmentService(attachmentRepo, userRepo, storageManager)
 	commentRepo := repo.NewCommentRepo(db)
 	postRepo := repo.NewPostRepo(db)
 	commentService := service.NewCommentService(commentRepo, postRepo, userRepo)
@@ -66,6 +72,6 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	postService := service.NewPostService(postRepo, tagRepo)
 	tagService := service.NewTagService(tagRepo)
 	userService := service.NewUserService(userRepo)
-	app := NewApp(staticConfig, db, dbConfig, client, emailClient, manager, authService, attachmentService, commentService, postService, tagService, userService)
+	app := NewApp(staticConfig, db, dbConfig, client, emailClient, manager, storageManager, authService, attachmentService, commentService, postService, tagService, userService)
 	return app, nil
 }

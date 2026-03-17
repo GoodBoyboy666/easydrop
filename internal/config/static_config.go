@@ -14,6 +14,7 @@ import (
 	"easydrop/internal/pkg/email"
 	"easydrop/internal/pkg/jwt"
 	"easydrop/internal/pkg/redis"
+	"easydrop/internal/pkg/storage"
 )
 
 // StaticConfig 是应用的根配置结构。
@@ -23,10 +24,11 @@ type StaticConfig struct {
 	Email   email.Config             `mapstructure:"email" yaml:"email"`
 	JWT     jwt.Config               `mapstructure:"jwt" yaml:"jwt"`
 	Captcha captcha.AllCaptchaConfig `mapstructure:"captcha" yaml:"captcha"`
+	Storage storage.Config           `mapstructure:"storage" yaml:"storage"`
 }
 
 // StaticProviderSet 提供配置加载的 Wire 注入入口。
-var StaticProviderSet = wire.NewSet(Load, ProvideDBConfig, ProvideRedisConfig, ProvideEmailConfig, ProvideJWTConfig, ProvideCaptchaConfig)
+var StaticProviderSet = wire.NewSet(Load, ProvideDBConfig, ProvideRedisConfig, ProvideEmailConfig, ProvideJWTConfig, ProvideCaptchaConfig, ProvideStorageConfig)
 
 // Load 从 configDir/config.yaml 读取配置，并支持环境变量覆盖。
 // strict 为 true 时，配置文件缺失会返回错误。
@@ -55,6 +57,8 @@ func Load(configDir string, strict bool) (*StaticConfig, error) {
 	v.SetDefault("email.tls_mode", email.TLSModeStartTLS)
 	v.SetDefault("captcha.enabled", false)
 	v.SetDefault("captcha.timeout", 5*time.Second)
+	v.SetDefault("storage.backend", storage.BackendLocal)
+	v.SetDefault("storage.local.base_path", "data/uploads")
 
 	if err := v.ReadInConfig(); err != nil {
 		if strict {
@@ -97,4 +101,9 @@ func ProvideJWTConfig(cfg *StaticConfig) *jwt.Config {
 // ProvideCaptchaConfig 提供验证码配置。
 func ProvideCaptchaConfig(cfg *StaticConfig) *captcha.AllCaptchaConfig {
 	return &cfg.Captcha
+}
+
+// ProvideStorageConfig 提供文件存储配置。
+func ProvideStorageConfig(cfg *StaticConfig) *storage.Config {
+	return &cfg.Storage
 }

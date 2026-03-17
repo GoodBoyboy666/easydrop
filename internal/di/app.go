@@ -4,6 +4,7 @@ import (
 	"easydrop/internal/config"
 	"easydrop/internal/pkg/email"
 	"easydrop/internal/pkg/jwt"
+	"easydrop/internal/pkg/storage"
 	"easydrop/internal/service"
 
 	red "github.com/redis/go-redis/v9"
@@ -18,6 +19,7 @@ type App struct {
 	Redis      *red.Client
 	Email      *email.Client
 	JWT        *jwt.Manager
+	Storage    *storage.Manager
 	Attachment service.AttachmentService
 	Auth       service.AuthService
 	Comment    service.CommentService
@@ -34,6 +36,7 @@ func NewApp(
 	redisClient *red.Client,
 	emailClient *email.Client,
 	jwtManager *jwt.Manager,
+	storageManager *storage.Manager,
 	authService service.AuthService,
 	attachmentService service.AttachmentService,
 	commentService service.CommentService,
@@ -48,6 +51,7 @@ func NewApp(
 		Redis:      redisClient,
 		Email:      emailClient,
 		JWT:        jwtManager,
+		Storage:    storageManager,
 		Attachment: attachmentService,
 		Auth:       authService,
 		Comment:    commentService,

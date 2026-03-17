@@ -4,10 +4,9 @@ import "time"
 
 type AttachmentCreateInput struct {
 	UserID      uint   `json:"user_id"`
-	StorageType string `json:"storage_type"`
-	FileKey     string `json:"file_key"`
 	BizType     int    `json:"biz_type"`
-	FileSize    int64  `json:"file_size"`
+	ContentType string `json:"content_type"`
+	Content     []byte `json:"content"`
 }
 
 type AttachmentUpdateInput struct {
@@ -28,6 +27,7 @@ type AttachmentDTO struct {
 	UserID      uint      `json:"user_id"`
 	StorageType string    `json:"storage_type"`
 	FileKey     string    `json:"file_key"`
+	URL         string    `json:"url"`
 	BizType     int       `json:"biz_type"`
 	FileSize    int64     `json:"file_size"`
 	CreatedAt   time.Time `json:"created_at"`

@@ -67,3 +67,18 @@ captcha:
     site_key: ""
     secret_key: ""
     verify_url: ""
+
+storage:
+  backend: "local" # local 或 s3
+  local:
+    base_path: "data/uploads"
+    base_url: ""
+  s3:
+    bucket: ""
+    region: ""
+    access_key: ""
+    secret_key: ""
+    endpoint: ""
+    use_path_style: false
+    public_base_url: ""
+    presign_expire: 15m

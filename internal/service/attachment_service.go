@@ -8,6 +8,7 @@ import (
 
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
+	"easydrop/internal/pkg/storage"
 	"easydrop/internal/repo"
 
 	"gorm.io/gorm"
@@ -17,8 +18,7 @@ var (
 	ErrAttachmentNotFound       = errors.New("附件不存在")
 	ErrInvalidAttachmentBizType = errors.New("附件类型不合法")
 	ErrInvalidFileSize          = errors.New("文件大小必须大于 0")
-	ErrEmptyFileKey             = errors.New("文件 key 不能为空")
-	ErrEmptyStorageType         = errors.New("存储类型不能为空")
+	ErrEmptyAttachmentContent   = errors.New("附件内容不能为空")
 )
 
 // AttachmentService 提供附件管理相关的 CRUD 能力。
@@ -38,13 +38,15 @@ type AttachmentService interface {
 type attachmentService struct {
 	attachmentRepo repo.AttachmentRepo
 	userRepo       repo.UserRepo
+	storageManager *storage.Manager
 }
 
 // NewAttachmentService 创建附件服务实例。
-func NewAttachmentService(attachmentRepo repo.AttachmentRepo, userRepo repo.UserRepo) AttachmentService {
+func NewAttachmentService(attachmentRepo repo.AttachmentRepo, userRepo repo.UserRepo, storageManager *storage.Manager) AttachmentService {
 	return &attachmentService{
 		attachmentRepo: attachmentRepo,
 		userRepo:       userRepo,
+		storageManager: storageManager,
 	}
 }
 
@@ -58,38 +60,51 @@ func (s *attachmentService) Create(ctx context.Context, input dto.AttachmentCrea
 		return nil, err
 	}
 
-	storageType := strings.TrimSpace(input.StorageType)
-	if storageType == "" {
-		return nil, ErrEmptyStorageType
-	}
-
-	fileKey := strings.TrimSpace(input.FileKey)
-	if fileKey == "" {
-		return nil, ErrEmptyFileKey
+	if len(input.Content) == 0 {
+		return nil, ErrEmptyAttachmentContent
 	}
 
 	if err := validateAttachmentBizType(input.BizType); err != nil {
 		return nil, err
 	}
 
-	if input.FileSize <= 0 {
+	fileSize := int64(len(input.Content))
+	if fileSize <= 0 {
 		return nil, ErrInvalidFileSize
+	}
+
+	fileKey, err := s.storageManager.NewObjectKey(storage.CategoryFile, input.UserID)
+	if err != nil {
+		log.Printf("生成附件 key 失败: %v", err)
+		return nil, ErrInternal
+	}
+
+	if err := s.storageManager.Upload(ctx, fileKey, input.Content, strings.TrimSpace(input.ContentType)); err != nil {
+		log.Printf("上传附件失败: %v", err)
+		return nil, ErrInternal
 	}
 
 	attachment := &model.Attachment{
 		UserID:      input.UserID,
-		StorageType: storageType,
+		StorageType: s.storageManager.BackendType(),
 		FileKey:     fileKey,
 		BizType:     input.BizType,
-		FileSize:    input.FileSize,
+		FileSize:    fileSize,
 	}
 
 	if err := s.attachmentRepo.Create(ctx, attachment); err != nil {
 		log.Printf("创建附件失败: %v", err)
+		if deleteErr := s.storageManager.Delete(ctx, fileKey); deleteErr != nil {
+			log.Printf("回滚附件对象失败: %v", deleteErr)
+		}
 		return nil, ErrInternal
 	}
 
-	d := toAttachmentDTO(attachment)
+	d, err := s.toAttachmentDTO(ctx, attachment)
+	if err != nil {
+		log.Printf("生成附件 URL 失败: %v", err)
+		return nil, ErrInternal
+	}
 	return &d, nil
 }
 
@@ -108,7 +123,11 @@ func (s *attachmentService) Get(ctx context.Context, id uint) (*dto.AttachmentDT
 		return nil, ErrInternal
 	}
 
-	d := toAttachmentDTO(attachment)
+	d, err := s.toAttachmentDTO(ctx, attachment)
+	if err != nil {
+		log.Printf("生成附件 URL 失败: %v", err)
+		return nil, ErrInternal
+	}
 	return &d, nil
 }
 
@@ -139,7 +158,11 @@ func (s *attachmentService) Update(ctx context.Context, input dto.AttachmentUpda
 		return nil, ErrInternal
 	}
 
-	d := toAttachmentDTO(attachment)
+	d, err := s.toAttachmentDTO(ctx, attachment)
+	if err != nil {
+		log.Printf("生成附件 URL 失败: %v", err)
+		return nil, ErrInternal
+	}
 	return &d, nil
 }
 
@@ -149,11 +172,17 @@ func (s *attachmentService) Delete(ctx context.Context, id uint) error {
 		return ErrAttachmentNotFound
 	}
 
-	if _, err := s.attachmentRepo.GetByID(ctx, id); err != nil {
+	attachment, err := s.attachmentRepo.GetByID(ctx, id)
+	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrAttachmentNotFound
 		}
 		log.Printf("查询附件失败: %v", err)
+		return ErrInternal
+	}
+
+	if err := s.storageManager.Delete(ctx, attachment.FileKey); err != nil {
+		log.Printf("删除附件对象失败: %v", err)
 		return ErrInternal
 	}
 
@@ -179,8 +208,14 @@ func (s *attachmentService) ListByUser(ctx context.Context, input dto.Attachment
 		return nil, ErrInternal
 	}
 
+	items, err := s.toAttachmentDTOs(ctx, attachments)
+	if err != nil {
+		log.Printf("生成附件 URL 失败: %v", err)
+		return nil, ErrInternal
+	}
+
 	return &dto.AttachmentListResult{
-		Items: toAttachmentDTOs(attachments),
+		Items: items,
 		Total: total,
 	}, nil
 }
@@ -208,26 +243,36 @@ func validateAttachmentBizType(bizType int) error {
 }
 
 // toAttachmentDTO 将附件模型转换为 DTO。
-func toAttachmentDTO(attachment *model.Attachment) dto.AttachmentDTO {
+func (s *attachmentService) toAttachmentDTO(ctx context.Context, attachment *model.Attachment) (dto.AttachmentDTO, error) {
+	url, err := s.storageManager.URL(ctx, attachment.FileKey)
+	if err != nil {
+		return dto.AttachmentDTO{}, err
+	}
+
 	return dto.AttachmentDTO{
 		ID:          attachment.ID,
 		UserID:      attachment.UserID,
 		StorageType: attachment.StorageType,
 		FileKey:     attachment.FileKey,
+		URL:         url,
 		BizType:     attachment.BizType,
 		FileSize:    attachment.FileSize,
 		CreatedAt:   attachment.CreatedAt,
-	}
+	}, nil
 }
 
 // toAttachmentDTOs 将附件模型切片转换为 DTO 列表。
-func toAttachmentDTOs(attachments []model.Attachment) []dto.AttachmentDTO {
+func (s *attachmentService) toAttachmentDTOs(ctx context.Context, attachments []model.Attachment) ([]dto.AttachmentDTO, error) {
 	if len(attachments) == 0 {
-		return nil
+		return nil, nil
 	}
 	items := make([]dto.AttachmentDTO, 0, len(attachments))
 	for i := range attachments {
-		items = append(items, toAttachmentDTO(&attachments[i]))
+		item, err := s.toAttachmentDTO(ctx, &attachments[i])
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, item)
 	}
-	return items
+	return items, nil
 }
