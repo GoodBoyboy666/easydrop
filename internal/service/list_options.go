@@ -77,3 +77,15 @@ func normalizeUserListOrder(order string) string {
 		return "created_at desc"
 	}
 }
+
+// normalizeCommentListOrder 将评论列表排序参数映射为允许的排序表达式。
+func normalizeCommentListOrder(order string) string {
+	switch strings.ToLower(strings.TrimSpace(order)) {
+	case "created_at_desc":
+		return "created_at desc"
+	case "created_at_asc", "":
+		return "created_at asc"
+	default:
+		return "created_at asc"
+	}
+}

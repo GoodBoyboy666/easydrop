@@ -19,6 +19,7 @@ type App struct {
 	Email    *email.Client
 	JWT      *jwt.Manager
 	Auth     service.AuthService
+	Comment  service.CommentService
 	Post     service.PostService
 	Tag      service.TagService
 	User     service.UserService
@@ -33,6 +34,7 @@ func NewApp(
 	emailClient *email.Client,
 	jwtManager *jwt.Manager,
 	authService service.AuthService,
+	commentService service.CommentService,
 	postService service.PostService,
 	tagService service.TagService,
 	userService service.UserService,
@@ -45,6 +47,7 @@ func NewApp(
 		Email:    emailClient,
 		JWT:      jwtManager,
 		Auth:     authService,
+		Comment:  commentService,
 		Post:     postService,
 		Tag:      tagService,
 		User:     userService,

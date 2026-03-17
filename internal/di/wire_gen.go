@@ -57,11 +57,13 @@ func Initialize(configDir string, strict bool) (*App, error) {
 		return nil, err
 	}
 	authService := service.NewAuthService(userRepo, dbConfig, manager, verifier)
+	commentRepo := repo.NewCommentRepo(db)
 	postRepo := repo.NewPostRepo(db)
+	commentService := service.NewCommentService(commentRepo, postRepo, userRepo)
 	tagRepo := repo.NewTagRepo(db)
 	postService := service.NewPostService(postRepo, tagRepo)
 	tagService := service.NewTagService(tagRepo)
 	userService := service.NewUserService(userRepo)
-	app := NewApp(staticConfig, db, dbConfig, client, emailClient, manager, authService, postService, tagService, userService)
+	app := NewApp(staticConfig, db, dbConfig, client, emailClient, manager, authService, commentService, postService, tagService, userService)
 	return app, nil
 }
