@@ -97,6 +97,12 @@ func initDefaultSettings(db *gorm.DB) error {
 			Desc:     "站点公告",
 			Category: "site",
 		},
+		{
+			Key:      "storage.quota",
+			Value:    "10737418240",
+			Desc:     "存储配额（字节，默认10GB）",
+			Category: "storage",
+		},
 	}
 
 	return db.Clauses(clause.OnConflict{

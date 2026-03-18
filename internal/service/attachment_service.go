@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"log"
+	"strconv"
 	"strings"
 
+	"easydrop/internal/config"
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
 	"easydrop/internal/pkg/storage"
@@ -19,6 +21,8 @@ var (
 	ErrInvalidAttachmentBizType = errors.New("附件类型不合法")
 	ErrInvalidFileSize          = errors.New("文件大小必须大于 0")
 	ErrEmptyAttachmentContent   = errors.New("附件内容不能为空")
+	ErrStorageQuotaExceeded     = errors.New("存储配额已满，无法上传")
+	ErrFailedToCalculateQuota   = errors.New("计算存储配额失败")
 )
 
 // AttachmentService 提供附件管理相关的 CRUD 能力。
@@ -39,14 +43,16 @@ type attachmentService struct {
 	attachmentRepo repo.AttachmentRepo
 	userRepo       repo.UserRepo
 	storageManager *storage.Manager
+	dbConfig       *config.DBConfig
 }
 
 // NewAttachmentService 创建附件服务实例。
-func NewAttachmentService(attachmentRepo repo.AttachmentRepo, userRepo repo.UserRepo, storageManager *storage.Manager) AttachmentService {
+func NewAttachmentService(attachmentRepo repo.AttachmentRepo, userRepo repo.UserRepo, storageManager *storage.Manager, dbConfig *config.DBConfig) AttachmentService {
 	return &attachmentService{
 		attachmentRepo: attachmentRepo,
 		userRepo:       userRepo,
 		storageManager: storageManager,
+		dbConfig:       dbConfig,
 	}
 }
 
@@ -73,6 +79,11 @@ func (s *attachmentService) Create(ctx context.Context, input dto.AttachmentCrea
 		return nil, ErrInvalidFileSize
 	}
 
+	defaultQuota, err := s.getDefaultStorageQuota(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	fileKey, err := s.storageManager.NewObjectKey(storage.CategoryFile, input.UserID)
 	if err != nil {
 		log.Printf("生成附件 key 失败: %v", err)
@@ -92,10 +103,16 @@ func (s *attachmentService) Create(ctx context.Context, input dto.AttachmentCrea
 		FileSize:    fileSize,
 	}
 
-	if err := s.attachmentRepo.Create(ctx, attachment); err != nil {
+	if err := s.attachmentRepo.CreateWithQuotaTx(ctx, attachment, defaultQuota); err != nil {
 		log.Printf("创建附件失败: %v", err)
 		if deleteErr := s.storageManager.Delete(ctx, fileKey); deleteErr != nil {
 			log.Printf("回滚附件对象失败: %v", deleteErr)
+		}
+		if errors.Is(err, repo.ErrAttachmentUploadQuotaExceeded) {
+			return nil, ErrStorageQuotaExceeded
+		}
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrUserNotFound
 		}
 		return nil, ErrInternal
 	}
@@ -186,7 +203,10 @@ func (s *attachmentService) Delete(ctx context.Context, id uint) error {
 		return ErrInternal
 	}
 
-	if err := s.attachmentRepo.Delete(ctx, id); err != nil {
+	if err := s.attachmentRepo.DeleteWithStorageUsedTx(ctx, id); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrAttachmentNotFound
+		}
 		log.Printf("删除附件失败: %v", err)
 		return ErrInternal
 	}
@@ -275,4 +295,31 @@ func (s *attachmentService) toAttachmentDTOs(ctx context.Context, attachments []
 		items = append(items, item)
 	}
 	return items, nil
+}
+
+// getDefaultStorageQuota 获取全局默认存储配额（字节）。
+func (s *attachmentService) getDefaultStorageQuota(ctx context.Context) (int64, error) {
+	quotaStr, found, err := s.dbConfig.GetValue(ctx, "storage.quota")
+	if err != nil {
+		log.Printf("获取全局存储配额失败: %v", err)
+		return 0, ErrFailedToCalculateQuota
+	}
+
+	if !found || quotaStr == "" {
+		// 如果没有配置，返回一个合理的默认值（10GB）
+		return 10 * 1024 * 1024 * 1024, nil
+	}
+
+	quota, err := strconv.ParseInt(quotaStr, 10, 64)
+	if err != nil {
+		log.Printf("解析存储配额失败: %v", err)
+		return 0, ErrFailedToCalculateQuota
+	}
+
+	if quota <= 0 {
+		// 配额设置为0或负数时，使用默认值
+		return 10 * 1024 * 1024 * 1024, nil
+	}
+
+	return quota, nil
 }

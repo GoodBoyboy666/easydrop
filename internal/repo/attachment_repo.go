@@ -2,15 +2,21 @@ package repo
 
 import (
 	"context"
+	"errors"
 
 	"easydrop/internal/model"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
+
+var ErrAttachmentUploadQuotaExceeded = errors.New("attachment upload quota exceeded")
 
 // AttachmentRepo 定义附件仓储接口。
 type AttachmentRepo interface {
 	Create(ctx context.Context, attachment *model.Attachment) error
+	CreateWithQuotaTx(ctx context.Context, attachment *model.Attachment, defaultQuota int64) error
+	DeleteWithStorageUsedTx(ctx context.Context, id uint) error
 	GetByID(ctx context.Context, id uint) (*model.Attachment, error)
 	GetByFileKey(ctx context.Context, fileKey string) (*model.Attachment, error)
 	Update(ctx context.Context, attachment *model.Attachment) error
@@ -38,6 +44,33 @@ func (r *GormAttachmentRepo) Create(ctx context.Context, attachment *model.Attac
 	return r.db.WithContext(withContext(ctx)).Create(attachment).Error
 }
 
+// CreateWithQuotaTx 在一个事务中完成配额校验、附件创建与用户已用空间递增。
+func (r *GormAttachmentRepo) CreateWithQuotaTx(ctx context.Context, attachment *model.Attachment, defaultQuota int64) error {
+	return r.db.WithContext(withContext(ctx)).Transaction(func(tx *gorm.DB) error {
+		var user model.User
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&user, attachment.UserID).Error; err != nil {
+			return err
+		}
+
+		effectiveQuota := defaultQuota
+		if user.StorageQuota != nil && *user.StorageQuota > 0 {
+			effectiveQuota = *user.StorageQuota
+		}
+
+		if user.StorageUsed+attachment.FileSize > effectiveQuota {
+			return ErrAttachmentUploadQuotaExceeded
+		}
+
+		if err := tx.Create(attachment).Error; err != nil {
+			return err
+		}
+
+		return tx.Model(&model.User{}).
+			Where("id = ?", user.ID).
+			Update("storage_used", gorm.Expr("storage_used + ?", attachment.FileSize)).Error
+	})
+}
+
 func (r *GormAttachmentRepo) GetByID(ctx context.Context, id uint) (*model.Attachment, error) {
 	var attachment model.Attachment
 	err := r.db.WithContext(withContext(ctx)).First(&attachment, id).Error
@@ -62,6 +95,34 @@ func (r *GormAttachmentRepo) Update(ctx context.Context, attachment *model.Attac
 
 func (r *GormAttachmentRepo) Delete(ctx context.Context, id uint) error {
 	return r.db.WithContext(withContext(ctx)).Delete(&model.Attachment{}, id).Error
+}
+
+// DeleteWithStorageUsedTx 在一个事务中删除附件并扣减用户已用存储。
+func (r *GormAttachmentRepo) DeleteWithStorageUsedTx(ctx context.Context, id uint) error {
+	return r.db.WithContext(withContext(ctx)).Transaction(func(tx *gorm.DB) error {
+		var attachment model.Attachment
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&attachment, id).Error; err != nil {
+			return err
+		}
+
+		var user model.User
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&user, attachment.UserID).Error; err != nil {
+			return err
+		}
+
+		newUsed := user.StorageUsed - attachment.FileSize
+		if newUsed < 0 {
+			newUsed = 0
+		}
+
+		if err := tx.Delete(&model.Attachment{}, attachment.ID).Error; err != nil {
+			return err
+		}
+
+		return tx.Model(&model.User{}).
+			Where("id = ?", user.ID).
+			Update("storage_used", newUsed).Error
+	})
 }
 
 func (r *GormAttachmentRepo) List(ctx context.Context, filter AttachmentFilter, opts ListOptions) ([]model.Attachment, int64, error) {

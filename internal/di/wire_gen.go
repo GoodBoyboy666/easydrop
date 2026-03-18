@@ -64,7 +64,7 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	}
 	authService := service.NewAuthService(userRepo, dbConfig, manager, verifier)
 	attachmentRepo := repo.NewAttachmentRepo(db)
-	attachmentService := service.NewAttachmentService(attachmentRepo, userRepo, storageManager)
+	attachmentService := service.NewAttachmentService(attachmentRepo, userRepo, storageManager, dbConfig)
 	commentRepo := repo.NewCommentRepo(db)
 	postRepo := repo.NewPostRepo(db)
 	commentService := service.NewCommentService(commentRepo, postRepo, userRepo)
