@@ -5,6 +5,7 @@ package di
 
 import (
 	"easydrop/internal/config"
+	"easydrop/internal/middleware"
 	"easydrop/internal/pkg/captcha"
 	"easydrop/internal/pkg/database"
 	"easydrop/internal/pkg/email"
@@ -29,6 +30,7 @@ func Initialize(configDir string, strict bool) (*App, error) {
 		storage.NewManager,
 		captcha.CaptchaSet,
 		repo.RepositorySet,
+		middleware.NewAuth,
 		service.ServiceSet,
 		NewApp,
 	)

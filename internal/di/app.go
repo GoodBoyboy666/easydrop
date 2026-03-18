@@ -2,6 +2,7 @@ package di
 
 import (
 	"easydrop/internal/config"
+	"easydrop/internal/middleware"
 	"easydrop/internal/pkg/email"
 	"easydrop/internal/pkg/jwt"
 	"easydrop/internal/pkg/storage"
@@ -20,6 +21,7 @@ type App struct {
 	Email      *email.Client
 	JWT        *jwt.Manager
 	Storage    *storage.Manager
+	Middleware *middleware.Auth
 	Attachment service.AttachmentService
 	Auth       service.AuthService
 	Comment    service.CommentService
@@ -37,6 +39,7 @@ func NewApp(
 	emailClient *email.Client,
 	jwtManager *jwt.Manager,
 	storageManager *storage.Manager,
+	middlewares *middleware.Auth,
 	authService service.AuthService,
 	attachmentService service.AttachmentService,
 	commentService service.CommentService,
@@ -52,6 +55,7 @@ func NewApp(
 		Email:      emailClient,
 		JWT:        jwtManager,
 		Storage:    storageManager,
+		Middleware: middlewares,
 		Attachment: attachmentService,
 		Auth:       authService,
 		Comment:    commentService,

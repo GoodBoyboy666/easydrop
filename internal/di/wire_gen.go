@@ -8,6 +8,7 @@ package di
 
 import (
 	"easydrop/internal/config"
+	"easydrop/internal/middleware"
 	"easydrop/internal/pkg/captcha"
 	"easydrop/internal/pkg/database"
 	"easydrop/internal/pkg/email"
@@ -56,6 +57,7 @@ func Initialize(configDir string, strict bool) (*App, error) {
 		return nil, err
 	}
 	userRepo := repo.NewUserRepo(db)
+	auth := middleware.NewAuth(manager, userRepo)
 	allCaptchaConfig := config.ProvideCaptchaConfig(staticConfig)
 	httpClient := captcha.NewHttpClient()
 	verifier, err := captcha.NewVerifier(allCaptchaConfig, httpClient)
@@ -72,6 +74,6 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	postService := service.NewPostService(postRepo, tagRepo)
 	tagService := service.NewTagService(tagRepo)
 	userService := service.NewUserService(userRepo)
-	app := NewApp(staticConfig, db, dbConfig, client, emailClient, manager, storageManager, authService, attachmentService, commentService, postService, tagService, userService)
+	app := NewApp(staticConfig, db, dbConfig, client, emailClient, manager, storageManager, auth, authService, attachmentService, commentService, postService, tagService, userService)
 	return app, nil
 }
