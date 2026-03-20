@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>邮箱验证</title>
+</head>
+<body style="margin:0;padding:0;background:#fff8f2;font-family:'Segoe UI',Helvetica,Arial,sans-serif;color:#1f2933;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:linear-gradient(170deg, #fff2df 0%, #fff8f2 42%, #fffdf9 100%);padding:30px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="620" cellspacing="0" cellpadding="0" style="max-width:620px;width:100%;background:#ffffff;border-radius:18px;border:1px solid #ffe3bf;overflow:hidden;box-shadow:0 16px 52px rgba(153,92,24,0.12);">
+          <tr>
+            <td style="padding:24px 28px;background:linear-gradient(140deg, #ff8a00 0%, #ff4d4d 100%);color:#ffffff;">
+              <p style="margin:0;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;opacity:0.9;">EasyDrop Account</p>
+              <h1 style="margin:10px 0 0 0;font-size:26px;line-height:1.25;">邮箱验证</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px;">
+              <p style="margin:0 0 16px 0;font-size:15px;line-height:1.8;">请确认该邮箱地址可用，完成验证后即可启用完整账号能力。</p>
+              <p style="margin:0 0 20px 0;font-size:14px;line-height:1.8;color:#5f6b7a;">完成验证后，你将能使用完整账号功能并提高账号安全等级。</p>
+
+              <p style="margin:0 0 18px 0;">
+                <a href="{{.ActionURL}}" style="display:inline-block;padding:13px 22px;border-radius:10px;text-decoration:none;font-weight:700;background:linear-gradient(140deg, #ff8a00 0%, #ff4d4d 100%);color:#ffffff;">立即验证邮箱</a>
+              </p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#fffaf4;border:1px solid #ffe7ca;border-radius:12px;">
+                <tr>
+                  <td style="padding:14px 16px;">
+                    <p style="margin:0 0 8px 0;font-size:13px;color:#6f5a3a;">若按钮无法点击，请复制以下链接：</p>
+                    <p style="margin:0 0 12px 0;font-size:13px;line-height:1.7;word-break:break-all;color:#e25500;">{{.ActionURL}}</p>
+                    <p style="margin:4px 0 0 0;font-size:13px;line-height:1.7;">有效期：{{.TTL}}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 28px;border-top:1px solid #fff0de;background:#fffdf9;">
+              <p style="margin:0;font-size:12px;line-height:1.7;color:#8c7b65;">来源站点：{{.SiteURL}}</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

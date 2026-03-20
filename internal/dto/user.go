@@ -27,6 +27,28 @@ type UserUpdateInput struct {
 	StorageQuota  *int64  `json:"storage_quota"`
 }
 
+type UserProfileUpdateInput struct {
+	UserID   uint    `json:"user_id"`
+	Nickname *string `json:"nickname"`
+}
+
+type UserChangePasswordInput struct {
+	UserID      uint   `json:"user_id"`
+	OldPassword string `json:"old_password"`
+	NewPassword string `json:"new_password"`
+}
+
+type UserChangeEmailRequestInput struct {
+	UserID          uint   `json:"user_id"`
+	CurrentPassword string `json:"current_password"`
+	NewEmail        string `json:"new_email"`
+}
+
+type UserChangeEmailConfirmInput struct {
+	UserID            uint   `json:"user_id"`
+	VerificationToken string `json:"verification_token"`
+}
+
 type UserAvatarUploadInput struct {
 	UserID           uint   `json:"user_id"`
 	OriginalFilename string `json:"original_filename"`

@@ -18,6 +18,9 @@ import (
 	"easydrop/internal/pkg/token"
 )
 
+// GlobalConfigDir 保存运行时生效的配置目录，供需要定位配置同级资源的模块复用。
+var GlobalConfigDir string
+
 // StaticConfig 是应用的根配置结构。
 type StaticConfig struct {
 	DB      database.Config          `mapstructure:"db" yaml:"db"`
@@ -36,6 +39,7 @@ var StaticProviderSet = wire.NewSet(Load, ProvideDBConfig, ProvideRedisConfig, P
 // strict 为 true 时，配置文件缺失会返回错误。
 func Load(configDir string, strict bool) (*StaticConfig, error) {
 	configDir = strings.TrimSpace(configDir)
+	GlobalConfigDir = configDir
 	if configDir == "" && strict {
 		return nil, errors.New("config dir is required")
 	}

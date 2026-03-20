@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>邮箱修改确认</title>
+</head>
+<body style="margin:0;padding:0;background:#eef9f5;font-family:'Segoe UI',Helvetica,Arial,sans-serif;color:#163028;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:radial-gradient(circle at 90% 10%, #d7fff0 0%, #eef9f5 40%, #f6fffb 100%);padding:30px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="620" cellspacing="0" cellpadding="0" style="max-width:620px;width:100%;background:#ffffff;border-radius:18px;border:1px solid #c7f0e2;overflow:hidden;box-shadow:0 16px 52px rgba(18,88,63,0.12);">
+          <tr>
+            <td style="padding:24px 28px;background:linear-gradient(140deg, #00a86b 0%, #00c7a0 100%);color:#ffffff;">
+              <p style="margin:0;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;opacity:0.9;">EasyDrop Identity</p>
+              <h1 style="margin:10px 0 0 0;font-size:26px;line-height:1.25;">邮箱修改确认</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px;">
+              <p style="margin:0 0 16px 0;font-size:15px;line-height:1.8;">你正在将账号邮箱修改为当前地址，请确认这是你本人操作。</p>
+              {{if .NewEmail}}
+              <p style="margin:0 0 12px 0;font-size:14px;line-height:1.8;color:#2c5f4f;">新邮箱：{{.NewEmail}}</p>
+              {{end}}
+              <p style="margin:0 0 20px 0;font-size:14px;line-height:1.8;color:#497266;">确认后，当前账号将绑定到此邮箱。若并非你本人操作，请不要点击按钮。</p>
+
+              <p style="margin:0 0 18px 0;">
+                <a href="{{.ActionURL}}" style="display:inline-block;padding:13px 22px;border-radius:10px;text-decoration:none;font-weight:700;background:linear-gradient(140deg, #00a86b 0%, #00c7a0 100%);color:#ffffff;">确认修改邮箱</a>
+              </p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f3fffa;border:1px solid #d3f5e9;border-radius:12px;">
+                <tr>
+                  <td style="padding:14px 16px;">
+                    <p style="margin:0 0 8px 0;font-size:13px;color:#4e6f65;">若按钮无法点击，请复制以下链接：</p>
+                    <p style="margin:0 0 12px 0;font-size:13px;line-height:1.7;word-break:break-all;color:#00885a;">{{.ActionURL}}</p>
+                    <p style="margin:4px 0 0 0;font-size:13px;line-height:1.7;">有效期：{{.TTL}}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 28px;border-top:1px solid #e8faf3;background:#f9fffc;">
+              <p style="margin:0;font-size:12px;line-height:1.7;color:#6a8a80;">来源站点：{{.SiteURL}}</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

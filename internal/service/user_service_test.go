@@ -5,18 +5,122 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
 	"easydrop/internal/pkg/storage"
+	"easydrop/internal/pkg/token"
 	"easydrop/internal/repo"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 type mockUserRepo struct {
 	users map[uint]*model.User
+}
+
+type mockTokenManager struct {
+	recordByToken map[string]*token.Record
+	nextToken     string
+	issueErr      error
+	consumeErr    error
+}
+
+func (m *mockTokenManager) Issue(_ context.Context, userID uint, kind string, ttl time.Duration, payload string) (string, error) {
+	if m.issueErr != nil {
+		return "", m.issueErr
+	}
+	if m.recordByToken == nil {
+		m.recordByToken = make(map[string]*token.Record)
+	}
+	value := m.nextToken
+	if strings.TrimSpace(value) == "" {
+		value = "mock-email-change-token"
+	}
+	now := time.Now().UTC()
+	m.recordByToken[value] = &token.Record{
+		UserID:    userID,
+		Kind:      kind,
+		Token:     value,
+		CreatedAt: now,
+		ExpiresAt: now.Add(ttl),
+		Payload:   payload,
+	}
+	return value, nil
+}
+
+func (m *mockTokenManager) Consume(_ context.Context, userID uint, kind, tokenValue string) (*token.Record, error) {
+	if m.consumeErr != nil {
+		return nil, m.consumeErr
+	}
+	record, ok := m.recordByToken[tokenValue]
+	if !ok {
+		return nil, token.ErrTokenNotFound
+	}
+	if record.UserID != userID || record.Kind != kind {
+		return nil, token.ErrTokenMismatch
+	}
+	delete(m.recordByToken, tokenValue)
+	return record, nil
+}
+
+type mockEmailSender struct {
+	to      []string
+	subject string
+	body    string
+	sendErr error
+}
+
+func (m *mockEmailSender) SendHTML(_ context.Context, to []string, subject, htmlBody string) error {
+	if m.sendErr != nil {
+		return m.sendErr
+	}
+	m.to = append([]string{}, to...)
+	m.subject = subject
+	m.body = htmlBody
+	return nil
+}
+
+type mockEmailService struct {
+	sender *mockEmailSender
+	err    error
+}
+
+func (m *mockEmailService) SendPasswordResetEmail(ctx context.Context, to, tokenValue string, ttl time.Duration) error {
+	if m.err != nil {
+		return m.err
+	}
+	if m.sender == nil {
+		return nil
+	}
+	body := "reset:" + tokenValue
+	return m.sender.SendHTML(ctx, []string{to}, "重置密码确认", body)
+}
+
+func (m *mockEmailService) SendVerifyEmail(ctx context.Context, to, tokenValue string, ttl time.Duration) error {
+	if m.err != nil {
+		return m.err
+	}
+	if m.sender == nil {
+		return nil
+	}
+	body := "verify:" + tokenValue
+	return m.sender.SendHTML(ctx, []string{to}, "邮箱验证", body)
+}
+
+func (m *mockEmailService) SendChangeEmailEmail(ctx context.Context, to, newEmail, tokenValue string, ttl time.Duration) error {
+	if m.err != nil {
+		return m.err
+	}
+	if m.sender == nil {
+		return nil
+	}
+	body := "change:" + newEmail + ":" + tokenValue
+	return m.sender.SendHTML(ctx, []string{to}, "邮箱修改确认", body)
 }
 
 func (m *mockUserRepo) Create(_ context.Context, user *model.User) error {
@@ -128,7 +232,7 @@ func TestUserServiceUploadAvatarReplacesManagedAvatar(t *testing.T) {
 			},
 		},
 	}
-	service := NewUserService(repo, storageManager, nil)
+	service := NewUserService(repo, storageManager, nil, nil, nil)
 
 	result, err := service.UploadAvatar(context.Background(), dto.UserAvatarUploadInput{
 		UserID:           1,
@@ -184,7 +288,7 @@ func TestUserServiceDeleteAvatarClearsManagedAvatar(t *testing.T) {
 			},
 		},
 	}
-	service := NewUserService(repo, storageManager, nil)
+	service := NewUserService(repo, storageManager, nil, nil, nil)
 
 	err := service.DeleteAvatar(context.Background(), 2)
 	if err != nil {
@@ -216,7 +320,7 @@ func TestUserServiceUploadAvatarQuotaExceededRollsBackObject(t *testing.T) {
 			},
 		},
 	}
-	service := NewUserService(repo, storageManager, nil)
+	service := NewUserService(repo, storageManager, nil, nil, nil)
 
 	_, err := service.UploadAvatar(context.Background(), dto.UserAvatarUploadInput{
 		UserID:           3,
@@ -253,7 +357,7 @@ func TestUserServiceDeleteAvatarWithExternalURL(t *testing.T) {
 			},
 		},
 	}
-	service := NewUserService(repo, nil, nil)
+	service := NewUserService(repo, nil, nil, nil, nil)
 
 	err := service.DeleteAvatar(context.Background(), 4)
 	if err != nil {
@@ -325,4 +429,222 @@ func cloneStringPtr(value *string) *string {
 	}
 	clone := *value
 	return &clone
+}
+
+func TestUserServiceUpdateProfile(t *testing.T) {
+	repo := &mockUserRepo{
+		users: map[uint]*model.User{
+			7: {
+				ID:       7,
+				Username: "neo",
+				Nickname: "old",
+				Email:    "neo@example.com",
+				Status:   1,
+			},
+		},
+	}
+	svc := NewUserService(repo, nil, nil, nil, nil)
+
+	nickname := "  Neo Matrix  "
+	result, err := svc.UpdateProfile(context.Background(), dto.UserProfileUpdateInput{UserID: 7, Nickname: &nickname})
+	if err != nil {
+		t.Fatalf("UpdateProfile returned error: %v", err)
+	}
+	if result.Nickname != "Neo Matrix" {
+		t.Fatalf("expected trimmed nickname, got %q", result.Nickname)
+	}
+	if repo.users[7].Nickname != "Neo Matrix" {
+		t.Fatalf("expected repo nickname updated, got %q", repo.users[7].Nickname)
+	}
+}
+
+func TestUserServiceChangePassword(t *testing.T) {
+	hash, err := bcrypt.GenerateFromPassword([]byte("OldPass123"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("seed hash failed: %v", err)
+	}
+
+	repo := &mockUserRepo{
+		users: map[uint]*model.User{
+			8: {
+				ID:       8,
+				Username: "trinity",
+				Nickname: "trinity",
+				Email:    "tri@example.com",
+				Password: string(hash),
+				Status:   1,
+			},
+		},
+	}
+	svc := NewUserService(repo, nil, nil, nil, nil)
+
+	err = svc.ChangePassword(context.Background(), dto.UserChangePasswordInput{
+		UserID:      8,
+		OldPassword: "OldPass123",
+		NewPassword: "NewPass123",
+	})
+	if err != nil {
+		t.Fatalf("ChangePassword returned error: %v", err)
+	}
+	if compareErr := bcrypt.CompareHashAndPassword([]byte(repo.users[8].Password), []byte("NewPass123")); compareErr != nil {
+		t.Fatalf("expected password to be updated: %v", compareErr)
+	}
+}
+
+func TestUserServiceChangePasswordWithWrongOldPassword(t *testing.T) {
+	hash, err := bcrypt.GenerateFromPassword([]byte("OldPass123"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("seed hash failed: %v", err)
+	}
+
+	repo := &mockUserRepo{
+		users: map[uint]*model.User{
+			9: {
+				ID:       9,
+				Username: "smith",
+				Email:    "smith@example.com",
+				Password: string(hash),
+				Status:   1,
+			},
+		},
+	}
+	svc := NewUserService(repo, nil, nil, nil, nil)
+
+	err = svc.ChangePassword(context.Background(), dto.UserChangePasswordInput{
+		UserID:      9,
+		OldPassword: "Wrong1234",
+		NewPassword: "NewPass123",
+	})
+	if !errors.Is(err, ErrInvalidPassword) {
+		t.Fatalf("expected ErrInvalidPassword, got %v", err)
+	}
+}
+
+func TestUserServiceRequestAndConfirmEmailChange(t *testing.T) {
+	hash, err := bcrypt.GenerateFromPassword([]byte("OldPass123"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("seed hash failed: %v", err)
+	}
+
+	repo := &mockUserRepo{
+		users: map[uint]*model.User{
+			10: {
+				ID:            10,
+				Username:      "morpheus",
+				Email:         "old@example.com",
+				Password:      string(hash),
+				EmailVerified: false,
+				Status:        1,
+			},
+		},
+	}
+	tokens := &mockTokenManager{nextToken: "confirm-abc"}
+	emailSender := &mockEmailSender{}
+	emails := &mockEmailService{sender: emailSender}
+	svc := &userService{
+		userRepo:       repo,
+		tokenManager:   tokens,
+		emailService:   emails,
+		storageManager: nil,
+	}
+
+	err = svc.RequestEmailChange(context.Background(), dto.UserChangeEmailRequestInput{
+		UserID:          10,
+		CurrentPassword: "OldPass123",
+		NewEmail:        "new@example.com",
+	})
+	if err != nil {
+		t.Fatalf("RequestEmailChange returned error: %v", err)
+	}
+	if len(emailSender.to) != 1 || emailSender.to[0] != "new@example.com" {
+		t.Fatalf("expected mail sent to new email, got %#v", emailSender.to)
+	}
+
+	result, err := svc.ConfirmEmailChange(context.Background(), dto.UserChangeEmailConfirmInput{
+		UserID:            10,
+		VerificationToken: "confirm-abc",
+	})
+	if err != nil {
+		t.Fatalf("ConfirmEmailChange returned error: %v", err)
+	}
+	if repo.users[10].Email != "new@example.com" {
+		t.Fatalf("expected email updated, got %s", repo.users[10].Email)
+	}
+	if !repo.users[10].EmailVerified {
+		t.Fatal("expected EmailVerified=true after confirm")
+	}
+	if result.Email != "new@example.com" || !result.EmailVerified {
+		t.Fatalf("unexpected dto result: %#v", result)
+	}
+}
+
+func TestUserServiceRequestEmailChangeWithWrongPassword(t *testing.T) {
+	hash, err := bcrypt.GenerateFromPassword([]byte("OldPass123"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("seed hash failed: %v", err)
+	}
+
+	repo := &mockUserRepo{
+		users: map[uint]*model.User{
+			12: {
+				ID:       12,
+				Username: "cypher",
+				Email:    "old@example.com",
+				Password: string(hash),
+				Status:   1,
+			},
+		},
+	}
+	tokens := &mockTokenManager{nextToken: "confirm-bad"}
+	emailSender := &mockEmailSender{}
+	emails := &mockEmailService{sender: emailSender}
+	svc := &userService{
+		userRepo:       repo,
+		tokenManager:   tokens,
+		emailService:   emails,
+		storageManager: nil,
+	}
+
+	err = svc.RequestEmailChange(context.Background(), dto.UserChangeEmailRequestInput{
+		UserID:          12,
+		CurrentPassword: "WrongPass123",
+		NewEmail:        "new@example.com",
+	})
+	if !errors.Is(err, ErrInvalidPassword) {
+		t.Fatalf("expected ErrInvalidPassword, got %v", err)
+	}
+	if len(emailSender.to) != 0 {
+		t.Fatalf("expected no email sent, got %#v", emailSender.to)
+	}
+}
+
+func TestUserServiceConfirmEmailChangeOldEmailMismatch(t *testing.T) {
+	repo := &mockUserRepo{
+		users: map[uint]*model.User{
+			11: {
+				ID:       11,
+				Username: "oracle",
+				Email:    "changed@example.com",
+				Status:   1,
+			},
+		},
+	}
+	payload, err := marshalEmailChangePayload("old@example.com", "new@example.com")
+	if err != nil {
+		t.Fatalf("marshal payload failed: %v", err)
+	}
+	tokens := &mockTokenManager{recordByToken: map[string]*token.Record{
+		"confirm-old": {
+			UserID:  11,
+			Kind:    token.KindChangeEmail,
+			Token:   "confirm-old",
+			Payload: payload,
+		},
+	}}
+	svc := &userService{userRepo: repo, tokenManager: tokens}
+
+	_, err = svc.ConfirmEmailChange(context.Background(), dto.UserChangeEmailConfirmInput{UserID: 11, VerificationToken: "confirm-old"})
+	if !errors.Is(err, ErrEmailChanged) {
+		t.Fatalf("expected ErrEmailChanged, got %v", err)
+	}
 }
