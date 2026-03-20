@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -56,6 +58,59 @@ func (m *mockAttachmentService) ListByUser(ctx context.Context, input dto.Attach
 		return nil, nil
 	}
 	return m.listByUserFn(ctx, input)
+}
+
+func TestAttachmentHandlerUploadPassesOriginalFilename(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	var captured dto.AttachmentCreateInput
+	h := NewAttachmentHandler(&mockAttachmentService{
+		createFn: func(ctx context.Context, input dto.AttachmentCreateInput) (*dto.AttachmentDTO, error) {
+			captured = input
+			return &dto.AttachmentDTO{ID: 1, UserID: input.UserID}, nil
+		},
+	})
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "Report.Final.PNG")
+	if err != nil {
+		t.Fatalf("create form file failed: %v", err)
+	}
+	if _, err := part.Write([]byte("image-content")); err != nil {
+		t.Fatalf("write form file failed: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close multipart writer failed: %v", err)
+	}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	req, err := http.NewRequest(http.MethodPost, "/api/v1/attachments", body)
+	if err != nil {
+		t.Fatalf("create request failed: %v", err)
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	c.Request = req
+	c.Set(middleware.ContextUserIDKey, uint(100))
+
+	h.Upload(c)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected status 201, got %d", w.Code)
+	}
+	if captured.UserID != 100 {
+		t.Fatalf("expected user id 100, got %d", captured.UserID)
+	}
+	if captured.OriginalFilename != "Report.Final.PNG" {
+		t.Fatalf("expected original filename to be passed through, got %q", captured.OriginalFilename)
+	}
+	if len(captured.Content) == 0 {
+		t.Fatal("expected uploaded content to be passed through")
+	}
+	if captured.ContentType == "" {
+		t.Fatal("expected content type to be populated")
+	}
 }
 
 func TestAttachmentHandlerGetSuccess(t *testing.T) {

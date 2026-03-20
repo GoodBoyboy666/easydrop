@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"strings"
 
@@ -73,7 +74,12 @@ func (h *AttachmentHandler) Upload(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, MessageResponse{Message: "读取上传文件失败"})
 		return
 	}
-	defer file.Close()
+	defer func(file multipart.File) {
+		err := file.Close()
+		if err != nil {
+
+		}
+	}(file)
 
 	content, err := io.ReadAll(file)
 	if err != nil {
@@ -87,9 +93,10 @@ func (h *AttachmentHandler) Upload(c *gin.Context) {
 	}
 
 	result, err := h.attachmentService.Create(c.Request.Context(), dto.AttachmentCreateInput{
-		UserID:      userID,
-		ContentType: contentType,
-		Content:     content,
+		UserID:           userID,
+		OriginalFilename: fileHeader.Filename,
+		ContentType:      contentType,
+		Content:          content,
 	})
 	if err != nil {
 		status := mapAttachmentErrorStatus(err)

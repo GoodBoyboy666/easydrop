@@ -88,7 +88,7 @@ func (s *attachmentService) Create(ctx context.Context, input dto.AttachmentCrea
 		return nil, err
 	}
 
-	fileKey, err := s.storageManager.NewObjectKey(storage.CategoryFile, input.UserID)
+	fileKey, err := s.storageManager.NewObjectKey(storage.CategoryFile, input.UserID, input.OriginalFilename)
 	if err != nil {
 		log.Printf("生成附件 key 失败: %v", err)
 		return nil, ErrInternal

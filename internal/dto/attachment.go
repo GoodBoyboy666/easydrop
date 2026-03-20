@@ -3,9 +3,10 @@ package dto
 import "time"
 
 type AttachmentCreateInput struct {
-	UserID      uint   `json:"user_id"`
-	ContentType string `json:"content_type"`
-	Content     []byte `json:"content"`
+	UserID           uint   `json:"user_id"`
+	OriginalFilename string `json:"original_filename"`
+	ContentType      string `json:"content_type"`
+	Content          []byte `json:"content"`
 }
 
 type AttachmentUpdateInput struct {

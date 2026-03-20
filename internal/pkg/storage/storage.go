@@ -74,9 +74,9 @@ func (m *Manager) BackendType() string {
 	return m.backend
 }
 
-// NewObjectKey 按分类规则生成对象 key，文件名为纯随机 UUID。
-func (m *Manager) NewObjectKey(category string, userID uint) (string, error) {
-	return buildObjectKey(category, userID, m.now())
+// NewObjectKey 按分类规则生成对象 key，文件名为随机 UUID，并保留原始文件名扩展名。
+func (m *Manager) NewObjectKey(category string, userID uint, originalFilename string) (string, error) {
+	return buildObjectKey(category, userID, originalFilename, m.now())
 }
 
 // Upload 上传对象内容。
