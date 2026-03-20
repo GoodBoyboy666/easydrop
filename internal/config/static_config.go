@@ -15,6 +15,7 @@ import (
 	"easydrop/internal/pkg/jwt"
 	"easydrop/internal/pkg/redis"
 	"easydrop/internal/pkg/storage"
+	"easydrop/internal/pkg/token"
 )
 
 // StaticConfig 是应用的根配置结构。
@@ -25,10 +26,11 @@ type StaticConfig struct {
 	JWT     jwt.Config               `mapstructure:"jwt" yaml:"jwt"`
 	Captcha captcha.AllCaptchaConfig `mapstructure:"captcha" yaml:"captcha"`
 	Storage storage.Config           `mapstructure:"storage" yaml:"storage"`
+	Token   token.Config             `mapstructure:"token" yaml:"token"`
 }
 
 // StaticProviderSet 提供配置加载的 Wire 注入入口。
-var StaticProviderSet = wire.NewSet(Load, ProvideDBConfig, ProvideRedisConfig, ProvideEmailConfig, ProvideJWTConfig, ProvideCaptchaConfig, ProvideStorageConfig)
+var StaticProviderSet = wire.NewSet(Load, ProvideDBConfig, ProvideRedisConfig, ProvideEmailConfig, ProvideJWTConfig, ProvideCaptchaConfig, ProvideStorageConfig, ProvideTokenConfig)
 
 // Load 从 configDir/config.yaml 读取配置，并支持环境变量覆盖。
 // strict 为 true 时，配置文件缺失会返回错误。
@@ -52,13 +54,13 @@ func Load(configDir string, strict bool) (*StaticConfig, error) {
 	// 本地开发默认值。
 	v.SetDefault("db.driver", database.DriverSQLite)
 	v.SetDefault("db.sqlite_path", "data/easydrop.db")
-	v.SetDefault("redis.addr", "localhost:6379")
 	v.SetDefault("jwt.expire", time.Hour)
 	v.SetDefault("email.tls_mode", email.TLSModeStartTLS)
 	v.SetDefault("captcha.enabled", false)
 	v.SetDefault("captcha.timeout", 5*time.Second)
 	v.SetDefault("storage.backend", storage.BackendLocal)
 	v.SetDefault("storage.local.base_path", "data/uploads")
+	v.SetDefault("token.key_prefix", "token")
 
 	if err := v.ReadInConfig(); err != nil {
 		if strict {
@@ -106,4 +108,9 @@ func ProvideCaptchaConfig(cfg *StaticConfig) *captcha.AllCaptchaConfig {
 // ProvideStorageConfig 提供文件存储配置。
 func ProvideStorageConfig(cfg *StaticConfig) *storage.Config {
 	return &cfg.Storage
+}
+
+// ProvideTokenConfig 提供 token 配置。
+func ProvideTokenConfig(cfg *StaticConfig) *token.Config {
+	return &cfg.Token
 }

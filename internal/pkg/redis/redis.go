@@ -58,6 +58,18 @@ func NewClient(cfg *Config) (*red.Client, error) {
 	return red.NewClient(opts), nil
 }
 
+func NewOptionalClient(cfg *Config) (*red.Client, error) {
+	if cfg == nil {
+		return nil, nil
+	}
+
+	if strings.TrimSpace(cfg.Addr) == "" {
+		return nil, nil
+	}
+
+	return NewClient(cfg)
+}
+
 func defaultOr(value, fallback time.Duration) time.Duration {
 	if value > 0 {
 		return value

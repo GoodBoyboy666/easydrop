@@ -12,6 +12,7 @@ import (
 	"easydrop/internal/pkg/jwt"
 	"easydrop/internal/pkg/redis"
 	"easydrop/internal/pkg/storage"
+	"easydrop/internal/pkg/token"
 	"easydrop/internal/repo"
 	"easydrop/internal/service"
 
@@ -24,10 +25,11 @@ func Initialize(configDir string, strict bool) (*App, error) {
 		config.StaticProviderSet,
 		database.NewDB,
 		config.DBProviderSet,
-		redis.NewClient,
+		redis.NewOptionalClient,
 		email.NewClient,
 		jwt.NewManager,
 		storage.NewManager,
+		token.NewManager,
 		captcha.CaptchaSet,
 		repo.RepositorySet,
 		middleware.NewAuth,

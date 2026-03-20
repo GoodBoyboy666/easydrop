@@ -15,6 +15,7 @@ import (
 	"easydrop/internal/pkg/jwt"
 	"easydrop/internal/pkg/redis"
 	"easydrop/internal/pkg/storage"
+	"easydrop/internal/pkg/token"
 	"easydrop/internal/repo"
 	"easydrop/internal/service"
 )
@@ -37,7 +38,7 @@ func Initialize(configDir string, strict bool) (*App, error) {
 		return nil, err
 	}
 	redisConfig := config.ProvideRedisConfig(staticConfig)
-	client, err := redis.NewClient(redisConfig)
+	client, err := redis.NewOptionalClient(redisConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -53,6 +54,11 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	}
 	storageConfig := config.ProvideStorageConfig(staticConfig)
 	storageManager, err := storage.NewManager(storageConfig)
+	if err != nil {
+		return nil, err
+	}
+	tokenConfig := config.ProvideTokenConfig(staticConfig)
+	tokenManager, err := token.NewManager(tokenConfig, client)
 	if err != nil {
 		return nil, err
 	}
@@ -74,6 +80,6 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	postService := service.NewPostService(postRepo, tagRepo)
 	tagService := service.NewTagService(tagRepo)
 	userService := service.NewUserService(userRepo, storageManager, dbConfig)
-	app := NewApp(staticConfig, db, dbConfig, client, emailClient, manager, storageManager, auth, authService, attachmentService, commentService, postService, tagService, userService)
+	app := NewApp(staticConfig, db, dbConfig, client, emailClient, manager, storageManager, tokenManager, auth, authService, attachmentService, commentService, postService, tagService, userService)
 	return app, nil
 }

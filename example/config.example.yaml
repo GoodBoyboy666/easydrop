@@ -20,7 +20,7 @@ db:
   # conn_max_idle_time: 10m
 
 redis:
-  addr: "localhost:6379"
+  # addr: "localhost:6379"
   # username: ""
   # password: ""
   # db: 0
@@ -82,3 +82,6 @@ storage:
     use_path_style: false
     public_base_url: ""
     presign_expire: 15m
+
+token:
+  key_prefix: "token"
