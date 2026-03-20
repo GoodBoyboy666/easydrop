@@ -2,12 +2,16 @@ package repo
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"easydrop/internal/model"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
+
+var ErrUserAvatarQuotaExceeded = errors.New("user avatar quota exceeded")
 
 // UserRepo 定义用户仓储接口。
 type UserRepo interface {
@@ -16,6 +20,7 @@ type UserRepo interface {
 	GetByUsername(ctx context.Context, username string) (*model.User, error)
 	GetByEmail(ctx context.Context, email string) (*model.User, error)
 	GetByUsernameOrEmail(ctx context.Context, value string) (*model.User, error)
+	UpdateAvatarWithStorageUsedTx(ctx context.Context, userID uint, avatar *string, sizeDelta int64, defaultQuota int64) (*model.User, error)
 	Update(ctx context.Context, user *model.User) error
 	Delete(ctx context.Context, id uint) error
 	List(ctx context.Context, filter UserFilter, opts ListOptions) ([]model.User, int64, error)
@@ -76,6 +81,44 @@ func (r *GormUserRepo) GetByUsernameOrEmail(ctx context.Context, value string) (
 		return nil, err
 	}
 	return &user, nil
+}
+
+func (r *GormUserRepo) UpdateAvatarWithStorageUsedTx(ctx context.Context, userID uint, avatar *string, sizeDelta int64, defaultQuota int64) (*model.User, error) {
+	var updated model.User
+
+	err := r.db.WithContext(withContext(ctx)).Transaction(func(tx *gorm.DB) error {
+		var user model.User
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&user, userID).Error; err != nil {
+			return err
+		}
+
+		newUsed := user.StorageUsed + sizeDelta
+		if newUsed < 0 {
+			newUsed = 0
+		}
+
+		effectiveQuota := defaultQuota
+		if user.StorageQuota != nil && *user.StorageQuota > 0 {
+			effectiveQuota = *user.StorageQuota
+		}
+		if sizeDelta > 0 && effectiveQuota > 0 && newUsed > effectiveQuota {
+			return ErrUserAvatarQuotaExceeded
+		}
+
+		user.Avatar = avatar
+		user.StorageUsed = newUsed
+		if err := tx.Save(&user).Error; err != nil {
+			return err
+		}
+
+		updated = user
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &updated, nil
 }
 
 func (r *GormUserRepo) Update(ctx context.Context, user *model.User) error {

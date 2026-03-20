@@ -1,6 +1,10 @@
 package storage
 
 import (
+	"context"
+	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -82,5 +86,64 @@ func TestBuildObjectKeyUsesLastExtension(t *testing.T) {
 
 	if !strings.HasSuffix(key, ".gz") {
 		t.Fatalf("expected only last extension to be kept: %s", key)
+	}
+}
+
+func TestManagerGetSizeForLocalStorage(t *testing.T) {
+	basePath := filepath.Join(t.TempDir(), "uploads")
+	manager, err := NewManager(&Config{
+		Backend: BackendLocal,
+		Local: LocalConfig{
+			BasePath: basePath,
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewManager returned error: %v", err)
+	}
+
+	key := "avatar/42/profile.png"
+	content := []byte("avatar-bytes")
+	if err := manager.Upload(context.Background(), key, content, "image/png"); err != nil {
+		t.Fatalf("Upload returned error: %v", err)
+	}
+
+	size, err := manager.GetSize(context.Background(), key)
+	if err != nil {
+		t.Fatalf("GetSize returned error: %v", err)
+	}
+	if size != int64(len(content)) {
+		t.Fatalf("expected size %d, got %d", len(content), size)
+	}
+}
+
+func TestManagerGetSizeRejectsEmptyObjectKey(t *testing.T) {
+	manager, err := NewManager(&Config{
+		Backend: BackendLocal,
+		Local: LocalConfig{
+			BasePath: t.TempDir(),
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewManager returned error: %v", err)
+	}
+
+	_, err = manager.GetSize(context.Background(), "  ")
+	if !errors.Is(err, ErrEmptyObjectKey) {
+		t.Fatalf("expected ErrEmptyObjectKey, got %v", err)
+	}
+}
+
+func TestLocalStorageGetSizeMissingObject(t *testing.T) {
+	backend, err := NewLocalStorage(LocalConfig{BasePath: t.TempDir()})
+	if err != nil {
+		t.Fatalf("NewLocalStorage returned error: %v", err)
+	}
+
+	_, err = backend.GetSize(context.Background(), "missing/file.png")
+	if err == nil {
+		t.Fatal("expected GetSize to fail for missing object")
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected not-exist error, got %v", err)
 	}
 }

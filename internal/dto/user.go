@@ -27,6 +27,13 @@ type UserUpdateInput struct {
 	StorageQuota  *int64  `json:"storage_quota"`
 }
 
+type UserAvatarUploadInput struct {
+	UserID           uint   `json:"user_id"`
+	OriginalFilename string `json:"original_filename"`
+	ContentType      string `json:"content_type"`
+	Content          []byte `json:"content"`
+}
+
 type UserListInput struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`

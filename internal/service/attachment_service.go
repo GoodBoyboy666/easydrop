@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -339,27 +338,5 @@ func (s *attachmentService) toAttachmentDTOs(ctx context.Context, attachments []
 
 // getDefaultStorageQuota 获取全局默认存储配额（字节）。
 func (s *attachmentService) getDefaultStorageQuota(ctx context.Context) (int64, error) {
-	quotaStr, found, err := s.dbConfig.GetValue(ctx, "storage.quota")
-	if err != nil {
-		log.Printf("获取全局存储配额失败: %v", err)
-		return 0, ErrFailedToCalculateQuota
-	}
-
-	if !found || quotaStr == "" {
-		// 如果没有配置，返回一个合理的默认值（10GB）
-		return 10 * 1024 * 1024 * 1024, nil
-	}
-
-	quota, err := strconv.ParseInt(quotaStr, 10, 64)
-	if err != nil {
-		log.Printf("解析存储配额失败: %v", err)
-		return 0, ErrFailedToCalculateQuota
-	}
-
-	if quota <= 0 {
-		// 配额设置为0或负数时，使用默认值
-		return 10 * 1024 * 1024 * 1024, nil
-	}
-
-	return quota, nil
+	return getDefaultStorageQuota(ctx, s.dbConfig)
 }

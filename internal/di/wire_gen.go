@@ -73,7 +73,7 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	tagRepo := repo.NewTagRepo(db)
 	postService := service.NewPostService(postRepo, tagRepo)
 	tagService := service.NewTagService(tagRepo)
-	userService := service.NewUserService(userRepo)
+	userService := service.NewUserService(userRepo, storageManager, dbConfig)
 	app := NewApp(staticConfig, db, dbConfig, client, emailClient, manager, storageManager, auth, authService, attachmentService, commentService, postService, tagService, userService)
 	return app, nil
 }

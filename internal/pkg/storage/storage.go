@@ -25,6 +25,7 @@ var (
 type Backend interface {
 	Upload(ctx context.Context, objectKey string, data []byte, contentType string) error
 	Download(ctx context.Context, objectKey string) ([]byte, error)
+	GetSize(ctx context.Context, objectKey string) (int64, error)
 	Delete(ctx context.Context, objectKey string) error
 	URL(ctx context.Context, objectKey string) (string, error)
 }
@@ -96,6 +97,14 @@ func (m *Manager) Download(ctx context.Context, objectKey string) ([]byte, error
 		return nil, ErrEmptyObjectKey
 	}
 	return m.svc.Download(ctx, objectKey)
+}
+
+// GetSize 返回对象大小（字节）。
+func (m *Manager) GetSize(ctx context.Context, objectKey string) (int64, error) {
+	if strings.TrimSpace(objectKey) == "" {
+		return 0, ErrEmptyObjectKey
+	}
+	return m.svc.GetSize(ctx, objectKey)
 }
 
 // Delete 删除对象。

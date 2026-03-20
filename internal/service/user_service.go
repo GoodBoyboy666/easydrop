@@ -6,8 +6,10 @@ import (
 	"log"
 	"strings"
 
+	"easydrop/internal/config"
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
+	"easydrop/internal/pkg/storage"
 	"easydrop/internal/pkg/validator"
 	"easydrop/internal/repo"
 
@@ -18,6 +20,8 @@ import (
 var (
 	ErrInvalidUserStatus   = errors.New("用户状态不合法")
 	ErrInvalidStorageQuota = errors.New("存储配额不能为负数")
+	ErrEmptyAvatarContent  = errors.New("头像内容不能为空")
+	ErrEmptyAvatarFilename = errors.New("头像文件名不能为空")
 )
 
 // UserService 提供用户管理相关的 CRUD 能力。
@@ -28,6 +32,10 @@ type UserService interface {
 	Get(ctx context.Context, id uint) (*dto.UserDTO, error)
 	// Update 按输入字段更新用户信息。
 	Update(ctx context.Context, input dto.UserUpdateInput) (*dto.UserDTO, error)
+	// UploadAvatar 上传或替换用户头像。
+	UploadAvatar(ctx context.Context, input dto.UserAvatarUploadInput) (*dto.UserDTO, error)
+	// DeleteAvatar 删除用户头像。
+	DeleteAvatar(ctx context.Context, userID uint) error
 	// Delete 删除指定用户。
 	Delete(ctx context.Context, id uint) error
 	// List 按筛选条件查询用户列表。
@@ -35,12 +43,18 @@ type UserService interface {
 }
 
 type userService struct {
-	userRepo repo.UserRepo
+	userRepo       repo.UserRepo
+	storageManager *storage.Manager
+	dbConfig       *config.DBConfig
 }
 
 // NewUserService 创建用户服务实例。
-func NewUserService(userRepo repo.UserRepo) UserService {
-	return &userService{userRepo: userRepo}
+func NewUserService(userRepo repo.UserRepo, storageManager *storage.Manager, dbConfig *config.DBConfig) UserService {
+	return &userService{
+		userRepo:       userRepo,
+		storageManager: storageManager,
+		dbConfig:       dbConfig,
+	}
 }
 
 // Create 校验输入后创建新用户，并对密码进行哈希。
@@ -109,7 +123,11 @@ func (s *userService) Create(ctx context.Context, input dto.UserCreateInput) (*d
 		return nil, ErrInternal
 	}
 
-	userDTO := toUserDTO(user)
+	userDTO, err := toUserDTO(ctx, user, s.storageManager)
+	if err != nil {
+		log.Printf("构建用户 DTO 失败: %v", err)
+		return nil, ErrInternal
+	}
 	return &userDTO, nil
 }
 
@@ -128,7 +146,11 @@ func (s *userService) Get(ctx context.Context, id uint) (*dto.UserDTO, error) {
 		return nil, ErrInternal
 	}
 
-	userDTO := toUserDTO(user)
+	userDTO, err := toUserDTO(ctx, user, s.storageManager)
+	if err != nil {
+		log.Printf("构建用户 DTO 失败: %v", err)
+		return nil, ErrInternal
+	}
 	return &userDTO, nil
 }
 
@@ -221,8 +243,131 @@ func (s *userService) Update(ctx context.Context, input dto.UserUpdateInput) (*d
 		return nil, ErrInternal
 	}
 
-	userDTO := toUserDTO(user)
+	userDTO, err := toUserDTO(ctx, user, s.storageManager)
+	if err != nil {
+		log.Printf("构建用户 DTO 失败: %v", err)
+		return nil, ErrInternal
+	}
 	return &userDTO, nil
+}
+
+// UploadAvatar 上传并替换用户头像，同时维护用户存储占用。
+func (s *userService) UploadAvatar(ctx context.Context, input dto.UserAvatarUploadInput) (*dto.UserDTO, error) {
+	if input.UserID == 0 {
+		return nil, ErrUserNotFound
+	}
+	if s.storageManager == nil {
+		return nil, ErrInternal
+	}
+	if len(input.Content) == 0 {
+		return nil, ErrEmptyAvatarContent
+	}
+	if strings.TrimSpace(input.OriginalFilename) == "" {
+		return nil, ErrEmptyAvatarFilename
+	}
+
+	user, err := s.userRepo.GetByID(ctx, input.UserID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrUserNotFound
+		}
+		log.Printf("获取用户失败: %v", err)
+		return nil, ErrInternal
+	}
+
+	oldAvatarKey := managedAvatarKey(user.Avatar)
+	oldAvatarSize, err := s.getManagedObjectSize(ctx, oldAvatarKey)
+	if err != nil {
+		log.Printf("读取旧头像失败: %v", err)
+		return nil, ErrInternal
+	}
+
+	defaultQuota, err := getDefaultStorageQuota(ctx, s.dbConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	newAvatarKey, err := s.storageManager.NewObjectKey(storage.CategoryAvatar, input.UserID, input.OriginalFilename)
+	if err != nil {
+		log.Printf("生成头像 key 失败: %v", err)
+		return nil, ErrInternal
+	}
+
+	if err := s.storageManager.Upload(ctx, newAvatarKey, input.Content, strings.TrimSpace(input.ContentType)); err != nil {
+		log.Printf("上传头像失败: %v", err)
+		return nil, ErrInternal
+	}
+
+	newAvatarValue := newAvatarKey
+	updatedUser, err := s.userRepo.UpdateAvatarWithStorageUsedTx(ctx, input.UserID, &newAvatarValue, int64(len(input.Content))-oldAvatarSize, defaultQuota)
+	if err != nil {
+		if deleteErr := s.storageManager.Delete(ctx, newAvatarKey); deleteErr != nil {
+			log.Printf("回滚新头像对象失败: %v", deleteErr)
+		}
+		switch {
+		case errors.Is(err, gorm.ErrRecordNotFound):
+			return nil, ErrUserNotFound
+		case errors.Is(err, repo.ErrUserAvatarQuotaExceeded):
+			return nil, ErrStorageQuotaExceeded
+		default:
+			log.Printf("更新用户头像失败: %v", err)
+			return nil, ErrInternal
+		}
+	}
+
+	userDTO, err := toUserDTO(ctx, updatedUser, s.storageManager)
+	if err != nil {
+		log.Printf("构建用户 DTO 失败: %v", err)
+		return nil, ErrInternal
+	}
+
+	if oldAvatarKey != "" && oldAvatarKey != newAvatarKey {
+		if err := s.storageManager.Delete(ctx, oldAvatarKey); err != nil {
+			log.Printf("删除旧头像失败: %v", err)
+		}
+	}
+
+	return &userDTO, nil
+}
+
+// DeleteAvatar 删除用户头像，同时维护用户存储占用。
+func (s *userService) DeleteAvatar(ctx context.Context, userID uint) error {
+	if userID == 0 {
+		return ErrUserNotFound
+	}
+
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrUserNotFound
+		}
+		log.Printf("获取用户失败: %v", err)
+		return ErrInternal
+	}
+
+	oldAvatarKey := managedAvatarKey(user.Avatar)
+	oldAvatarSize, err := s.getManagedObjectSize(ctx, oldAvatarKey)
+	if err != nil {
+		log.Printf("读取旧头像失败: %v", err)
+		return ErrInternal
+	}
+
+	_, err = s.userRepo.UpdateAvatarWithStorageUsedTx(ctx, userID, nil, -oldAvatarSize, 0)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrUserNotFound
+		}
+		log.Printf("删除用户头像失败: %v", err)
+		return ErrInternal
+	}
+
+	if oldAvatarKey != "" {
+		if err := s.storageManager.Delete(ctx, oldAvatarKey); err != nil {
+			log.Printf("删除旧头像失败: %v", err)
+		}
+	}
+
+	return nil
 }
 
 // Delete 删除指定用户记录。
@@ -262,8 +407,14 @@ func (s *userService) List(ctx context.Context, input dto.UserListInput) (*dto.U
 		return nil, ErrInternal
 	}
 
+	items, err := toUserDTOs(ctx, users, s.storageManager)
+	if err != nil {
+		log.Printf("构建用户列表 DTO 失败: %v", err)
+		return nil, ErrInternal
+	}
+
 	return &dto.UserListResult{
-		Items: toUserDTOs(users),
+		Items: items,
 		Total: total,
 	}, nil
 }
@@ -332,4 +483,28 @@ func normalizeOptionalString(value *string) *string {
 		return nil
 	}
 	return &trimmed
+}
+
+func managedAvatarKey(avatar *string) string {
+	if avatar == nil {
+		return ""
+	}
+
+	trimmed := strings.TrimSpace(*avatar)
+	if !isManagedAvatarKey(trimmed) {
+		return ""
+	}
+
+	return trimmed
+}
+
+func (s *userService) getManagedObjectSize(ctx context.Context, objectKey string) (int64, error) {
+	if objectKey == "" {
+		return 0, nil
+	}
+	if s.storageManager == nil {
+		return 0, ErrInternal
+	}
+
+	return s.storageManager.GetSize(ctx, objectKey)
 }

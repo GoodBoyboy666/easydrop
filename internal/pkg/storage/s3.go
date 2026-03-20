@@ -94,13 +94,33 @@ func (s *s3Storage) Download(ctx context.Context, objectKey string) ([]byte, err
 	if err != nil {
 		return nil, fmt.Errorf("s3 下载失败: %w", err)
 	}
-	defer out.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+
+		}
+	}(out.Body)
 
 	data, err := io.ReadAll(out.Body)
 	if err != nil {
 		return nil, fmt.Errorf("读取 s3 对象内容失败: %w", err)
 	}
 	return data, nil
+}
+
+func (s *s3Storage) GetSize(ctx context.Context, objectKey string) (int64, error) {
+	out, err := s.client.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: aws.String(s.bucket),
+		Key:    aws.String(objectKey),
+	})
+	if err != nil {
+		return 0, fmt.Errorf("读取 s3 对象信息失败: %w", err)
+	}
+
+	if out.ContentLength == nil {
+		return 0, nil
+	}
+	return *out.ContentLength, nil
 }
 
 func (s *s3Storage) Delete(ctx context.Context, objectKey string) error {

@@ -165,7 +165,7 @@ func (s *authService) Login(ctx context.Context, input dto.LoginInput) (*dto.Aut
 	return result, nil
 }
 
-// buildAuthResult 将用户模型转换为认证结果并签发访问令牌。
+// buildAuthResult 仅签发访问令牌。
 func (s *authService) buildAuthResult(user *model.User) (*dto.AuthResult, error) {
 	token, err := s.jwt.IssueAccessToken(user.ID, user.Username, user.Admin)
 	if err != nil {
@@ -173,7 +173,6 @@ func (s *authService) buildAuthResult(user *model.User) (*dto.AuthResult, error)
 	}
 
 	return &dto.AuthResult{
-		User:        toUserDTO(user),
 		AccessToken: token,
 	}, nil
 }

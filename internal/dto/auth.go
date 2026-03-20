@@ -25,6 +25,5 @@ type LoginInput struct {
 }
 
 type AuthResult struct {
-	User        UserDTO `json:"user"`
-	AccessToken string  `json:"access_token"`
+	AccessToken string `json:"access_token"`
 }

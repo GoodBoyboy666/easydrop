@@ -70,6 +70,20 @@ func (s *localStorage) Download(_ context.Context, objectKey string) ([]byte, er
 	return data, nil
 }
 
+func (s *localStorage) GetSize(_ context.Context, objectKey string) (int64, error) {
+	fullPath, err := s.resolvePath(objectKey)
+	if err != nil {
+		return 0, err
+	}
+
+	info, err := os.Stat(fullPath)
+	if err != nil {
+		return 0, fmt.Errorf("读取文件信息失败: %w", err)
+	}
+
+	return info.Size(), nil
+}
+
 func (s *localStorage) Delete(_ context.Context, objectKey string) error {
 	fullPath, err := s.resolvePath(objectKey)
 	if err != nil {
