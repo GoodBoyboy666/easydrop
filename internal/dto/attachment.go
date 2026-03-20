@@ -4,7 +4,6 @@ import "time"
 
 type AttachmentCreateInput struct {
 	UserID      uint   `json:"user_id"`
-	BizType     int    `json:"biz_type"`
 	ContentType string `json:"content_type"`
 	Content     []byte `json:"content"`
 }
@@ -15,11 +14,14 @@ type AttachmentUpdateInput struct {
 }
 
 type AttachmentListInput struct {
-	UserID  *uint  `json:"user_id"`
-	BizType *int   `json:"biz_type"`
-	Limit   int    `json:"limit"`
-	Offset  int    `json:"offset"`
-	Order   string `json:"order"`
+	ID          *uint  `json:"id"`
+	UserID      *uint  `json:"user_id"`
+	BizType     *int   `json:"biz_type"`
+	CreatedFrom *int64 `json:"created_from"`
+	CreatedTo   *int64 `json:"created_to"`
+	Limit       int    `json:"limit"`
+	Offset      int    `json:"offset"`
+	Order       string `json:"order"`
 }
 
 type AttachmentDTO struct {

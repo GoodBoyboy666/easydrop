@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"easydrop/internal/config"
 	"easydrop/internal/dto"
@@ -70,7 +72,9 @@ func (s *attachmentService) Create(ctx context.Context, input dto.AttachmentCrea
 		return nil, ErrEmptyAttachmentContent
 	}
 
-	if err := validateAttachmentBizType(input.BizType); err != nil {
+	bizType := resolveAttachmentBizType(input.Content)
+
+	if err := validateAttachmentBizType(bizType); err != nil {
 		return nil, err
 	}
 
@@ -99,7 +103,7 @@ func (s *attachmentService) Create(ctx context.Context, input dto.AttachmentCrea
 		UserID:      input.UserID,
 		StorageType: s.storageManager.BackendType(),
 		FileKey:     fileKey,
-		BizType:     input.BizType,
+		BizType:     bizType,
 		FileSize:    fileSize,
 	}
 
@@ -215,9 +219,15 @@ func (s *attachmentService) Delete(ctx context.Context, id uint) error {
 
 // ListByUser 查询用户附件列表。
 func (s *attachmentService) ListByUser(ctx context.Context, input dto.AttachmentListInput) (*dto.AttachmentListResult, error) {
+	createdFrom := toTimePtrFromUnix(input.CreatedFrom)
+	createdTo := toTimePtrFromUnix(input.CreatedTo)
+
 	attachments, total, err := s.attachmentRepo.List(ctx, repo.AttachmentFilter{
-		UserID:  input.UserID,
-		BizType: input.BizType,
+		ID:          input.ID,
+		UserID:      input.UserID,
+		BizType:     input.BizType,
+		CreatedFrom: createdFrom,
+		CreatedTo:   createdTo,
 	}, repo.ListOptions{
 		Limit:  normalizeServiceListLimit(input.Limit),
 		Offset: normalizeServiceListOffset(input.Offset),
@@ -240,6 +250,14 @@ func (s *attachmentService) ListByUser(ctx context.Context, input dto.Attachment
 	}, nil
 }
 
+func toTimePtrFromUnix(v *int64) *time.Time {
+	if v == nil {
+		return nil
+	}
+	t := time.Unix(*v, 0)
+	return &t
+}
+
 // ensureUserExists 确保用户存在。
 func (s *attachmentService) ensureUserExists(ctx context.Context, userID uint) error {
 	if _, err := s.userRepo.GetByID(ctx, userID); err != nil {
@@ -259,6 +277,28 @@ func validateAttachmentBizType(bizType int) error {
 		return nil
 	default:
 		return ErrInvalidAttachmentBizType
+	}
+}
+
+// resolveAttachmentBizType 基于文件内容探测 MIME 类型并判定附件业务类型。
+func resolveAttachmentBizType(content []byte) int {
+	mediaType := ""
+	if len(content) > 0 {
+		mediaType = strings.ToLower(strings.TrimSpace(http.DetectContentType(content)))
+		if idx := strings.Index(mediaType, ";"); idx >= 0 {
+			mediaType = strings.TrimSpace(mediaType[:idx])
+		}
+	}
+
+	switch {
+	case strings.HasPrefix(mediaType, "image/"):
+		return model.AttachmentTypeImage
+	case strings.HasPrefix(mediaType, "video/"):
+		return model.AttachmentTypeVideo
+	case strings.HasPrefix(mediaType, "audio/"):
+		return model.AttachmentTypeAudio
+	default:
+		return model.AttachmentTypeFile
 	}
 }
 

@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 	"errors"
+	"time"
 
 	"easydrop/internal/model"
 
@@ -26,8 +27,11 @@ type AttachmentRepo interface {
 
 // AttachmentFilter 附件查询过滤条件。
 type AttachmentFilter struct {
-	UserID  *uint
-	BizType *int
+	ID          *uint
+	UserID      *uint
+	BizType     *int
+	CreatedFrom *time.Time
+	CreatedTo   *time.Time
 }
 
 // GormAttachmentRepo 基于 Gorm 的附件仓储实现。
@@ -128,11 +132,20 @@ func (r *GormAttachmentRepo) DeleteWithStorageUsedTx(ctx context.Context, id uin
 func (r *GormAttachmentRepo) List(ctx context.Context, filter AttachmentFilter, opts ListOptions) ([]model.Attachment, int64, error) {
 	db := r.db.WithContext(withContext(ctx)).Model(&model.Attachment{})
 
+	if filter.ID != nil {
+		db = db.Where("id = ?", *filter.ID)
+	}
 	if filter.UserID != nil {
 		db = db.Where("user_id = ?", *filter.UserID)
 	}
 	if filter.BizType != nil {
 		db = db.Where("biz_type = ?", *filter.BizType)
+	}
+	if filter.CreatedFrom != nil {
+		db = db.Where("created_at >= ?", *filter.CreatedFrom)
+	}
+	if filter.CreatedTo != nil {
+		db = db.Where("created_at <= ?", *filter.CreatedTo)
 	}
 
 	var total int64

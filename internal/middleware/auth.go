@@ -30,7 +30,7 @@ func NewAuth(jwtManager *jwt.Manager, userRepo repo.UserRepo) *Auth {
 }
 
 // UserIDFromGin 从 gin context 中读取用户 ID。
-func UserIDFromGin(c *gin.Context) (uint, bool) {
+func GetUserID(c *gin.Context) (uint, bool) {
 	v, ok := c.Get(ContextUserIDKey)
 	if !ok {
 		return 0, false
