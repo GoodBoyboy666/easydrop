@@ -45,7 +45,7 @@ type StaticConfig struct {
 var StaticProviderSet = wire.NewSet(Load, ProvideDBConfig, ProvideRedisConfig, ProvideEmailConfig, ProvideJWTConfig, ProvideCaptchaConfig, ProvideStorageConfig, ProvideTokenConfig)
 
 // Load 从 configDir/config.yaml 读取配置，并支持环境变量覆盖。
-// strict 为 true 时，配置文件缺失会返回错误。
+// 配置文件缺失时会回退到默认值与环境变量。
 func Load(configDir string, strict bool) (*StaticConfig, error) {
 	configDir = strings.TrimSpace(configDir)
 	GlobalConfigDir = configDir
@@ -80,9 +80,6 @@ func Load(configDir string, strict bool) (*StaticConfig, error) {
 	v.SetDefault("token.key_prefix", "token")
 
 	if err := v.ReadInConfig(); err != nil {
-		if strict {
-			return nil, err
-		}
 		var notFoundErr viper.ConfigFileNotFoundError
 		if !errors.As(err, &notFoundErr) {
 			return nil, err

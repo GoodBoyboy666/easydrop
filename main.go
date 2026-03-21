@@ -2,14 +2,20 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"easydrop/internal/di"
 	"easydrop/internal/router"
+	"encoding/pem"
 	"errors"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -19,15 +25,26 @@ func main() {
 	var configDir string
 	flag.StringVar(&configDir, "config-dir", "", "config directory containing config.yaml")
 	flag.Parse()
+	args := flag.Args()
 
-	strict := false
-	if configDir == "" {
-		configDir = "data"
-	} else {
-		strict = true
+	if len(args) > 0 && args[0] == "generate-jwt-token" {
+		outputDir, forceOverwrite, err := parseGenerateJWTTokenArgs(args[1:])
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if err := generateJWTTokenFiles(outputDir, forceOverwrite); err != nil {
+			log.Fatalf("生成 JWT 密钥文件失败: %v", err)
+		}
+		log.Printf("JWT 密钥文件已生成: %s, %s", filepath.Join(outputDir, "private.pem"), filepath.Join(outputDir, "public.pem"))
+		return
 	}
 
-	app, err := di.Initialize(configDir, strict)
+	if configDir == "" {
+		configDir = "data"
+	}
+
+	app, err := di.Initialize(configDir, false)
 	if err != nil {
 		log.Fatalf("初始化应用失败: %v\n", err)
 	}
@@ -88,4 +105,83 @@ func main() {
 	}
 
 	log.Println("HTTP 服务已关闭")
+}
+
+func parseGenerateJWTTokenArgs(args []string) (string, bool, error) {
+	outputDir := "."
+	forceOverwrite := false
+
+	for _, arg := range args {
+		switch arg {
+		case "--force":
+			forceOverwrite = true
+		default:
+			if strings.HasPrefix(arg, "-") {
+				return "", false, fmt.Errorf("未知参数: %s，用法: generate-jwt-token [目录路径] [--force]", arg)
+			}
+			if outputDir != "." {
+				return "", false, errors.New("用法: generate-jwt-token [目录路径] [--force]")
+			}
+			outputDir = arg
+		}
+	}
+
+	return outputDir, forceOverwrite, nil
+}
+
+func generateJWTTokenFiles(outputDir string, forceOverwrite bool) error {
+	dir := strings.TrimSpace(outputDir)
+	if dir == "" {
+		dir = "."
+	}
+
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("创建目录失败: %w", err)
+	}
+
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return fmt.Errorf("生成 RSA 私钥失败: %w", err)
+	}
+
+	publicDER, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
+	if err != nil {
+		return fmt.Errorf("编码 RSA 公钥失败: %w", err)
+	}
+
+	privatePath := filepath.Join(dir, "private.pem")
+	publicPath := filepath.Join(dir, "public.pem")
+
+	if err := writePEMFile(privatePath, "RSA PRIVATE KEY", x509.MarshalPKCS1PrivateKey(privateKey), 0o600, forceOverwrite); err != nil {
+		return err
+	}
+	if err := writePEMFile(publicPath, "PUBLIC KEY", publicDER, 0o644, forceOverwrite); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func writePEMFile(path string, blockType string, content []byte, perm os.FileMode, forceOverwrite bool) error {
+	flag := os.O_WRONLY | os.O_CREATE
+	if forceOverwrite {
+		flag |= os.O_TRUNC
+	} else {
+		flag |= os.O_EXCL
+	}
+
+	f, err := os.OpenFile(path, flag, perm)
+	if err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return fmt.Errorf("文件已存在: %s（如需覆盖请加 --force）", path)
+		}
+		return fmt.Errorf("打开文件失败: %w", err)
+	}
+	defer f.Close()
+
+	if err := pem.Encode(f, &pem.Block{Type: blockType, Bytes: content}); err != nil {
+		return fmt.Errorf("写入 PEM 文件失败: %w", err)
+	}
+
+	return nil
 }
