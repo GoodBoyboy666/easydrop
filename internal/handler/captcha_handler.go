@@ -25,11 +25,11 @@ func NewCaptchaHandler(captchaService service.CaptchaConfigService) *CaptchaHand
 // @Tags captcha
 // @Produce json
 // @Success 200 {object} dto.CaptchaConfigResult
-// @Failure 500 {object} MessageResponse "服务内部错误"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /api/v1/captcha/config [get]
 func (h *CaptchaHandler) GetConfig(c *gin.Context) {
 	if h == nil || h.captchaService == nil {
-		c.JSON(http.StatusInternalServerError, MessageResponse{Message: service.ErrInternal.Error()})
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
 		return
 	}
 

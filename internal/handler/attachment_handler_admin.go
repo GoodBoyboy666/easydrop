@@ -15,38 +15,9 @@ type AttachmentAdminHandler struct {
 	attachmentService service.AttachmentService
 }
 
-type attachmentAdminURIRequest struct {
-	ID uint `uri:"id" binding:"required,gt=0"`
-}
-
-type attachmentAdminListQueryRequest struct {
-	ID          *uint  `form:"id" binding:"omitempty,gt=0"`
-	UserID      *uint  `form:"user_id" binding:"omitempty,gt=0"`
-	BizType     *int   `form:"biz_type"`
-	CreatedFrom *int64 `form:"created_from" binding:"omitempty,gte=0"`
-	CreatedTo   *int64 `form:"created_to" binding:"omitempty,gte=0"`
-	Limit       *int   `form:"limit"`
-	Offset      *int   `form:"offset"`
-	Order       string `form:"order"`
-}
-
 // NewAttachmentAdminHandler 创建管理端附件处理器。
 func NewAttachmentAdminHandler(attachmentService service.AttachmentService) *AttachmentAdminHandler {
 	return &AttachmentAdminHandler{attachmentService: attachmentService}
-}
-
-type attachmentBatchDeleteRequest struct {
-	IDs []uint `json:"ids"`
-}
-
-type attachmentBatchDeleteFailedItem struct {
-	ID      uint   `json:"id"`
-	Message string `json:"message"`
-}
-
-type attachmentBatchDeleteResponse struct {
-	SuccessIDs []uint                            `json:"success_ids"`
-	Failed     []attachmentBatchDeleteFailedItem `json:"failed"`
 }
 
 // List 查询附件列表（管理端）
@@ -64,41 +35,33 @@ type attachmentBatchDeleteResponse struct {
 // @Param offset query int false "偏移量"
 // @Param order query string false "排序，如 created_at_desc"
 // @Success 200 {object} dto.AttachmentListResult
-// @Failure 400 {object} MessageResponse "参数校验失败"
-// @Failure 401 {object} MessageResponse "未登录或登录失效"
-// @Failure 403 {object} MessageResponse "无管理员权限"
-// @Failure 500 {object} MessageResponse "服务内部错误"
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
+// @Failure 403 {object} dto.ErrorResponse "无管理员权限"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /api/v1/admin/attachments [get]
 func (h *AttachmentAdminHandler) List(c *gin.Context) {
 	if h.attachmentService == nil {
-		c.JSON(http.StatusInternalServerError, MessageResponse{Message: service.ErrInternal.Error()})
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
 		return
 	}
 
-	var req attachmentAdminListQueryRequest
+	var req dto.AttachmentListInput
 	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "查询参数不合法"})
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "查询参数不合法"})
 		return
 	}
 
 	if req.CreatedFrom != nil && req.CreatedTo != nil && *req.CreatedFrom > *req.CreatedTo {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "created_from 不能大于 created_to"})
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "created_from 不能大于 created_to"})
 		return
 	}
 
-	result, err := h.attachmentService.ListByUser(c.Request.Context(), dto.AttachmentListInput{
-		ID:          req.ID,
-		UserID:      req.UserID,
-		BizType:     req.BizType,
-		CreatedFrom: req.CreatedFrom,
-		CreatedTo:   req.CreatedTo,
-		Limit:       valueOrDefault(req.Limit, 0),
-		Offset:      valueOrDefault(req.Offset, 0),
-		Order:       strings.TrimSpace(req.Order),
-	})
+	req.Order = strings.TrimSpace(req.Order)
+	result, err := h.attachmentService.ListByUser(c.Request.Context(), req)
 	if err != nil {
 		status := mapAttachmentErrorStatus(err)
-		c.JSON(status, MessageResponse{Message: err.Error()})
+		c.JSON(status, dto.ErrorResponse{Message: err.Error()})
 		return
 	}
 
@@ -112,32 +75,32 @@ func (h *AttachmentAdminHandler) List(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param id path int true "附件ID"
-// @Success 200 {object} MessageResponse
-// @Failure 400 {object} MessageResponse "参数校验失败"
-// @Failure 401 {object} MessageResponse "未登录或登录失效"
-// @Failure 403 {object} MessageResponse "无管理员权限"
-// @Failure 404 {object} MessageResponse "附件不存在"
-// @Failure 500 {object} MessageResponse "服务内部错误"
+// @Success 200 {object} dto.ErrorResponse
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
+// @Failure 403 {object} dto.ErrorResponse "无管理员权限"
+// @Failure 404 {object} dto.ErrorResponse "附件不存在"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /api/v1/admin/attachments/{id} [delete]
 func (h *AttachmentAdminHandler) Delete(c *gin.Context) {
 	if h.attachmentService == nil {
-		c.JSON(http.StatusInternalServerError, MessageResponse{Message: service.ErrInternal.Error()})
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
 		return
 	}
 
-	var req attachmentAdminURIRequest
+	var req dto.AttachmentIDURIInput
 	if err := c.ShouldBindUri(&req); err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "路径参数不合法"})
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "路径参数不合法"})
 		return
 	}
 
 	if err := h.attachmentService.Delete(c.Request.Context(), req.ID); err != nil {
 		status := mapAttachmentErrorStatus(err)
-		c.JSON(status, MessageResponse{Message: err.Error()})
+		c.JSON(status, dto.ErrorResponse{Message: err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, MessageResponse{Message: "ok"})
+	c.JSON(http.StatusOK, dto.ErrorResponse{Message: "ok"})
 }
 
 // BatchDelete 批量删除附件（管理端）
@@ -147,43 +110,43 @@ func (h *AttachmentAdminHandler) Delete(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param body body attachmentBatchDeleteRequest true "批量删除请求"
-// @Success 200 {object} attachmentBatchDeleteResponse
-// @Failure 400 {object} MessageResponse "参数校验失败"
-// @Failure 401 {object} MessageResponse "未登录或登录失效"
-// @Failure 403 {object} MessageResponse "无管理员权限"
-// @Failure 500 {object} MessageResponse "服务内部错误"
+// @Param body body dto.AttachmentBatchDeleteInput true "批量删除请求"
+// @Success 200 {object} dto.AttachmentBatchDeleteResult
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
+// @Failure 403 {object} dto.ErrorResponse "无管理员权限"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /api/v1/admin/attachments/batch-delete [post]
 func (h *AttachmentAdminHandler) BatchDelete(c *gin.Context) {
 	if h.attachmentService == nil {
-		c.JSON(http.StatusInternalServerError, MessageResponse{Message: service.ErrInternal.Error()})
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
 		return
 	}
 
-	var req attachmentBatchDeleteRequest
+	var req dto.AttachmentBatchDeleteInput
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "请求体不合法"})
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "请求体不合法"})
 		return
 	}
 
 	if len(req.IDs) == 0 {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "ids 不能为空"})
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "ids 不能为空"})
 		return
 	}
 
-	resp := attachmentBatchDeleteResponse{
+	resp := dto.AttachmentBatchDeleteResult{
 		SuccessIDs: make([]uint, 0, len(req.IDs)),
-		Failed:     make([]attachmentBatchDeleteFailedItem, 0),
+		Failed:     make([]dto.AttachmentBatchDeleteFailedItem, 0),
 	}
 
 	for _, id := range req.IDs {
 		if id == 0 {
-			resp.Failed = append(resp.Failed, attachmentBatchDeleteFailedItem{ID: id, Message: "id 参数不合法"})
+			resp.Failed = append(resp.Failed, dto.AttachmentBatchDeleteFailedItem{ID: id, Message: "id 参数不合法"})
 			continue
 		}
 
 		if err := h.attachmentService.Delete(c.Request.Context(), id); err != nil {
-			resp.Failed = append(resp.Failed, attachmentBatchDeleteFailedItem{ID: id, Message: err.Error()})
+			resp.Failed = append(resp.Failed, dto.AttachmentBatchDeleteFailedItem{ID: id, Message: err.Error()})
 			continue
 		}
 

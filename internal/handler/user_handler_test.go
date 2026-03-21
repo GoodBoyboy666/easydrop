@@ -17,7 +17,7 @@ type mockUserServiceForHandler struct {
 	getFn                func(ctx context.Context, id uint) (*dto.UserDTO, error)
 	updateProfileFn      func(ctx context.Context, input dto.UserProfileUpdateInput) (*dto.UserDTO, error)
 	changePasswordFn     func(ctx context.Context, input dto.UserChangePasswordInput) error
-	requestEmailChangeFn func(ctx context.Context, input dto.UserChangeEmailRequestInput) error
+	requestEmailChangeFn func(ctx context.Context, input dto.UserChangeEmailInput) error
 	uploadAvatarFn       func(ctx context.Context, input dto.UserAvatarUploadInput) (*dto.UserDTO, error)
 	deleteAvatarFn       func(ctx context.Context, userID uint) error
 }
@@ -47,7 +47,7 @@ func (m *mockUserServiceForHandler) ChangePassword(ctx context.Context, input dt
 	return m.changePasswordFn(ctx, input)
 }
 
-func (m *mockUserServiceForHandler) RequestEmailChange(ctx context.Context, input dto.UserChangeEmailRequestInput) error {
+func (m *mockUserServiceForHandler) RequestEmailChange(ctx context.Context, input dto.UserChangeEmailInput) error {
 	if m.requestEmailChangeFn == nil {
 		return nil
 	}
@@ -157,7 +157,7 @@ func TestUserHandlerChangePasswordInvalidPassword(t *testing.T) {
 
 func TestUserHandlerRequestEmailChangeSuccess(t *testing.T) {
 	h := NewUserHandler(&mockUserServiceForHandler{
-		requestEmailChangeFn: func(_ context.Context, input dto.UserChangeEmailRequestInput) error {
+		requestEmailChangeFn: func(_ context.Context, input dto.UserChangeEmailInput) error {
 			if input.UserID != 12 {
 				t.Fatalf("expected user id 12, got %d", input.UserID)
 			}
@@ -289,7 +289,7 @@ func TestMapUserErrorStatus(t *testing.T) {
 
 func TestUserHandlerResponseBodyFormat(t *testing.T) {
 	h := NewUserHandler(&mockUserServiceForHandler{
-		requestEmailChangeFn: func(_ context.Context, _ dto.UserChangeEmailRequestInput) error {
+		requestEmailChangeFn: func(_ context.Context, _ dto.UserChangeEmailInput) error {
 			return nil
 		},
 	})
@@ -301,7 +301,7 @@ func TestUserHandlerResponseBodyFormat(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", w.Code)
 	}
-	var resp MessageResponse
+	var resp dto.ErrorResponse
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("unmarshal response failed: %v", err)
 	}

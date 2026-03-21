@@ -19,18 +19,6 @@ type AttachmentHandler struct {
 	attachmentService service.AttachmentService
 }
 
-type attachmentURIRequest struct {
-	ID uint `uri:"id" binding:"required,gt=0"`
-}
-
-type attachmentListQueryRequest struct {
-	ID      *uint  `form:"id" binding:"omitempty,gt=0"`
-	BizType *int   `form:"biz_type"`
-	Limit   *int   `form:"limit"`
-	Offset  *int   `form:"offset"`
-	Order   string `form:"order"`
-}
-
 // NewAttachmentHandler 创建附件处理器。
 func NewAttachmentHandler(attachmentService service.AttachmentService) *AttachmentHandler {
 	return &AttachmentHandler{attachmentService: attachmentService}
@@ -45,33 +33,33 @@ func NewAttachmentHandler(attachmentService service.AttachmentService) *Attachme
 // @Security BearerAuth
 // @Param file formData file true "附件文件"
 // @Success 201 {object} dto.AttachmentDTO
-// @Failure 400 {object} MessageResponse "参数校验失败"
-// @Failure 401 {object} MessageResponse "未登录或登录失效"
-// @Failure 403 {object} MessageResponse "存储配额不足"
-// @Failure 404 {object} MessageResponse "用户不存在"
-// @Failure 500 {object} MessageResponse "服务内部错误"
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
+// @Failure 403 {object} dto.ErrorResponse "存储配额不足"
+// @Failure 404 {object} dto.ErrorResponse "用户不存在"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /api/v1/attachments [post]
 func (h *AttachmentHandler) Upload(c *gin.Context) {
 	if h.attachmentService == nil {
-		c.JSON(http.StatusInternalServerError, MessageResponse{Message: service.ErrInternal.Error()})
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
 		return
 	}
 
 	userID, ok := middleware.GetUserID(c)
 	if !ok || userID == 0 {
-		c.JSON(http.StatusUnauthorized, MessageResponse{Message: "未登录或登录已失效"})
+		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{Message: "未登录或登录已失效"})
 		return
 	}
 
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "file 不能为空"})
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "file 不能为空"})
 		return
 	}
 
 	file, err := fileHeader.Open()
 	if err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "读取上传文件失败"})
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "读取上传文件失败"})
 		return
 	}
 	defer func(file multipart.File) {
@@ -83,7 +71,7 @@ func (h *AttachmentHandler) Upload(c *gin.Context) {
 
 	content, err := io.ReadAll(file)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "读取上传文件失败"})
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "读取上传文件失败"})
 		return
 	}
 
@@ -100,7 +88,7 @@ func (h *AttachmentHandler) Upload(c *gin.Context) {
 	})
 	if err != nil {
 		status := mapAttachmentErrorStatus(err)
-		c.JSON(status, MessageResponse{Message: err.Error()})
+		c.JSON(status, dto.ErrorResponse{Message: err.Error()})
 		return
 	}
 
@@ -115,38 +103,38 @@ func (h *AttachmentHandler) Upload(c *gin.Context) {
 // @Security BearerAuth
 // @Param id path int true "附件ID"
 // @Success 200 {object} dto.AttachmentDTO
-// @Failure 400 {object} MessageResponse "参数校验失败"
-// @Failure 401 {object} MessageResponse "未登录或登录失效"
-// @Failure 404 {object} MessageResponse "附件不存在"
-// @Failure 500 {object} MessageResponse "服务内部错误"
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
+// @Failure 404 {object} dto.ErrorResponse "附件不存在"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /api/v1/attachments/{id} [get]
 func (h *AttachmentHandler) Get(c *gin.Context) {
 	if h.attachmentService == nil {
-		c.JSON(http.StatusInternalServerError, MessageResponse{Message: service.ErrInternal.Error()})
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
 		return
 	}
 
 	userID, ok := middleware.GetUserID(c)
 	if !ok || userID == 0 {
-		c.JSON(http.StatusUnauthorized, MessageResponse{Message: "未登录或登录已失效"})
+		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{Message: "未登录或登录已失效"})
 		return
 	}
 
-	var req attachmentURIRequest
+	var req dto.AttachmentIDURIInput
 	if err := c.ShouldBindUri(&req); err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "路径参数不合法"})
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "路径参数不合法"})
 		return
 	}
 
 	result, err := h.attachmentService.Get(c.Request.Context(), req.ID)
 	if err != nil {
 		status := mapAttachmentErrorStatus(err)
-		c.JSON(status, MessageResponse{Message: err.Error()})
+		c.JSON(status, dto.ErrorResponse{Message: err.Error()})
 		return
 	}
 
 	if result.UserID != userID {
-		c.JSON(http.StatusNotFound, MessageResponse{Message: service.ErrAttachmentNotFound.Error()})
+		c.JSON(http.StatusNotFound, dto.ErrorResponse{Message: service.ErrAttachmentNotFound.Error()})
 		return
 	}
 
@@ -165,39 +153,34 @@ func (h *AttachmentHandler) Get(c *gin.Context) {
 // @Param offset query int false "偏移量"
 // @Param order query string false "排序，如 created_at desc"
 // @Success 200 {object} dto.AttachmentListResult
-// @Failure 400 {object} MessageResponse "参数校验失败"
-// @Failure 401 {object} MessageResponse "未登录或登录失效"
-// @Failure 500 {object} MessageResponse "服务内部错误"
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /api/v1/attachments [get]
 func (h *AttachmentHandler) List(c *gin.Context) {
 	if h.attachmentService == nil {
-		c.JSON(http.StatusInternalServerError, MessageResponse{Message: service.ErrInternal.Error()})
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
 		return
 	}
 
 	userID, ok := middleware.GetUserID(c)
 	if !ok || userID == 0 {
-		c.JSON(http.StatusUnauthorized, MessageResponse{Message: "未登录或登录已失效"})
+		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{Message: "未登录或登录已失效"})
 		return
 	}
 
-	var req attachmentListQueryRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "查询参数不合法"})
+	var input dto.AttachmentListInput
+	if err := c.ShouldBindQuery(&input); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "查询参数不合法"})
 		return
 	}
+	input.UserID = &userID
+	input.Order = strings.TrimSpace(input.Order)
 
-	result, err := h.attachmentService.ListByUser(c.Request.Context(), dto.AttachmentListInput{
-		ID:      req.ID,
-		UserID:  &userID,
-		BizType: req.BizType,
-		Limit:   valueOrDefault(req.Limit, 0),
-		Offset:  valueOrDefault(req.Offset, 0),
-		Order:   strings.TrimSpace(req.Order),
-	})
+	result, err := h.attachmentService.ListByUser(c.Request.Context(), input)
 	if err != nil {
 		status := mapAttachmentErrorStatus(err)
-		c.JSON(status, MessageResponse{Message: err.Error()})
+		c.JSON(status, dto.ErrorResponse{Message: err.Error()})
 		return
 	}
 
@@ -211,56 +194,49 @@ func (h *AttachmentHandler) List(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param id path int true "附件ID"
-// @Success 200 {object} MessageResponse
-// @Failure 400 {object} MessageResponse "参数校验失败"
-// @Failure 401 {object} MessageResponse "未登录或登录失效"
-// @Failure 404 {object} MessageResponse "附件不存在"
-// @Failure 500 {object} MessageResponse "服务内部错误"
+// @Success 200 {object} dto.ErrorResponse
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
+// @Failure 404 {object} dto.ErrorResponse "附件不存在"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /api/v1/attachments/{id} [delete]
 func (h *AttachmentHandler) Delete(c *gin.Context) {
 	if h.attachmentService == nil {
-		c.JSON(http.StatusInternalServerError, MessageResponse{Message: service.ErrInternal.Error()})
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
 		return
 	}
 
 	userID, ok := middleware.GetUserID(c)
 	if !ok || userID == 0 {
-		c.JSON(http.StatusUnauthorized, MessageResponse{Message: "未登录或登录已失效"})
+		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{Message: "未登录或登录已失效"})
 		return
 	}
 
-	var req attachmentURIRequest
+	var req dto.AttachmentIDURIInput
 	if err := c.ShouldBindUri(&req); err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "路径参数不合法"})
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "路径参数不合法"})
 		return
 	}
 
 	attachment, err := h.attachmentService.Get(c.Request.Context(), req.ID)
 	if err != nil {
 		status := mapAttachmentErrorStatus(err)
-		c.JSON(status, MessageResponse{Message: err.Error()})
+		c.JSON(status, dto.ErrorResponse{Message: err.Error()})
 		return
 	}
 
 	if attachment.UserID != userID {
-		c.JSON(http.StatusNotFound, MessageResponse{Message: service.ErrAttachmentNotFound.Error()})
+		c.JSON(http.StatusNotFound, dto.ErrorResponse{Message: service.ErrAttachmentNotFound.Error()})
 		return
 	}
 
 	if err := h.attachmentService.Delete(c.Request.Context(), req.ID); err != nil {
 		status := mapAttachmentErrorStatus(err)
-		c.JSON(status, MessageResponse{Message: err.Error()})
+		c.JSON(status, dto.ErrorResponse{Message: err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, MessageResponse{Message: "ok"})
-}
-
-func valueOrDefault(v *int, fallback int) int {
-	if v == nil {
-		return fallback
-	}
-	return *v
+	c.JSON(http.StatusOK, dto.ErrorResponse{Message: "ok"})
 }
 
 func mapAttachmentErrorStatus(err error) int {

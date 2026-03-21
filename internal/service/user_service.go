@@ -41,7 +41,7 @@ type UserService interface {
 	// ChangePassword 修改用户密码，需要校验旧密码。
 	ChangePassword(ctx context.Context, input dto.UserChangePasswordInput) error
 	// RequestEmailChange 发起邮箱变更请求，签发 token 并发送邮件。
-	RequestEmailChange(ctx context.Context, input dto.UserChangeEmailRequestInput) error
+	RequestEmailChange(ctx context.Context, input dto.UserChangeEmailInput) error
 	// ConfirmEmailChange 验证邮箱变更 token 并更新。
 	ConfirmEmailChange(ctx context.Context, input dto.UserChangeEmailConfirmInput) (*dto.UserDTO, error)
 	// Update 按输入字段更新用户信息。
@@ -255,7 +255,7 @@ func (s *userService) ChangePassword(ctx context.Context, input dto.UserChangePa
 }
 
 // RequestEmailChange 签发邮箱变更 token，并发送确认邮件。
-func (s *userService) RequestEmailChange(ctx context.Context, input dto.UserChangeEmailRequestInput) error {
+func (s *userService) RequestEmailChange(ctx context.Context, input dto.UserChangeEmailInput) error {
 	if input.UserID == 0 {
 		return ErrUserNotFound
 	}

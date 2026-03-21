@@ -128,7 +128,7 @@ func TestAttachmentAdminHandlerBatchDeletePartialFailure(t *testing.T) {
 		t.Fatalf("expected status 200, got %d", w.Code)
 	}
 
-	var body attachmentBatchDeleteResponse
+	var body dto.AttachmentBatchDeleteResult
 	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
 		t.Fatalf("unmarshal response failed: %v", err)
 	}

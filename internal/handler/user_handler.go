@@ -14,20 +14,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type userProfileUpdateRequest struct {
-	Nickname *string `json:"nickname"`
-}
-
-type userChangePasswordRequest struct {
-	OldPassword string `json:"old_password"`
-	NewPassword string `json:"new_password"`
-}
-
-type userChangeEmailRequest struct {
-	CurrentPassword string `json:"current_password"`
-	NewEmail        string `json:"new_email"`
-}
-
 // UserHandler 处理当前登录用户的自助接口。
 type UserHandler struct {
 	userService service.UserService
@@ -45,24 +31,24 @@ func NewUserHandler(userService service.UserService) *UserHandler {
 // @Produce json
 // @Security BearerAuth
 // @Success 200 {object} dto.UserDTO
-// @Failure 401 {object} MessageResponse "未登录或登录失效"
-// @Failure 500 {object} MessageResponse "服务内部错误"
+// @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /api/v1/users/me [get]
 func (h *UserHandler) GetProfile(c *gin.Context) {
 	if h.userService == nil {
-		c.JSON(http.StatusInternalServerError, MessageResponse{Message: service.ErrInternal.Error()})
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
 		return
 	}
 
 	userID, ok := middleware.GetUserID(c)
 	if !ok || userID == 0 {
-		c.JSON(http.StatusUnauthorized, MessageResponse{Message: "未登录或登录已失效"})
+		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{Message: "未登录或登录已失效"})
 		return
 	}
 
 	result, err := h.userService.Get(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(mapUserErrorStatus(err), MessageResponse{Message: err.Error()})
+		c.JSON(mapUserErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
 		return
 	}
 
@@ -76,36 +62,34 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param input body userProfileUpdateRequest true "资料修改参数"
+// @Param input body dto.UserProfileUpdateInput true "资料修改参数"
 // @Success 200 {object} dto.UserDTO
-// @Failure 400 {object} MessageResponse "请求参数格式错误"
-// @Failure 401 {object} MessageResponse "未登录或登录失效"
-// @Failure 500 {object} MessageResponse "服务内部错误"
+// @Failure 400 {object} dto.ErrorResponse "请求参数格式错误"
+// @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /api/v1/users/me/profile [patch]
 func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	if h.userService == nil {
-		c.JSON(http.StatusInternalServerError, MessageResponse{Message: service.ErrInternal.Error()})
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
 		return
 	}
 
 	userID, ok := middleware.GetUserID(c)
 	if !ok || userID == 0 {
-		c.JSON(http.StatusUnauthorized, MessageResponse{Message: "未登录或登录已失效"})
+		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{Message: "未登录或登录已失效"})
 		return
 	}
 
-	var req userProfileUpdateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "请求参数格式错误"})
+	var input dto.UserProfileUpdateInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "请求参数格式错误"})
 		return
 	}
+	input.UserID = userID
 
-	result, err := h.userService.UpdateProfile(c.Request.Context(), dto.UserProfileUpdateInput{
-		UserID:   userID,
-		Nickname: req.Nickname,
-	})
+	result, err := h.userService.UpdateProfile(c.Request.Context(), input)
 	if err != nil {
-		c.JSON(mapUserErrorStatus(err), MessageResponse{Message: err.Error()})
+		c.JSON(mapUserErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
 		return
 	}
 
@@ -119,41 +103,38 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param input body userChangePasswordRequest true "密码修改参数"
-// @Success 200 {object} MessageResponse
-// @Failure 400 {object} MessageResponse "参数校验失败"
-// @Failure 401 {object} MessageResponse "旧密码错误或未登录"
-// @Failure 500 {object} MessageResponse "服务内部错误"
+// @Param input body dto.UserChangePasswordInput true "密码修改参数"
+// @Success 200 {object} dto.ErrorResponse
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 401 {object} dto.ErrorResponse "旧密码错误或未登录"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /api/v1/users/me/password [patch]
 func (h *UserHandler) ChangePassword(c *gin.Context) {
 	if h.userService == nil {
-		c.JSON(http.StatusInternalServerError, MessageResponse{Message: service.ErrInternal.Error()})
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
 		return
 	}
 
 	userID, ok := middleware.GetUserID(c)
 	if !ok || userID == 0 {
-		c.JSON(http.StatusUnauthorized, MessageResponse{Message: "未登录或登录已失效"})
+		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{Message: "未登录或登录已失效"})
 		return
 	}
 
-	var req userChangePasswordRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "请求参数格式错误"})
+	var input dto.UserChangePasswordInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "请求参数格式错误"})
 		return
 	}
+	input.UserID = userID
 
-	err := h.userService.ChangePassword(c.Request.Context(), dto.UserChangePasswordInput{
-		UserID:      userID,
-		OldPassword: req.OldPassword,
-		NewPassword: req.NewPassword,
-	})
+	err := h.userService.ChangePassword(c.Request.Context(), input)
 	if err != nil {
-		c.JSON(mapUserErrorStatus(err), MessageResponse{Message: err.Error()})
+		c.JSON(mapUserErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, MessageResponse{Message: "ok"})
+	c.JSON(http.StatusOK, dto.ErrorResponse{Message: "ok"})
 }
 
 // RequestEmailChange 请求修改当前用户邮箱。
@@ -163,42 +144,39 @@ func (h *UserHandler) ChangePassword(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param input body userChangeEmailRequest true "邮箱修改请求参数"
-// @Success 200 {object} MessageResponse
-// @Failure 400 {object} MessageResponse "参数校验失败"
-// @Failure 401 {object} MessageResponse "密码错误或未登录"
-// @Failure 409 {object} MessageResponse "邮箱已被占用"
-// @Failure 500 {object} MessageResponse "服务内部错误"
+// @Param input body dto.UserChangeEmailInput true "邮箱修改请求参数"
+// @Success 200 {object} dto.ErrorResponse
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 401 {object} dto.ErrorResponse "密码错误或未登录"
+// @Failure 409 {object} dto.ErrorResponse "邮箱已被占用"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /api/v1/users/me/email-change [post]
 func (h *UserHandler) RequestEmailChange(c *gin.Context) {
 	if h.userService == nil {
-		c.JSON(http.StatusInternalServerError, MessageResponse{Message: service.ErrInternal.Error()})
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
 		return
 	}
 
 	userID, ok := middleware.GetUserID(c)
 	if !ok || userID == 0 {
-		c.JSON(http.StatusUnauthorized, MessageResponse{Message: "未登录或登录已失效"})
+		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{Message: "未登录或登录已失效"})
 		return
 	}
 
-	var req userChangeEmailRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "请求参数格式错误"})
+	var input dto.UserChangeEmailInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "请求参数格式错误"})
 		return
 	}
+	input.UserID = userID
 
-	err := h.userService.RequestEmailChange(c.Request.Context(), dto.UserChangeEmailRequestInput{
-		UserID:          userID,
-		CurrentPassword: req.CurrentPassword,
-		NewEmail:        req.NewEmail,
-	})
+	err := h.userService.RequestEmailChange(c.Request.Context(), input)
 	if err != nil {
-		c.JSON(mapUserErrorStatus(err), MessageResponse{Message: err.Error()})
+		c.JSON(mapUserErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, MessageResponse{Message: "ok"})
+	c.JSON(http.StatusOK, dto.ErrorResponse{Message: "ok"})
 }
 
 // UploadAvatar 上传当前用户头像。
@@ -210,39 +188,39 @@ func (h *UserHandler) RequestEmailChange(c *gin.Context) {
 // @Security BearerAuth
 // @Param avatar formData file true "头像文件"
 // @Success 200 {object} dto.UserDTO
-// @Failure 400 {object} MessageResponse "参数校验失败"
-// @Failure 401 {object} MessageResponse "未登录或登录失效"
-// @Failure 403 {object} MessageResponse "存储配额不足"
-// @Failure 500 {object} MessageResponse "服务内部错误"
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
+// @Failure 403 {object} dto.ErrorResponse "存储配额不足"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /api/v1/users/me/avatar [post]
 func (h *UserHandler) UploadAvatar(c *gin.Context) {
 	if h.userService == nil {
-		c.JSON(http.StatusInternalServerError, MessageResponse{Message: service.ErrInternal.Error()})
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
 		return
 	}
 
 	userID, ok := middleware.GetUserID(c)
 	if !ok || userID == 0 {
-		c.JSON(http.StatusUnauthorized, MessageResponse{Message: "未登录或登录已失效"})
+		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{Message: "未登录或登录已失效"})
 		return
 	}
 
 	fileHeader, err := c.FormFile("avatar")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "avatar 不能为空"})
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "avatar 不能为空"})
 		return
 	}
 
 	file, err := fileHeader.Open()
 	if err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "读取上传文件失败"})
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "读取上传文件失败"})
 		return
 	}
 	defer file.Close()
 
 	content, err := io.ReadAll(file)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "读取上传文件失败"})
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "读取上传文件失败"})
 		return
 	}
 
@@ -258,7 +236,7 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 		Content:          content,
 	})
 	if err != nil {
-		c.JSON(mapUserErrorStatus(err), MessageResponse{Message: err.Error()})
+		c.JSON(mapUserErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
 		return
 	}
 
@@ -271,28 +249,28 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 // @Tags user
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} MessageResponse
-// @Failure 401 {object} MessageResponse "未登录或登录失效"
-// @Failure 500 {object} MessageResponse "服务内部错误"
+// @Success 200 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /api/v1/users/me/avatar [delete]
 func (h *UserHandler) DeleteAvatar(c *gin.Context) {
 	if h.userService == nil {
-		c.JSON(http.StatusInternalServerError, MessageResponse{Message: service.ErrInternal.Error()})
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
 		return
 	}
 
 	userID, ok := middleware.GetUserID(c)
 	if !ok || userID == 0 {
-		c.JSON(http.StatusUnauthorized, MessageResponse{Message: "未登录或登录已失效"})
+		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{Message: "未登录或登录已失效"})
 		return
 	}
 
 	if err := h.userService.DeleteAvatar(c.Request.Context(), userID); err != nil {
-		c.JSON(mapUserErrorStatus(err), MessageResponse{Message: err.Error()})
+		c.JSON(mapUserErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, MessageResponse{Message: "ok"})
+	c.JSON(http.StatusOK, dto.ErrorResponse{Message: "ok"})
 }
 
 func mapUserErrorStatus(err error) int {

@@ -16,22 +16,6 @@ type SettingAdminHandler struct {
 	settingService service.SettingService
 }
 
-type settingAdminKeyURIRequest struct {
-	Key string `uri:"key" binding:"required"`
-}
-
-type settingAdminListQueryRequest struct {
-	Category string `form:"category"`
-	Key      string `form:"key"`
-	Limit    *int   `form:"limit"`
-	Offset   *int   `form:"offset"`
-	Order    string `form:"order"`
-}
-
-type settingAdminUpdateRequest struct {
-	Value *string `json:"value"`
-}
-
 // NewSettingAdminHandler 创建管理端配置处理器。
 func NewSettingAdminHandler(settingService service.SettingService) *SettingAdminHandler {
 	return &SettingAdminHandler{settingService: settingService}
@@ -49,32 +33,29 @@ func NewSettingAdminHandler(settingService service.SettingService) *SettingAdmin
 // @Param offset query int false "偏移量"
 // @Param order query string false "排序，如 key_asc"
 // @Success 200 {object} dto.SettingListResult
-// @Failure 400 {object} MessageResponse "参数校验失败"
-// @Failure 401 {object} MessageResponse "未登录或登录失效"
-// @Failure 403 {object} MessageResponse "无管理员权限"
-// @Failure 500 {object} MessageResponse "服务内部错误"
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
+// @Failure 403 {object} dto.ErrorResponse "无管理员权限"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /api/v1/admin/settings [get]
 func (h *SettingAdminHandler) List(c *gin.Context) {
 	if h.settingService == nil {
-		c.JSON(http.StatusInternalServerError, MessageResponse{Message: service.ErrInternal.Error()})
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
 		return
 	}
 
-	var req settingAdminListQueryRequest
+	var req dto.SettingListInput
 	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "查询参数不合法"})
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "查询参数不合法"})
 		return
 	}
+	req.Category = strings.TrimSpace(req.Category)
+	req.Key = strings.TrimSpace(req.Key)
+	req.Order = strings.TrimSpace(req.Order)
 
-	result, err := h.settingService.ListItems(c.Request.Context(), dto.SettingListInput{
-		Category: strings.TrimSpace(req.Category),
-		Key:      strings.TrimSpace(req.Key),
-		Limit:    valueOrDefault(req.Limit, 0),
-		Offset:   valueOrDefault(req.Offset, 0),
-		Order:    strings.TrimSpace(req.Order),
-	})
+	result, err := h.settingService.ListItems(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(mapSettingErrorStatus(err), MessageResponse{Message: err.Error()})
+		c.JSON(mapSettingErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
 		return
 	}
 
@@ -87,17 +68,17 @@ func (h *SettingAdminHandler) List(c *gin.Context) {
 // @Tags setting
 // @Produce json
 // @Success 200 {object} dto.SettingPublicResult
-// @Failure 500 {object} MessageResponse "服务内部错误"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /api/v1/settings/public [get]
 func (h *SettingAdminHandler) Public(c *gin.Context) {
 	if h.settingService == nil {
-		c.JSON(http.StatusInternalServerError, MessageResponse{Message: service.ErrInternal.Error()})
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
 		return
 	}
 
 	result, err := h.settingService.GetPublicItems(c.Request.Context())
 	if err != nil {
-		c.JSON(mapSettingErrorStatus(err), MessageResponse{Message: err.Error()})
+		c.JSON(mapSettingErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
 		return
 	}
 
@@ -112,40 +93,38 @@ func (h *SettingAdminHandler) Public(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param key path string true "配置键"
-// @Param input body settingAdminUpdateRequest true "更新参数"
-// @Success 200 {object} MessageResponse
-// @Failure 400 {object} MessageResponse "参数校验失败"
-// @Failure 401 {object} MessageResponse "未登录或登录失效"
-// @Failure 403 {object} MessageResponse "无管理员权限"
-// @Failure 500 {object} MessageResponse "服务内部错误"
+// @Param input body dto.SettingUpdateInput true "更新参数"
+// @Success 200 {object} dto.ErrorResponse
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
+// @Failure 403 {object} dto.ErrorResponse "无管理员权限"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /api/v1/admin/settings/{key} [patch]
 func (h *SettingAdminHandler) Update(c *gin.Context) {
 	if h.settingService == nil {
-		c.JSON(http.StatusInternalServerError, MessageResponse{Message: service.ErrInternal.Error()})
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
 		return
 	}
 
-	var uriReq settingAdminKeyURIRequest
+	var uriReq dto.SettingKeyURIInput
 	if err := c.ShouldBindUri(&uriReq); err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "路径参数不合法"})
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "路径参数不合法"})
 		return
 	}
 
-	var req settingAdminUpdateRequest
+	var req dto.SettingUpdateInput
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "请求参数格式错误"})
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "请求参数格式错误"})
+		return
+	}
+	req.Key = strings.TrimSpace(uriReq.Key)
+
+	if err := h.settingService.UpdateItem(c.Request.Context(), req); err != nil {
+		c.JSON(mapSettingErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
 		return
 	}
 
-	if err := h.settingService.UpdateItem(c.Request.Context(), dto.SettingUpdateInput{
-		Key:   strings.TrimSpace(uriReq.Key),
-		Value: req.Value,
-	}); err != nil {
-		c.JSON(mapSettingErrorStatus(err), MessageResponse{Message: err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, MessageResponse{Message: "ok"})
+	c.JSON(http.StatusOK, dto.ErrorResponse{Message: "ok"})
 }
 
 func mapSettingErrorStatus(err error) int {

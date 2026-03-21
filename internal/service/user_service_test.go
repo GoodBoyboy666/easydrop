@@ -552,7 +552,7 @@ func TestUserServiceRequestAndConfirmEmailChange(t *testing.T) {
 		storageManager: nil,
 	}
 
-	err = svc.RequestEmailChange(context.Background(), dto.UserChangeEmailRequestInput{
+	err = svc.RequestEmailChange(context.Background(), dto.UserChangeEmailInput{
 		UserID:          10,
 		CurrentPassword: "OldPass123",
 		NewEmail:        "new@example.com",
@@ -609,7 +609,7 @@ func TestUserServiceRequestEmailChangeWithWrongPassword(t *testing.T) {
 		storageManager: nil,
 	}
 
-	err = svc.RequestEmailChange(context.Background(), dto.UserChangeEmailRequestInput{
+	err = svc.RequestEmailChange(context.Background(), dto.UserChangeEmailInput{
 		UserID:          12,
 		CurrentPassword: "WrongPass123",
 		NewEmail:        "new@example.com",

@@ -16,18 +16,6 @@ type PostAdminHandler struct {
 	postService service.PostService
 }
 
-type postAdminURIRequest struct {
-	ID uint `uri:"id" binding:"required,gt=0"`
-}
-
-type postAdminListQueryRequest struct {
-	UserID *uint  `form:"user_id" binding:"omitempty,gt=0"`
-	TagID  *uint  `form:"tag_id" binding:"omitempty,gt=0"`
-	Limit  *int   `form:"limit"`
-	Offset *int   `form:"offset"`
-	Order  string `form:"order"`
-}
-
 // NewPostAdminHandler 创建管理端说说处理器。
 func NewPostAdminHandler(postService service.PostService) *PostAdminHandler {
 	return &PostAdminHandler{postService: postService}
@@ -45,32 +33,27 @@ func NewPostAdminHandler(postService service.PostService) *PostAdminHandler {
 // @Param offset query int false "偏移量"
 // @Param order query string false "排序，如 created_at desc"
 // @Success 200 {object} dto.PostListResult
-// @Failure 400 {object} MessageResponse "参数校验失败"
-// @Failure 401 {object} MessageResponse "未登录或登录失效"
-// @Failure 403 {object} MessageResponse "无管理员权限"
-// @Failure 500 {object} MessageResponse "服务内部错误"
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
+// @Failure 403 {object} dto.ErrorResponse "无管理员权限"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /api/v1/admin/posts [get]
 func (h *PostAdminHandler) List(c *gin.Context) {
 	if h.postService == nil {
-		c.JSON(http.StatusInternalServerError, MessageResponse{Message: service.ErrInternal.Error()})
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
 		return
 	}
 
-	var req postAdminListQueryRequest
+	var req dto.PostListInput
 	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "查询参数不合法"})
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "查询参数不合法"})
 		return
 	}
+	req.Order = strings.TrimSpace(req.Order)
 
-	result, err := h.postService.List(c.Request.Context(), dto.PostListInput{
-		UserID: req.UserID,
-		TagID:  req.TagID,
-		Limit:  valueOrDefault(req.Limit, 0),
-		Offset: valueOrDefault(req.Offset, 0),
-		Order:  strings.TrimSpace(req.Order),
-	})
+	result, err := h.postService.List(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(mapPostErrorStatus(err), MessageResponse{Message: err.Error()})
+		c.JSON(mapPostErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
 		return
 	}
 
@@ -85,27 +68,27 @@ func (h *PostAdminHandler) List(c *gin.Context) {
 // @Security BearerAuth
 // @Param id path int true "说说ID"
 // @Success 200 {object} dto.PostDTO
-// @Failure 400 {object} MessageResponse "参数校验失败"
-// @Failure 401 {object} MessageResponse "未登录或登录失效"
-// @Failure 403 {object} MessageResponse "无管理员权限"
-// @Failure 404 {object} MessageResponse "说说不存在"
-// @Failure 500 {object} MessageResponse "服务内部错误"
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
+// @Failure 403 {object} dto.ErrorResponse "无管理员权限"
+// @Failure 404 {object} dto.ErrorResponse "说说不存在"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /api/v1/admin/posts/{id} [get]
 func (h *PostAdminHandler) Get(c *gin.Context) {
 	if h.postService == nil {
-		c.JSON(http.StatusInternalServerError, MessageResponse{Message: service.ErrInternal.Error()})
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
 		return
 	}
 
-	var req postAdminURIRequest
+	var req dto.PostIDURIInput
 	if err := c.ShouldBindUri(&req); err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "路径参数不合法"})
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "路径参数不合法"})
 		return
 	}
 
 	result, err := h.postService.Get(c.Request.Context(), req.ID)
 	if err != nil {
-		c.JSON(mapPostErrorStatus(err), MessageResponse{Message: err.Error()})
+		c.JSON(mapPostErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
 		return
 	}
 
@@ -121,26 +104,26 @@ func (h *PostAdminHandler) Get(c *gin.Context) {
 // @Security BearerAuth
 // @Param input body dto.PostCreateInput true "说说创建参数"
 // @Success 201 {object} dto.PostDTO
-// @Failure 400 {object} MessageResponse "参数校验失败"
-// @Failure 401 {object} MessageResponse "未登录或登录失效"
-// @Failure 403 {object} MessageResponse "无管理员权限"
-// @Failure 500 {object} MessageResponse "服务内部错误"
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
+// @Failure 403 {object} dto.ErrorResponse "无管理员权限"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /api/v1/admin/posts [post]
 func (h *PostAdminHandler) Create(c *gin.Context) {
 	if h.postService == nil {
-		c.JSON(http.StatusInternalServerError, MessageResponse{Message: service.ErrInternal.Error()})
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
 		return
 	}
 
 	var input dto.PostCreateInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "请求参数格式错误"})
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "请求参数格式错误"})
 		return
 	}
 
 	result, err := h.postService.Create(c.Request.Context(), input)
 	if err != nil {
-		c.JSON(mapPostErrorStatus(err), MessageResponse{Message: err.Error()})
+		c.JSON(mapPostErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
 		return
 	}
 
@@ -157,34 +140,34 @@ func (h *PostAdminHandler) Create(c *gin.Context) {
 // @Param id path int true "说说ID"
 // @Param input body dto.PostUpdateInput true "说说更新参数"
 // @Success 200 {object} dto.PostDTO
-// @Failure 400 {object} MessageResponse "参数校验失败"
-// @Failure 401 {object} MessageResponse "未登录或登录失效"
-// @Failure 403 {object} MessageResponse "无管理员权限"
-// @Failure 404 {object} MessageResponse "说说不存在"
-// @Failure 500 {object} MessageResponse "服务内部错误"
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
+// @Failure 403 {object} dto.ErrorResponse "无管理员权限"
+// @Failure 404 {object} dto.ErrorResponse "说说不存在"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /api/v1/admin/posts/{id} [patch]
 func (h *PostAdminHandler) Update(c *gin.Context) {
 	if h.postService == nil {
-		c.JSON(http.StatusInternalServerError, MessageResponse{Message: service.ErrInternal.Error()})
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
 		return
 	}
 
-	var uriReq postAdminURIRequest
+	var uriReq dto.PostIDURIInput
 	if err := c.ShouldBindUri(&uriReq); err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "路径参数不合法"})
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "路径参数不合法"})
 		return
 	}
 
 	var input dto.PostUpdateInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "请求参数格式错误"})
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "请求参数格式错误"})
 		return
 	}
 	input.ID = uriReq.ID
 
 	result, err := h.postService.Update(c.Request.Context(), input)
 	if err != nil {
-		c.JSON(mapPostErrorStatus(err), MessageResponse{Message: err.Error()})
+		c.JSON(mapPostErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
 		return
 	}
 
@@ -198,31 +181,31 @@ func (h *PostAdminHandler) Update(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param id path int true "说说ID"
-// @Success 200 {object} MessageResponse
-// @Failure 400 {object} MessageResponse "参数校验失败"
-// @Failure 401 {object} MessageResponse "未登录或登录失效"
-// @Failure 403 {object} MessageResponse "无管理员权限"
-// @Failure 404 {object} MessageResponse "说说不存在"
-// @Failure 500 {object} MessageResponse "服务内部错误"
+// @Success 200 {object} dto.ErrorResponse
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
+// @Failure 403 {object} dto.ErrorResponse "无管理员权限"
+// @Failure 404 {object} dto.ErrorResponse "说说不存在"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /api/v1/admin/posts/{id} [delete]
 func (h *PostAdminHandler) Delete(c *gin.Context) {
 	if h.postService == nil {
-		c.JSON(http.StatusInternalServerError, MessageResponse{Message: service.ErrInternal.Error()})
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
 		return
 	}
 
-	var req postAdminURIRequest
+	var req dto.PostIDURIInput
 	if err := c.ShouldBindUri(&req); err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "路径参数不合法"})
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "路径参数不合法"})
 		return
 	}
 
 	if err := h.postService.Delete(c.Request.Context(), req.ID); err != nil {
-		c.JSON(mapPostErrorStatus(err), MessageResponse{Message: err.Error()})
+		c.JSON(mapPostErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, MessageResponse{Message: "ok"})
+	c.JSON(http.StatusOK, dto.ErrorResponse{Message: "ok"})
 }
 
 func mapPostErrorStatus(err error) int {

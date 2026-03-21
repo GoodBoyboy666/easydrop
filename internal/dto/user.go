@@ -14,6 +14,10 @@ type UserCreateInput struct {
 	StorageQuota  *int64  `json:"storage_quota"`
 }
 
+type UserIDURIInput struct {
+	ID uint `uri:"id" binding:"required,gt=0"`
+}
+
 type UserUpdateInput struct {
 	ID            uint    `json:"id"`
 	Username      *string `json:"username"`
@@ -38,7 +42,7 @@ type UserChangePasswordInput struct {
 	NewPassword string `json:"new_password"`
 }
 
-type UserChangeEmailRequestInput struct {
+type UserChangeEmailInput struct {
 	UserID          uint   `json:"user_id"`
 	CurrentPassword string `json:"current_password"`
 	NewEmail        string `json:"new_email"`
@@ -57,12 +61,12 @@ type UserAvatarUploadInput struct {
 }
 
 type UserListInput struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Status   *int   `json:"status"`
-	Limit    int    `json:"limit"`
-	Offset   int    `json:"offset"`
-	Order    string `json:"order"`
+	Username string `json:"username" form:"username"`
+	Email    string `json:"email" form:"email"`
+	Status   *int   `json:"status" form:"status"`
+	Limit    int    `json:"limit" form:"limit"`
+	Offset   int    `json:"offset" form:"offset"`
+	Order    string `json:"order" form:"order"`
 }
 
 type UserDTO struct {

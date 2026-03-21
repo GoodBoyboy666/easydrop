@@ -1,5 +1,9 @@
 package dto
 
+type SettingKeyURIInput struct {
+	Key string `uri:"key" binding:"required"`
+}
+
 type SettingItem struct {
 	Key       string `json:"key"`
 	Value     string `json:"value"`
@@ -10,11 +14,11 @@ type SettingItem struct {
 }
 
 type SettingListInput struct {
-	Category string `json:"category"`
-	Key      string `json:"key"`
-	Limit    int    `json:"limit"`
-	Offset   int    `json:"offset"`
-	Order    string `json:"order"`
+	Category string `json:"category" form:"category"`
+	Key      string `json:"key" form:"key"`
+	Limit    int    `json:"limit" form:"limit"`
+	Offset   int    `json:"offset" form:"offset"`
+	Order    string `json:"order" form:"order"`
 }
 
 type SettingListResult struct {

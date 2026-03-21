@@ -11,11 +11,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// MessageResponse 表示通用错误响应。
-type MessageResponse struct {
-	Message string `json:"message"`
-}
-
 // AuthHandler 处理认证相关请求。
 type AuthHandler struct {
 	authService service.AuthService
@@ -34,20 +29,20 @@ func NewAuthHandler(authService service.AuthService) *AuthHandler {
 // @Produce json
 // @Param input body dto.RegisterInput true "注册信息"
 // @Success 201 {object} dto.AuthResult
-// @Failure 400 {object} MessageResponse "参数校验失败或验证码缺失"
-// @Failure 403 {object} MessageResponse "注册关闭"
-// @Failure 409 {object} MessageResponse "用户名或邮箱已存在"
-// @Failure 500 {object} MessageResponse "服务内部错误"
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败或验证码缺失"
+// @Failure 403 {object} dto.ErrorResponse "注册关闭"
+// @Failure 409 {object} dto.ErrorResponse "用户名或邮箱已存在"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /api/v1/auth/register [post]
 func (h *AuthHandler) Register(c *gin.Context) {
 	if h.authService == nil {
-		c.JSON(http.StatusInternalServerError, MessageResponse{Message: service.ErrInternal.Error()})
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
 		return
 	}
 
 	var input dto.RegisterInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "请求参数格式错误"})
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "请求参数格式错误"})
 		return
 	}
 	if input.Captcha != nil {
@@ -57,7 +52,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	result, err := h.authService.Register(c.Request.Context(), input)
 	if err != nil {
 		status := mapAuthErrorStatus(err)
-		c.JSON(status, MessageResponse{Message: err.Error()})
+		c.JSON(status, dto.ErrorResponse{Message: err.Error()})
 		return
 	}
 
@@ -72,20 +67,20 @@ func (h *AuthHandler) Register(c *gin.Context) {
 // @Produce json
 // @Param input body dto.LoginInput true "登录信息"
 // @Success 200 {object} dto.AuthResult
-// @Failure 400 {object} MessageResponse "参数校验失败或验证码缺失"
-// @Failure 401 {object} MessageResponse "账号不存在或密码错误"
-// @Failure 403 {object} MessageResponse "用户状态异常"
-// @Failure 500 {object} MessageResponse "服务内部错误"
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败或验证码缺失"
+// @Failure 401 {object} dto.ErrorResponse "账号不存在或密码错误"
+// @Failure 403 {object} dto.ErrorResponse "用户状态异常"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /api/v1/auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	if h.authService == nil {
-		c.JSON(http.StatusInternalServerError, MessageResponse{Message: service.ErrInternal.Error()})
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
 		return
 	}
 
 	var input dto.LoginInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, MessageResponse{Message: "请求参数格式错误"})
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "请求参数格式错误"})
 		return
 	}
 	if input.Captcha != nil {
@@ -95,7 +90,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	result, err := h.authService.Login(c.Request.Context(), input)
 	if err != nil {
 		status := mapAuthErrorStatus(err)
-		c.JSON(status, MessageResponse{Message: err.Error()})
+		c.JSON(status, dto.ErrorResponse{Message: err.Error()})
 		return
 	}
 

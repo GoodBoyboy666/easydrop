@@ -41,7 +41,7 @@ func (m *mockUserAdminService) ChangePassword(context.Context, dto.UserChangePas
 	return nil
 }
 
-func (m *mockUserAdminService) RequestEmailChange(context.Context, dto.UserChangeEmailRequestInput) error {
+func (m *mockUserAdminService) RequestEmailChange(context.Context, dto.UserChangeEmailInput) error {
 	return nil
 }
 

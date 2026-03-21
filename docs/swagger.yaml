@@ -1,5 +1,30 @@
 basePath: /
 definitions:
+  dto.AttachmentBatchDeleteFailedItem:
+    properties:
+      id:
+        type: integer
+      message:
+        type: string
+    type: object
+  dto.AttachmentBatchDeleteInput:
+    properties:
+      ids:
+        items:
+          type: integer
+        type: array
+    type: object
+  dto.AttachmentBatchDeleteResult:
+    properties:
+      failed:
+        items:
+          $ref: '#/definitions/dto.AttachmentBatchDeleteFailedItem'
+        type: array
+      success_ids:
+        items:
+          type: integer
+        type: array
+    type: object
   dto.AttachmentDTO:
     properties:
       biz_type:
@@ -55,6 +80,11 @@ definitions:
       provider:
         type: string
       token:
+        type: string
+    type: object
+  dto.ErrorResponse:
+    properties:
+      message:
         type: string
     type: object
   dto.LoginInput:
@@ -157,6 +187,13 @@ definitions:
           $ref: '#/definitions/dto.SettingPublicItem'
         type: array
     type: object
+  dto.SettingUpdateInput:
+    properties:
+      key:
+        type: string
+      value:
+        type: string
+    type: object
   dto.TagDTO:
     properties:
       created_at:
@@ -165,6 +202,24 @@ definitions:
         type: integer
       name:
         type: string
+    type: object
+  dto.UserChangeEmailInput:
+    properties:
+      current_password:
+        type: string
+      new_email:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  dto.UserChangePasswordInput:
+    properties:
+      new_password:
+        type: string
+      old_password:
+        type: string
+      user_id:
+        type: integer
     type: object
   dto.UserCreateInput:
     properties:
@@ -223,6 +278,13 @@ definitions:
       total:
         type: integer
     type: object
+  dto.UserProfileUpdateInput:
+    properties:
+      nickname:
+        type: string
+      user_id:
+        type: integer
+    type: object
   dto.UserUpdateInput:
     properties:
       admin:
@@ -244,60 +306,6 @@ definitions:
       storage_quota:
         type: integer
       username:
-        type: string
-    type: object
-  handler.MessageResponse:
-    properties:
-      message:
-        type: string
-    type: object
-  handler.attachmentBatchDeleteFailedItem:
-    properties:
-      id:
-        type: integer
-      message:
-        type: string
-    type: object
-  handler.attachmentBatchDeleteRequest:
-    properties:
-      ids:
-        items:
-          type: integer
-        type: array
-    type: object
-  handler.attachmentBatchDeleteResponse:
-    properties:
-      failed:
-        items:
-          $ref: '#/definitions/handler.attachmentBatchDeleteFailedItem'
-        type: array
-      success_ids:
-        items:
-          type: integer
-        type: array
-    type: object
-  handler.settingAdminUpdateRequest:
-    properties:
-      value:
-        type: string
-    type: object
-  handler.userChangeEmailRequest:
-    properties:
-      current_password:
-        type: string
-      new_email:
-        type: string
-    type: object
-  handler.userChangePasswordRequest:
-    properties:
-      new_password:
-        type: string
-      old_password:
-        type: string
-    type: object
-  handler.userProfileUpdateRequest:
-    properties:
-      nickname:
         type: string
     type: object
 host: localhost:8080
@@ -353,19 +361,19 @@ paths:
         "400":
           description: 参数校验失败
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 未登录或登录失效
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
           description: 无管理员权限
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 管理端查询附件列表
@@ -386,27 +394,27 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "400":
           description: 参数校验失败
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 未登录或登录失效
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
           description: 无管理员权限
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "404":
           description: 附件不存在
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 管理端删除附件
@@ -423,30 +431,30 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/handler.attachmentBatchDeleteRequest'
+          $ref: '#/definitions/dto.AttachmentBatchDeleteInput'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handler.attachmentBatchDeleteResponse'
+            $ref: '#/definitions/dto.AttachmentBatchDeleteResult'
         "400":
           description: 参数校验失败
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 未登录或登录失效
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
           description: 无管理员权限
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 管理端批量删除附件
@@ -486,19 +494,19 @@ paths:
         "400":
           description: 参数校验失败
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 未登录或登录失效
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
           description: 无管理员权限
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 管理端查询说说列表
@@ -525,19 +533,19 @@ paths:
         "400":
           description: 参数校验失败
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 未登录或登录失效
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
           description: 无管理员权限
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 管理端创建说说
@@ -558,27 +566,27 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "400":
           description: 参数校验失败
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 未登录或登录失效
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
           description: 无管理员权限
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "404":
           description: 说说不存在
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 管理端删除说说
@@ -602,23 +610,23 @@ paths:
         "400":
           description: 参数校验失败
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 未登录或登录失效
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
           description: 无管理员权限
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "404":
           description: 说说不存在
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 管理端查询说说详情
@@ -650,23 +658,23 @@ paths:
         "400":
           description: 参数校验失败
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 未登录或登录失效
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
           description: 无管理员权限
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "404":
           description: 说说不存在
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 管理端更新说说
@@ -706,19 +714,19 @@ paths:
         "400":
           description: 参数校验失败
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 未登录或登录失效
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
           description: 无管理员权限
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 管理端查询配置列表
@@ -740,30 +748,30 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/handler.settingAdminUpdateRequest'
+          $ref: '#/definitions/dto.SettingUpdateInput'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "400":
           description: 参数校验失败
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 未登录或登录失效
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
           description: 无管理员权限
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 管理端更新配置
@@ -807,19 +815,19 @@ paths:
         "400":
           description: 参数校验失败
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 未登录或登录失效
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
           description: 无管理员权限
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 管理端查询用户列表
@@ -846,23 +854,23 @@ paths:
         "400":
           description: 参数校验失败
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 未登录或登录失效
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
           description: 无管理员权限
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "409":
           description: 用户名或邮箱冲突
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 管理端创建用户
@@ -883,23 +891,23 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "400":
           description: 参数校验失败
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 未登录或登录失效
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
           description: 无管理员权限
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 管理端删除用户
@@ -931,23 +939,23 @@ paths:
         "400":
           description: 参数校验失败
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 未登录或登录失效
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
           description: 无管理员权限
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "409":
           description: 用户名或邮箱冲突
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 管理端更新用户
@@ -968,23 +976,23 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "400":
           description: 参数校验失败
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 未登录或登录失效
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
           description: 无管理员权限
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 管理端删除用户头像
@@ -1015,19 +1023,19 @@ paths:
         "400":
           description: 参数校验失败
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 未登录或登录失效
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
           description: 无管理员权限或配额不足
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 管理端上传用户头像
@@ -1067,15 +1075,15 @@ paths:
         "400":
           description: 参数校验失败
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 未登录或登录失效
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 查询附件列表
@@ -1101,23 +1109,23 @@ paths:
         "400":
           description: 参数校验失败
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 未登录或登录失效
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
           description: 存储配额不足
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "404":
           description: 用户不存在
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 上传附件
@@ -1138,23 +1146,23 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "400":
           description: 参数校验失败
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 未登录或登录失效
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "404":
           description: 附件不存在
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 删除附件
@@ -1178,19 +1186,19 @@ paths:
         "400":
           description: 参数校验失败
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 未登录或登录失效
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "404":
           description: 附件不存在
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 查询附件详情
@@ -1218,19 +1226,19 @@ paths:
         "400":
           description: 参数校验失败或验证码缺失
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 账号不存在或密码错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
           description: 用户状态异常
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       summary: 用户登录
       tags:
       - auth
@@ -1256,19 +1264,19 @@ paths:
         "400":
           description: 参数校验失败或验证码缺失
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
           description: 注册关闭
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "409":
           description: 用户名或邮箱已存在
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       summary: 用户注册
       tags:
       - auth
@@ -1285,7 +1293,7 @@ paths:
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       summary: 验证码公开配置
       tags:
       - captcha
@@ -1302,7 +1310,7 @@ paths:
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       summary: 前端公开配置
       tags:
       - setting
@@ -1319,11 +1327,11 @@ paths:
         "401":
           description: 未登录或登录失效
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 获取当前用户资料
@@ -1338,15 +1346,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 未登录或登录失效
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 删除当前用户头像
@@ -1372,19 +1380,19 @@ paths:
         "400":
           description: 参数校验失败
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 未登录或登录失效
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
           description: 存储配额不足
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 上传当前用户头像
@@ -1401,30 +1409,30 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/handler.userChangeEmailRequest'
+          $ref: '#/definitions/dto.UserChangeEmailInput'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "400":
           description: 参数校验失败
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 密码错误或未登录
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "409":
           description: 邮箱已被占用
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 请求修改当前用户邮箱
@@ -1441,26 +1449,26 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/handler.userChangePasswordRequest'
+          $ref: '#/definitions/dto.UserChangePasswordInput'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "400":
           description: 参数校验失败
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 旧密码错误或未登录
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 修改当前用户密码
@@ -1477,7 +1485,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/handler.userProfileUpdateRequest'
+          $ref: '#/definitions/dto.UserProfileUpdateInput'
       produces:
       - application/json
       responses:
@@ -1488,15 +1496,15 @@ paths:
         "400":
           description: 请求参数格式错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: 未登录或登录失效
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "500":
           description: 服务内部错误
           schema:
-            $ref: '#/definitions/handler.MessageResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: 修改当前用户资料

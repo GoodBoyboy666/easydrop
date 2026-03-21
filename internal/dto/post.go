@@ -7,17 +7,21 @@ type PostCreateInput struct {
 	Content string `json:"content"`
 }
 
+type PostIDURIInput struct {
+	ID uint `uri:"id" binding:"required,gt=0"`
+}
+
 type PostUpdateInput struct {
 	ID      uint    `json:"id"`
 	Content *string `json:"content"`
 }
 
 type PostListInput struct {
-	UserID *uint  `json:"user_id"`
-	TagID  *uint  `json:"tag_id"`
-	Limit  int    `json:"limit"`
-	Offset int    `json:"offset"`
-	Order  string `json:"order"`
+	UserID *uint  `json:"user_id" form:"user_id" binding:"omitempty,gt=0"`
+	TagID  *uint  `json:"tag_id" form:"tag_id" binding:"omitempty,gt=0"`
+	Limit  int    `json:"limit" form:"limit"`
+	Offset int    `json:"offset" form:"offset"`
+	Order  string `json:"order" form:"order"`
 }
 
 type PostDTO struct {
