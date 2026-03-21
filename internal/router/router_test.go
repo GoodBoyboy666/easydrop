@@ -1,0 +1,141 @@
+package router
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"easydrop/internal/di"
+	"easydrop/internal/handler"
+	"easydrop/internal/middleware"
+
+	"github.com/gin-gonic/gin"
+)
+
+type fakeAuthMiddleware struct{}
+
+func (fakeAuthMiddleware) RequireLogin(c *gin.Context) {
+	c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "login required"})
+}
+
+func (fakeAuthMiddleware) RequireAdmin(c *gin.Context) {
+	c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"message": "admin required"})
+}
+
+func TestBuildEngineRegistersAllRoutes(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	r := BuildEngine(newTestApp(fakeAuthMiddleware{}))
+	routes := r.Routes()
+
+	expected := map[string]struct{}{
+		"POST /api/v1/auth/register":                  {},
+		"POST /api/v1/auth/login":                     {},
+		"GET /api/v1/users/me":                        {},
+		"PATCH /api/v1/users/me/profile":              {},
+		"PATCH /api/v1/users/me/password":             {},
+		"POST /api/v1/users/me/email-change":          {},
+		"POST /api/v1/users/me/avatar":                {},
+		"DELETE /api/v1/users/me/avatar":              {},
+		"POST /api/v1/attachments":                    {},
+		"GET /api/v1/attachments":                     {},
+		"GET /api/v1/attachments/:id":                 {},
+		"DELETE /api/v1/attachments/:id":              {},
+		"POST /api/v1/comments":                       {},
+		"GET /api/v1/comments":                        {},
+		"GET /api/v1/comments/:id":                    {},
+		"PATCH /api/v1/comments/:id":                  {},
+		"DELETE /api/v1/comments/:id":                 {},
+		"GET /api/v1/admin/users":                     {},
+		"POST /api/v1/admin/users":                    {},
+		"PATCH /api/v1/admin/users/:id":               {},
+		"DELETE /api/v1/admin/users/:id":              {},
+		"POST /api/v1/admin/users/:id/avatar":         {},
+		"DELETE /api/v1/admin/users/:id/avatar":       {},
+		"GET /api/v1/admin/posts":                     {},
+		"GET /api/v1/admin/posts/:id":                 {},
+		"POST /api/v1/admin/posts":                    {},
+		"PATCH /api/v1/admin/posts/:id":               {},
+		"DELETE /api/v1/admin/posts/:id":              {},
+		"GET /api/v1/admin/attachments":               {},
+		"DELETE /api/v1/admin/attachments/:id":        {},
+		"POST /api/v1/admin/attachments/batch-delete": {},
+		"GET /api/v1/admin/comments":                  {},
+		"GET /api/v1/admin/comments/:id":              {},
+		"PATCH /api/v1/admin/comments/:id":            {},
+		"DELETE /api/v1/admin/comments/:id":           {},
+	}
+
+	seen := make(map[string]struct{}, len(routes))
+	for _, rt := range routes {
+		seen[rt.Method+" "+rt.Path] = struct{}{}
+	}
+
+	for key := range expected {
+		if _, ok := seen[key]; !ok {
+			t.Fatalf("missing route: %s", key)
+		}
+	}
+}
+
+func TestBuildEngineAppliesMiddlewareGroups(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	r := BuildEngine(newTestApp(fakeAuthMiddleware{}))
+
+	{
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/users/me", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401 for login route, got %d", w.Code)
+		}
+	}
+
+	{
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/users", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 for admin route, got %d", w.Code)
+		}
+	}
+
+	{
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code == http.StatusUnauthorized || w.Code == http.StatusForbidden {
+			t.Fatalf("public auth route should not be blocked by auth middleware, got %d", w.Code)
+		}
+	}
+}
+
+func TestBuildEngineNilApp(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	r := BuildEngine(nil)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/login", nil)
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for nil app router, got %d", w.Code)
+	}
+}
+
+var _ middleware.Auth = (*fakeAuthMiddleware)(nil)
+
+func newTestApp(auth middleware.Auth) *di.App {
+	return &di.App{
+		Middleware:             auth,
+		AuthHandler:            handler.NewAuthHandler(nil),
+		UserHandler:            handler.NewUserHandler(nil),
+		UserAdminHandler:       handler.NewUserAdminHandler(nil),
+		AttachmentHandler:      handler.NewAttachmentHandler(nil),
+		AttachmentAdminHandler: handler.NewAttachmentAdminHandler(nil),
+		CommentHandler:         handler.NewCommentHandler(nil),
+		CommentAdminHandler:    handler.NewCommentAdminHandler(nil),
+		PostAdminHandler:       handler.NewPostAdminHandler(nil),
+	}
+}

@@ -5,6 +5,7 @@ package di
 
 import (
 	"easydrop/internal/config"
+	"easydrop/internal/handler"
 	"easydrop/internal/middleware"
 	"easydrop/internal/pkg/captcha"
 	"easydrop/internal/pkg/database"
@@ -34,6 +35,7 @@ func Initialize(configDir string, strict bool) (*App, error) {
 		repo.RepositorySet,
 		middleware.NewAuth,
 		service.ServiceSet,
+		handler.HandlerSet,
 		NewApp,
 	)
 	return &App{}, nil

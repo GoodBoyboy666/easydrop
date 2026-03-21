@@ -2,6 +2,7 @@ package main
 
 import (
 	"easydrop/internal/di"
+	"easydrop/internal/router"
 	"flag"
 	"log"
 )
@@ -22,7 +23,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("初始化应用失败: %v\n", err)
 	}
-	_ = app
+	_ = router.BuildEngine(app)
 
 	// TODO: 初始化并启动应用。
 }

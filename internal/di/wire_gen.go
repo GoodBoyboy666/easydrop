@@ -8,6 +8,7 @@ package di
 
 import (
 	"easydrop/internal/config"
+	"easydrop/internal/handler"
 	"easydrop/internal/middleware"
 	"easydrop/internal/pkg/captcha"
 	"easydrop/internal/pkg/database"
@@ -28,17 +29,42 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	jwtConfig := config.ProvideJWTConfig(staticConfig)
+	manager, err := jwt.NewManager(jwtConfig)
+	if err != nil {
+		return nil, err
+	}
 	databaseConfig := config.ProvideDBConfig(staticConfig)
 	db, err := database.NewDB(databaseConfig)
 	if err != nil {
 		return nil, err
 	}
+	userRepo := repo.NewUserRepo(db)
+	auth := middleware.NewAuth(manager, userRepo)
 	dbConfig, err := config.NewDBConfig(db)
 	if err != nil {
 		return nil, err
 	}
+	allCaptchaConfig := config.ProvideCaptchaConfig(staticConfig)
+	client := captcha.NewHttpClient()
+	verifier, err := captcha.NewVerifier(allCaptchaConfig, client)
+	if err != nil {
+		return nil, err
+	}
+	authService := service.NewAuthService(userRepo, dbConfig, manager, verifier)
+	authHandler := handler.NewAuthHandler(authService)
+	storageConfig := config.ProvideStorageConfig(staticConfig)
+	storageManager, err := storage.NewManager(storageConfig)
+	if err != nil {
+		return nil, err
+	}
+	tokenConfig := config.ProvideTokenConfig(staticConfig)
 	redisConfig := config.ProvideRedisConfig(staticConfig)
-	client, err := redis.NewOptionalClient(redisConfig)
+	redisClient, err := redis.NewOptionalClient(redisConfig)
+	if err != nil {
+		return nil, err
+	}
+	tokenManager, err := token.NewManager(tokenConfig, redisClient)
 	if err != nil {
 		return nil, err
 	}
@@ -47,40 +73,22 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	jwtConfig := config.ProvideJWTConfig(staticConfig)
-	manager, err := jwt.NewManager(jwtConfig)
-	if err != nil {
-		return nil, err
-	}
-	storageConfig := config.ProvideStorageConfig(staticConfig)
-	storageManager, err := storage.NewManager(storageConfig)
-	if err != nil {
-		return nil, err
-	}
-	tokenConfig := config.ProvideTokenConfig(staticConfig)
-	tokenManager, err := token.NewManager(tokenConfig, client)
-	if err != nil {
-		return nil, err
-	}
-	userRepo := repo.NewUserRepo(db)
-	auth := middleware.NewAuth(manager, userRepo)
-	allCaptchaConfig := config.ProvideCaptchaConfig(staticConfig)
-	httpClient := captcha.NewHttpClient()
-	verifier, err := captcha.NewVerifier(allCaptchaConfig, httpClient)
-	if err != nil {
-		return nil, err
-	}
-	authService := service.NewAuthService(userRepo, dbConfig, manager, verifier)
+	emailService := service.NewEmailService(emailClient, dbConfig)
+	userService := service.NewUserService(userRepo, storageManager, dbConfig, tokenManager, emailService)
+	userHandler := handler.NewUserHandler(userService)
+	userAdminHandler := handler.NewUserAdminHandler(userService)
 	attachmentRepo := repo.NewAttachmentRepo(db)
 	attachmentService := service.NewAttachmentService(attachmentRepo, userRepo, storageManager, dbConfig)
+	attachmentHandler := handler.NewAttachmentHandler(attachmentService)
+	attachmentAdminHandler := handler.NewAttachmentAdminHandler(attachmentService)
 	commentRepo := repo.NewCommentRepo(db)
 	postRepo := repo.NewPostRepo(db)
 	commentService := service.NewCommentService(commentRepo, postRepo, userRepo)
+	commentHandler := handler.NewCommentHandler(commentService)
+	commentAdminHandler := handler.NewCommentAdminHandler(commentService)
 	tagRepo := repo.NewTagRepo(db)
 	postService := service.NewPostService(postRepo, tagRepo)
-	tagService := service.NewTagService(tagRepo)
-	emailService := service.NewEmailService(emailClient, dbConfig)
-	userService := service.NewUserService(userRepo, storageManager, dbConfig, tokenManager, emailService)
-	app := NewApp(staticConfig, db, dbConfig, client, emailClient, manager, storageManager, tokenManager, auth, authService, attachmentService, commentService, postService, tagService, userService)
+	postAdminHandler := handler.NewPostAdminHandler(postService)
+	app := NewApp(staticConfig, auth, authHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, postAdminHandler)
 	return app, nil
 }

@@ -2,69 +2,48 @@ package di
 
 import (
 	"easydrop/internal/config"
+	"easydrop/internal/handler"
 	"easydrop/internal/middleware"
-	"easydrop/internal/pkg/email"
-	"easydrop/internal/pkg/jwt"
-	"easydrop/internal/pkg/storage"
-	"easydrop/internal/pkg/token"
-	"easydrop/internal/service"
-
-	red "github.com/redis/go-redis/v9"
-	"gorm.io/gorm"
 )
 
 // App 聚合应用运行所需的依赖。
 type App struct {
-	Config     *config.StaticConfig
-	DB         *gorm.DB
-	DBConfig   config.DBConfig
-	Redis      *red.Client
-	Email      email.Client
-	JWT        jwt.Manager
-	Storage    storage.Manager
-	Token      token.Manager
-	Middleware middleware.Auth
-	Attachment service.AttachmentService
-	Auth       service.AuthService
-	Comment    service.CommentService
-	Post       service.PostService
-	Tag        service.TagService
-	User       service.UserService
+	Config                 *config.StaticConfig
+	Middleware             middleware.Auth
+	AuthHandler            *handler.AuthHandler
+	UserHandler            *handler.UserHandler
+	UserAdminHandler       *handler.UserAdminHandler
+	AttachmentHandler      *handler.AttachmentHandler
+	AttachmentAdminHandler *handler.AttachmentAdminHandler
+	CommentHandler         *handler.CommentHandler
+	CommentAdminHandler    *handler.CommentAdminHandler
+	PostAdminHandler       *handler.PostAdminHandler
 }
 
 // NewApp 构造 App 聚合对象。
 func NewApp(
 	cfg *config.StaticConfig,
-	db *gorm.DB,
-	dbConfig config.DBConfig,
-	redisClient *red.Client,
-	emailClient email.Client,
-	jwtManager jwt.Manager,
-	storageManager storage.Manager,
-	tokenManager token.Manager,
 	middlewares middleware.Auth,
-	authService service.AuthService,
-	attachmentService service.AttachmentService,
-	commentService service.CommentService,
-	postService service.PostService,
-	tagService service.TagService,
-	userService service.UserService,
+	authHandler *handler.AuthHandler,
+	userHandler *handler.UserHandler,
+	userAdminHandler *handler.UserAdminHandler,
+	attachmentHandler *handler.AttachmentHandler,
+	attachmentAdminHandler *handler.AttachmentAdminHandler,
+	commentHandler *handler.CommentHandler,
+	commentAdminHandler *handler.CommentAdminHandler,
+	postAdminHandler *handler.PostAdminHandler,
+
 ) *App {
 	return &App{
-		Config:     cfg,
-		DB:         db,
-		DBConfig:   dbConfig,
-		Redis:      redisClient,
-		Email:      emailClient,
-		JWT:        jwtManager,
-		Storage:    storageManager,
-		Token:      tokenManager,
-		Middleware: middlewares,
-		Attachment: attachmentService,
-		Auth:       authService,
-		Comment:    commentService,
-		Post:       postService,
-		Tag:        tagService,
-		User:       userService,
+		Config:                 cfg,
+		Middleware:             middlewares,
+		AuthHandler:            authHandler,
+		UserHandler:            userHandler,
+		UserAdminHandler:       userAdminHandler,
+		AttachmentHandler:      attachmentHandler,
+		AttachmentAdminHandler: attachmentAdminHandler,
+		CommentHandler:         commentHandler,
+		CommentAdminHandler:    commentAdminHandler,
+		PostAdminHandler:       postAdminHandler,
 	}
 }
