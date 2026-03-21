@@ -21,8 +21,16 @@ import (
 // GlobalConfigDir 保存运行时生效的配置目录，供需要定位配置同级资源的模块复用。
 var GlobalConfigDir string
 
+const (
+	// ServerModeDevelopment 表示开发模式。
+	ServerModeDevelopment = "development"
+	// ServerModeProduction 表示生产模式。
+	ServerModeProduction = "production"
+)
+
 // ServerConfig 是 HTTP 服务监听配置。
 type ServerConfig struct {
+	Mode            string        `mapstructure:"mode" yaml:"mode"`
 	Addr            string        `mapstructure:"addr" yaml:"addr"`
 	ReadTimeout     time.Duration `mapstructure:"read_timeout" yaml:"read_timeout"`
 	WriteTimeout    time.Duration `mapstructure:"write_timeout" yaml:"write_timeout"`
@@ -65,12 +73,16 @@ func Load(configDir string, strict bool) (*StaticConfig, error) {
 	v.AutomaticEnv()
 
 	// 本地开发默认值。
+	v.SetDefault("server.mode", ServerModeDevelopment)
 	v.SetDefault("server.addr", ":8080")
 	v.SetDefault("server.read_timeout", 10*time.Second)
 	v.SetDefault("server.write_timeout", 15*time.Second)
 	v.SetDefault("server.shutdown_timeout", 5*time.Second)
 	v.SetDefault("db.driver", database.DriverSQLite)
 	v.SetDefault("db.sqlite_path", "data/easydrop.db")
+	v.SetDefault("jwt.private_key_path", "data/jwt/private.pem")
+	v.SetDefault("jwt.public_key_path", "data/jwt/public.pem")
+	v.SetDefault("jwt.issuer", "easydrop")
 	v.SetDefault("jwt.expire", time.Hour)
 	v.SetDefault("email.tls_mode", email.TLSModeStartTLS)
 	v.SetDefault("captcha.enabled", false)

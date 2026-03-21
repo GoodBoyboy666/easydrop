@@ -4,15 +4,24 @@ import (
 	"net/http"
 
 	_ "easydrop/docs"
+	"easydrop/internal/config"
 	"easydrop/internal/di"
 
-	swaggerFiles "github.com/swaggo/files"
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 // BuildEngine 构建并返回应用的 HTTP 路由引擎。
 func BuildEngine(app *di.App) *gin.Engine {
+	if app != nil && app.Config != nil {
+		if app.Config.Server.Mode == config.ServerModeProduction {
+			gin.SetMode(gin.ReleaseMode)
+		} else {
+			gin.SetMode(gin.DebugMode)
+		}
+	}
+
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.GET("/api/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

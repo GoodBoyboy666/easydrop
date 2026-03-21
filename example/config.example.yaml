@@ -2,6 +2,8 @@
 # Copy to data/config.yaml and edit for your environment.
 
 server:
+  # development: 本地开发（默认）；production: 生产环境
+  mode: "development"
   addr: ":8080"
   read_timeout: 10s
   write_timeout: 15s
@@ -38,14 +40,14 @@ redis:
   # max_retries: 3
 
 email:
-  host: "smtp.example.com"
-  port: 587
-  username: "user"
-  password: ""
-  from_email: "noreply@example.com"
-  tls_mode: "starttls"
-  connect_timeout: 10s
-  send_timeout: 10s
+  # host: "smtp.example.com"
+  # port: 587
+  # username: "user"
+  # password: ""
+  # from_email: "noreply@example.com"
+  # tls_mode: "starttls"
+  # connect_timeout: 10s
+  # send_timeout: 10s
 
 jwt:
   private_key_path: "data/jwt/private.pem"

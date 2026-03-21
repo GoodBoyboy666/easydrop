@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"easydrop/internal/config"
 	"easydrop/internal/di"
 	"easydrop/internal/handler"
 	"easydrop/internal/middleware"
@@ -136,10 +137,31 @@ func TestBuildEngineNilApp(t *testing.T) {
 	}
 }
 
+func TestBuildEngineAppliesGinModeFromConfig(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	_ = BuildEngine(newTestAppWithMode(fakeAuthMiddleware{}, config.ServerModeProduction))
+	if got := gin.Mode(); got != gin.ReleaseMode {
+		t.Fatalf("expected gin mode %s, got %s", gin.ReleaseMode, got)
+	}
+
+	_ = BuildEngine(newTestAppWithMode(fakeAuthMiddleware{}, config.ServerModeDevelopment))
+	if got := gin.Mode(); got != gin.DebugMode {
+		t.Fatalf("expected gin mode %s, got %s", gin.DebugMode, got)
+	}
+}
+
 var _ middleware.Auth = (*fakeAuthMiddleware)(nil)
 
 func newTestApp(auth middleware.Auth) *di.App {
+	return newTestAppWithMode(auth, config.ServerModeDevelopment)
+}
+
+func newTestAppWithMode(auth middleware.Auth, mode string) *di.App {
 	return &di.App{
+		Config: &config.StaticConfig{
+			Server: config.ServerConfig{Mode: mode},
+		},
 		Middleware:             auth,
 		AuthHandler:            handler.NewAuthHandler(nil),
 		UserHandler:            handler.NewUserHandler(nil),

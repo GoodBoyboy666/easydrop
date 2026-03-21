@@ -18,7 +18,6 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
-	"time"
 )
 
 // @title           EasyDrop API
@@ -63,22 +62,10 @@ func main() {
 	engine := router.BuildEngine(app)
 
 	serverCfg := app.Config.Server
-	addr := strings.TrimSpace(serverCfg.Addr)
-	if addr == "" {
-		addr = ":8080"
-	}
+	addr := serverCfg.Addr
 	readTimeout := serverCfg.ReadTimeout
-	if readTimeout <= 0 {
-		readTimeout = 10 * time.Second
-	}
 	writeTimeout := serverCfg.WriteTimeout
-	if writeTimeout <= 0 {
-		writeTimeout = 15 * time.Second
-	}
 	shutdownTimeout := serverCfg.ShutdownTimeout
-	if shutdownTimeout <= 0 {
-		shutdownTimeout = 5 * time.Second
-	}
 
 	srv := &http.Server{
 		Addr:         addr,
