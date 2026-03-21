@@ -10,7 +10,7 @@ import (
 
 const defaultStorageQuotaBytes int64 = 10 * 1024 * 1024 * 1024
 
-func getDefaultStorageQuota(ctx context.Context, dbConfig *config.DBConfig) (int64, error) {
+func getDefaultStorageQuota(ctx context.Context, dbConfig config.DBConfig) (int64, error) {
 	if dbConfig == nil {
 		return defaultStorageQuotaBytes, nil
 	}

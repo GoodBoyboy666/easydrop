@@ -10,6 +10,22 @@ import (
 	red "github.com/redis/go-redis/v9"
 )
 
+func mustNewConcreteManager(t *testing.T, cfg *Config, redisClient *red.Client) *manager {
+	t.Helper()
+
+	tokenManager, err := NewManager(cfg, redisClient)
+	if err != nil {
+		t.Fatalf("创建 token manager 失败: %v", err)
+	}
+
+	concrete, ok := tokenManager.(*manager)
+	if !ok {
+		t.Fatal("unexpected token manager implementation")
+	}
+
+	return concrete
+}
+
 func TestNewManager_BackendSelection(t *testing.T) {
 	t.Parallel()
 
@@ -36,10 +52,7 @@ func TestNewManager_BackendSelection(t *testing.T) {
 func TestManagerIssueAndConsume_Memory(t *testing.T) {
 	t.Parallel()
 
-	manager, err := NewManager(nil, nil)
-	if err != nil {
-		t.Fatalf("创建 token manager 失败: %v", err)
-	}
+	manager := mustNewConcreteManager(t, nil, nil)
 
 	recordedNow := time.Date(2026, 3, 20, 10, 0, 0, 0, time.UTC)
 	manager.now = func() time.Time { return recordedNow }
@@ -87,10 +100,7 @@ func TestManagerIssueAndConsume_Memory(t *testing.T) {
 func TestManagerIssue_ReplacesExistingTokenOfSameKind(t *testing.T) {
 	t.Parallel()
 
-	manager, err := NewManager(nil, nil)
-	if err != nil {
-		t.Fatalf("创建 token manager 失败: %v", err)
-	}
+	manager := mustNewConcreteManager(t, nil, nil)
 
 	firstToken, err := manager.Issue(context.Background(), 7, KindResetPassword, time.Minute, "{\"step\":1}")
 	if err != nil {
@@ -157,10 +167,7 @@ func TestManagerIssue_AllowsDifferentKinds(t *testing.T) {
 func TestManagerConsume_ExpiredToken(t *testing.T) {
 	t.Parallel()
 
-	manager, err := NewManager(nil, nil)
-	if err != nil {
-		t.Fatalf("创建 token manager 失败: %v", err)
-	}
+	manager := mustNewConcreteManager(t, nil, nil)
 
 	now := time.Date(2026, 3, 20, 10, 0, 0, 0, time.UTC)
 	manager.now = func() time.Time { return now }
@@ -181,10 +188,7 @@ func TestManagerConsume_ExpiredToken(t *testing.T) {
 func TestManagerIssueAndConsume_EmptyPayload(t *testing.T) {
 	t.Parallel()
 
-	manager, err := NewManager(nil, nil)
-	if err != nil {
-		t.Fatalf("创建 token manager 失败: %v", err)
-	}
+	manager := mustNewConcreteManager(t, nil, nil)
 
 	tokenValue, err := manager.Issue(context.Background(), 13, KindChangeEmail, time.Minute, "")
 	if err != nil {

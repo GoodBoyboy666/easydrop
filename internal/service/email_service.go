@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"easydrop/internal/config"
+	"easydrop/internal/pkg/email"
 )
 
 const (
@@ -107,13 +108,9 @@ type EmailService interface {
 	SendChangeEmailEmail(ctx context.Context, to, newEmail, tokenValue string, ttl time.Duration) error
 }
 
-type emailSender interface {
-	SendHTML(ctx context.Context, to []string, subject, htmlBody string) error
-}
-
 type emailService struct {
-	sender   emailSender
-	dbConfig *config.DBConfig
+	sender   email.Client
+	dbConfig config.DBConfig
 }
 
 type emailTemplateData struct {
@@ -124,7 +121,7 @@ type emailTemplateData struct {
 }
 
 // NewEmailService 创建邮件服务。
-func NewEmailService(sender emailSender, dbConfig *config.DBConfig) EmailService {
+func NewEmailService(sender email.Client, dbConfig config.DBConfig) EmailService {
 	return &emailService{sender: sender, dbConfig: dbConfig}
 }
 

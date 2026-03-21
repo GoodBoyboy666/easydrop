@@ -42,13 +42,13 @@ type AuthService interface {
 
 type authService struct {
 	userRepo repo.UserRepo
-	dbConfig *config.DBConfig
-	jwt      *jwt.Manager
+	dbConfig config.DBConfig
+	jwt      jwt.Manager
 	captcha  captcha.Verifier
 }
 
 // NewAuthService 创建认证服务实例。
-func NewAuthService(userRepo repo.UserRepo, dbConfig *config.DBConfig, jwtManager *jwt.Manager, captchaVerifier captcha.Verifier) AuthService {
+func NewAuthService(userRepo repo.UserRepo, dbConfig config.DBConfig, jwtManager jwt.Manager, captchaVerifier captcha.Verifier) AuthService {
 	return &authService{
 		userRepo: userRepo,
 		dbConfig: dbConfig,

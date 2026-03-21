@@ -30,6 +30,10 @@ type mockTokenManager struct {
 	consumeErr    error
 }
 
+func (m *mockTokenManager) Backend() string {
+	return token.BackendMemory
+}
+
 func (m *mockTokenManager) Issue(_ context.Context, userID uint, kind string, ttl time.Duration, payload string) (string, error) {
 	if m.issueErr != nil {
 		return "", m.issueErr
@@ -372,7 +376,7 @@ func TestUserServiceDeleteAvatarWithExternalURL(t *testing.T) {
 	}
 }
 
-func newTestStorageManager(t *testing.T) (*storage.Manager, string) {
+func newTestStorageManager(t *testing.T) (storage.Manager, string) {
 	t.Helper()
 
 	basePath := filepath.Join(t.TempDir(), "uploads")

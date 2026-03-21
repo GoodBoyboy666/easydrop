@@ -10,6 +10,22 @@ import (
 	mail "github.com/xhit/go-simple-mail/v2"
 )
 
+func mustNewConcreteClient(t *testing.T, cfg *Config) *client {
+	t.Helper()
+
+	sender, err := NewClient(cfg)
+	if err != nil {
+		t.Fatalf("创建客户端失败: %v", err)
+	}
+
+	concrete, ok := sender.(*client)
+	if !ok {
+		t.Fatal("unexpected client implementation")
+	}
+
+	return concrete
+}
+
 func TestNewClient_ConfigValidation(t *testing.T) {
 	t.Parallel()
 
@@ -61,16 +77,13 @@ func TestNewClient_TLSModeMapping(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			client, err := NewClient(&Config{
+			client := mustNewConcreteClient(t, &Config{
 				Host:      "smtp.example.com",
 				Port:      25,
 				Username:  "user",
 				FromEmail: "noreply@example.com",
 				TLSMode:   tc.mode,
 			})
-			if err != nil {
-				t.Fatalf("创建客户端失败: %v", err)
-			}
 			if client.encryption != tc.wantEnc {
 				t.Fatalf("TLS 模式映射不正确，want=%v，got=%v", tc.wantEnc, client.encryption)
 			}
@@ -81,16 +94,13 @@ func TestNewClient_TLSModeMapping(t *testing.T) {
 func TestSendHTML_ValidateInput(t *testing.T) {
 	t.Parallel()
 
-	client, err := NewClient(&Config{
+	client := mustNewConcreteClient(t, &Config{
 		Host:      "smtp.example.com",
 		Port:      25,
 		Username:  "user",
 		FromEmail: "noreply@example.com",
 		TLSMode:   TLSModeNoTLS,
 	})
-	if err != nil {
-		t.Fatalf("创建客户端失败: %v", err)
-	}
 
 	client.connectFn = func(*mail.SMTPServer) (*mail.SMTPClient, error) {
 		return &mail.SMTPClient{}, nil
@@ -120,7 +130,7 @@ func TestSendHTML_ValidateInput(t *testing.T) {
 func TestSendHTML_Success(t *testing.T) {
 	t.Parallel()
 
-	client, err := NewClient(&Config{
+	client := mustNewConcreteClient(t, &Config{
 		Host:           "smtp.example.com",
 		Port:           465,
 		Username:       "user",
@@ -130,9 +140,6 @@ func TestSendHTML_Success(t *testing.T) {
 		ConnectTimeout: 3 * time.Second,
 		SendTimeout:    4 * time.Second,
 	})
-	if err != nil {
-		t.Fatalf("创建客户端失败: %v", err)
-	}
 
 	calledConnect := false
 	calledSend := false
@@ -160,7 +167,7 @@ func TestSendHTML_Success(t *testing.T) {
 		return nil
 	}
 
-	err = client.SendHTML(context.Background(), []string{"a@example.com", "", "a@example.com", "b@example.com"}, "主题", "<p>正文</p>")
+	err := client.SendHTML(context.Background(), []string{"a@example.com", "", "a@example.com", "b@example.com"}, "主题", "<p>正文</p>")
 	if err != nil {
 		t.Fatalf("发送 HTML 邮件失败: %v", err)
 	}
@@ -172,16 +179,13 @@ func TestSendHTML_Success(t *testing.T) {
 func TestSendHTML_SendFail(t *testing.T) {
 	t.Parallel()
 
-	client, err := NewClient(&Config{
+	client := mustNewConcreteClient(t, &Config{
 		Host:      "smtp.example.com",
 		Port:      25,
 		Username:  "user",
 		FromEmail: "noreply@example.com",
 		TLSMode:   TLSModeNoTLS,
 	})
-	if err != nil {
-		t.Fatalf("创建客户端失败: %v", err)
-	}
 
 	client.connectFn = func(*mail.SMTPServer) (*mail.SMTPClient, error) {
 		return &mail.SMTPClient{}, nil
@@ -191,9 +195,8 @@ func TestSendHTML_SendFail(t *testing.T) {
 	}
 	client.closeFn = func(*mail.SMTPClient) error { return nil }
 
-	err = client.SendHTML(context.Background(), []string{"a@example.com"}, "主题", "<p>正文</p>")
+	err := client.SendHTML(context.Background(), []string{"a@example.com"}, "主题", "<p>正文</p>")
 	if err == nil || !strings.Contains(err.Error(), "发送邮件失败") {
 		t.Fatalf("期望发送失败包装错误，实际为: %v", err)
 	}
 }
-

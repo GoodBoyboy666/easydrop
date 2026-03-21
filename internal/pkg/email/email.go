@@ -42,7 +42,11 @@ type Config struct {
 	SendTimeout    time.Duration `mapstructure:"send_timeout" yaml:"send_timeout"`
 }
 
-type Client struct {
+type Client interface {
+	SendHTML(ctx context.Context, to []string, subject, htmlBody string) error
+}
+
+type client struct {
 	host           string
 	port           int
 	username       string
@@ -57,7 +61,7 @@ type Client struct {
 	closeFn   func(*mail.SMTPClient) error
 }
 
-func NewClient(cfg *Config) (*Client, error) {
+func NewClient(cfg *Config) (Client, error) {
 	if cfg == nil {
 		return nil, ErrNilConfig
 	}
@@ -83,7 +87,7 @@ func NewClient(cfg *Config) (*Client, error) {
 		return nil, err
 	}
 
-	client := &Client{
+	client := &client{
 		host:           host,
 		port:           cfg.Port,
 		username:       username,
@@ -110,7 +114,7 @@ func NewClient(cfg *Config) (*Client, error) {
 	return client, nil
 }
 
-func (c *Client) SendHTML(ctx context.Context, to []string, subject, htmlBody string) error {
+func (c *client) SendHTML(ctx context.Context, to []string, subject, htmlBody string) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -164,6 +168,8 @@ func (c *Client) SendHTML(ctx context.Context, to []string, subject, htmlBody st
 
 	return nil
 }
+
+var _ Client = (*client)(nil)
 
 func parseTLSMode(mode string) (mail.Encryption, error) {
 	switch strings.ToLower(strings.TrimSpace(mode)) {

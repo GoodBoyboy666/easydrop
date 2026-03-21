@@ -17,13 +17,13 @@ import (
 type App struct {
 	Config     *config.StaticConfig
 	DB         *gorm.DB
-	DBConfig   *config.DBConfig
+	DBConfig   config.DBConfig
 	Redis      *red.Client
-	Email      *email.Client
-	JWT        *jwt.Manager
-	Storage    *storage.Manager
-	Token      *token.Manager
-	Middleware *middleware.Auth
+	Email      email.Client
+	JWT        jwt.Manager
+	Storage    storage.Manager
+	Token      token.Manager
+	Middleware middleware.Auth
 	Attachment service.AttachmentService
 	Auth       service.AuthService
 	Comment    service.CommentService
@@ -36,13 +36,13 @@ type App struct {
 func NewApp(
 	cfg *config.StaticConfig,
 	db *gorm.DB,
-	dbConfig *config.DBConfig,
+	dbConfig config.DBConfig,
 	redisClient *red.Client,
-	emailClient *email.Client,
-	jwtManager *jwt.Manager,
-	storageManager *storage.Manager,
-	tokenManager *token.Manager,
-	middlewares *middleware.Auth,
+	emailClient email.Client,
+	jwtManager jwt.Manager,
+	storageManager storage.Manager,
+	tokenManager token.Manager,
+	middlewares middleware.Auth,
 	authService service.AuthService,
 	attachmentService service.AttachmentService,
 	commentService service.CommentService,

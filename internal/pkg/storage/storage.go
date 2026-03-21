@@ -31,14 +31,24 @@ type Backend interface {
 }
 
 // Manager 是上层统一入口，负责路由到 local/s3 并生成 object key。
-type Manager struct {
+type Manager interface {
+	BackendType() string
+	NewObjectKey(category string, userID uint, originalFilename string) (string, error)
+	Upload(ctx context.Context, objectKey string, data []byte, contentType string) error
+	Download(ctx context.Context, objectKey string) ([]byte, error)
+	GetSize(ctx context.Context, objectKey string) (int64, error)
+	Delete(ctx context.Context, objectKey string) error
+	URL(ctx context.Context, objectKey string) (string, error)
+}
+
+type manager struct {
 	backend string
 	svc     Backend
 	now     func() time.Time
 }
 
 // NewManager 根据配置创建 storage manager。
-func NewManager(cfg *Config) (*Manager, error) {
+func NewManager(cfg *Config) (Manager, error) {
 	if cfg == nil {
 		return nil, ErrNilConfig
 	}
@@ -63,7 +73,7 @@ func NewManager(cfg *Config) (*Manager, error) {
 		return nil, err
 	}
 
-	return &Manager{
+	return &manager{
 		backend: backend,
 		svc:     svc,
 		now:     time.Now,
@@ -71,17 +81,17 @@ func NewManager(cfg *Config) (*Manager, error) {
 }
 
 // BackendType 返回当前使用的存储后端类型。
-func (m *Manager) BackendType() string {
+func (m *manager) BackendType() string {
 	return m.backend
 }
 
 // NewObjectKey 按分类规则生成对象 key，文件名为随机 UUID，并保留原始文件名扩展名。
-func (m *Manager) NewObjectKey(category string, userID uint, originalFilename string) (string, error) {
+func (m *manager) NewObjectKey(category string, userID uint, originalFilename string) (string, error) {
 	return buildObjectKey(category, userID, originalFilename, m.now())
 }
 
 // Upload 上传对象内容。
-func (m *Manager) Upload(ctx context.Context, objectKey string, data []byte, contentType string) error {
+func (m *manager) Upload(ctx context.Context, objectKey string, data []byte, contentType string) error {
 	if strings.TrimSpace(objectKey) == "" {
 		return ErrEmptyObjectKey
 	}
@@ -92,7 +102,7 @@ func (m *Manager) Upload(ctx context.Context, objectKey string, data []byte, con
 }
 
 // Download 下载对象内容。
-func (m *Manager) Download(ctx context.Context, objectKey string) ([]byte, error) {
+func (m *manager) Download(ctx context.Context, objectKey string) ([]byte, error) {
 	if strings.TrimSpace(objectKey) == "" {
 		return nil, ErrEmptyObjectKey
 	}
@@ -100,7 +110,7 @@ func (m *Manager) Download(ctx context.Context, objectKey string) ([]byte, error
 }
 
 // GetSize 返回对象大小（字节）。
-func (m *Manager) GetSize(ctx context.Context, objectKey string) (int64, error) {
+func (m *manager) GetSize(ctx context.Context, objectKey string) (int64, error) {
 	if strings.TrimSpace(objectKey) == "" {
 		return 0, ErrEmptyObjectKey
 	}
@@ -108,7 +118,7 @@ func (m *Manager) GetSize(ctx context.Context, objectKey string) (int64, error) 
 }
 
 // Delete 删除对象。
-func (m *Manager) Delete(ctx context.Context, objectKey string) error {
+func (m *manager) Delete(ctx context.Context, objectKey string) error {
 	if strings.TrimSpace(objectKey) == "" {
 		return ErrEmptyObjectKey
 	}
@@ -116,9 +126,11 @@ func (m *Manager) Delete(ctx context.Context, objectKey string) error {
 }
 
 // URL 返回对象访问地址。
-func (m *Manager) URL(ctx context.Context, objectKey string) (string, error) {
+func (m *manager) URL(ctx context.Context, objectKey string) (string, error) {
 	if strings.TrimSpace(objectKey) == "" {
 		return "", ErrEmptyObjectKey
 	}
 	return m.svc.URL(ctx, objectKey)
 }
+
+var _ Manager = (*manager)(nil)

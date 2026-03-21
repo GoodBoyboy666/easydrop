@@ -12,7 +12,14 @@ import (
 )
 
 // DBConfig 管理存储在数据库中的配置。
-type DBConfig struct {
+type DBConfig interface {
+	Get(ctx context.Context, key string) (model.Setting, error)
+	GetValue(ctx context.Context, key string) (string, bool, error)
+	Set(ctx context.Context, key, value string) error
+	All(ctx context.Context) ([]model.Setting, error)
+}
+
+type dbConfig struct {
 	db *gorm.DB
 }
 
@@ -20,7 +27,7 @@ type DBConfig struct {
 var DBProviderSet = wire.NewSet(NewDBConfig)
 
 // NewDBConfig 创建 DBConfig，并负责迁移与初始化默认配置。
-func NewDBConfig(db *gorm.DB) (*DBConfig, error) {
+func NewDBConfig(db *gorm.DB) (DBConfig, error) {
 	if db == nil {
 		return nil, errors.New("db is required")
 	}
@@ -33,16 +40,16 @@ func NewDBConfig(db *gorm.DB) (*DBConfig, error) {
 		return nil, err
 	}
 
-	return &DBConfig{db: db}, nil
+	return &dbConfig{db: db}, nil
 }
 
-func (c *DBConfig) Get(ctx context.Context, key string) (model.Setting, error) {
+func (c *dbConfig) Get(ctx context.Context, key string) (model.Setting, error) {
 	var setting model.Setting
 	err := c.db.WithContext(ctx).Where("key = ?", key).First(&setting).Error
 	return setting, err
 }
 
-func (c *DBConfig) GetValue(ctx context.Context, key string) (string, bool, error) {
+func (c *dbConfig) GetValue(ctx context.Context, key string) (string, bool, error) {
 	setting, err := c.Get(ctx, key)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -53,7 +60,7 @@ func (c *DBConfig) GetValue(ctx context.Context, key string) (string, bool, erro
 	return setting.Value, true, nil
 }
 
-func (c *DBConfig) Set(ctx context.Context, key, value string) error {
+func (c *dbConfig) Set(ctx context.Context, key, value string) error {
 	return c.db.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "key"}},
 		DoUpdates: clause.AssignmentColumns([]string{"value"}),
@@ -63,13 +70,15 @@ func (c *DBConfig) Set(ctx context.Context, key, value string) error {
 	}).Error
 }
 
-func (c *DBConfig) All(ctx context.Context) ([]model.Setting, error) {
+func (c *dbConfig) All(ctx context.Context) ([]model.Setting, error) {
 	var settings []model.Setting
 	if err := c.db.WithContext(ctx).Order("key asc").Find(&settings).Error; err != nil {
 		return nil, err
 	}
 	return settings, nil
 }
+
+var _ DBConfig = (*dbConfig)(nil)
 
 func initDefaultSettings(db *gorm.DB) error {
 	defaults := []model.Setting{

@@ -39,7 +39,12 @@ type Config struct {
 	Expire         time.Duration `mapstructure:"expire" yaml:"expire"`
 }
 
-type Manager struct {
+type Manager interface {
+	IssueAccessToken(userID uint, username string, admin bool) (string, error)
+	ParseToken(tokenString string) (*Claims, error)
+}
+
+type manager struct {
 	privateKey *rsa.PrivateKey
 	publicKey  *rsa.PublicKey
 	issuer     string
@@ -47,7 +52,7 @@ type Manager struct {
 	now        func() time.Time
 }
 
-func NewManager(cfg *Config) (*Manager, error) {
+func NewManager(cfg *Config) (Manager, error) {
 	if cfg == nil {
 		return nil, ErrNilConfig
 	}
@@ -82,7 +87,7 @@ func NewManager(cfg *Config) (*Manager, error) {
 		return nil, err
 	}
 
-	return &Manager{
+	return &manager{
 		privateKey: privateKey,
 		publicKey:  publicKey,
 		issuer:     cfg.Issuer,
@@ -91,7 +96,7 @@ func NewManager(cfg *Config) (*Manager, error) {
 	}, nil
 }
 
-func (m *Manager) IssueAccessToken(userID uint, username string, admin bool) (string, error) {
+func (m *manager) IssueAccessToken(userID uint, username string, admin bool) (string, error) {
 	now := m.now()
 	claims := Claims{
 		UserID:   userID,
@@ -115,7 +120,7 @@ func (m *Manager) IssueAccessToken(userID uint, username string, admin bool) (st
 	return signed, nil
 }
 
-func (m *Manager) ParseToken(tokenString string) (*Claims, error) {
+func (m *manager) ParseToken(tokenString string) (*Claims, error) {
 	claims := &Claims{}
 	options := []jwtv5.ParserOption{jwtv5.WithTimeFunc(m.now)}
 	if m.issuer != "" {
@@ -151,6 +156,8 @@ func (m *Manager) ParseToken(tokenString string) (*Claims, error) {
 
 	return claims, nil
 }
+
+var _ Manager = (*manager)(nil)
 
 func parseRSAPrivateKey(privateKeyPEM []byte) (*rsa.PrivateKey, error) {
 	block, _ := pem.Decode(privateKeyPEM)

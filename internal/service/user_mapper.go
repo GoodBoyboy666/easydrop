@@ -10,7 +10,7 @@ import (
 )
 
 // toUserDTO 将用户模型转换为对外返回的 DTO。
-func toUserDTO(ctx context.Context, user *model.User, storageManager *storage.Manager) (dto.UserDTO, error) {
+func toUserDTO(ctx context.Context, user *model.User, storageManager storage.Manager) (dto.UserDTO, error) {
 	avatar, err := resolveUserAvatar(ctx, user.Avatar, storageManager)
 	if err != nil {
 		return dto.UserDTO{}, err
@@ -33,7 +33,7 @@ func toUserDTO(ctx context.Context, user *model.User, storageManager *storage.Ma
 }
 
 // toUserDTOs 将用户模型切片转换为 DTO 列表。
-func toUserDTOs(ctx context.Context, users []model.User, storageManager *storage.Manager) ([]dto.UserDTO, error) {
+func toUserDTOs(ctx context.Context, users []model.User, storageManager storage.Manager) ([]dto.UserDTO, error) {
 	if len(users) == 0 {
 		return nil, nil
 	}
@@ -49,7 +49,7 @@ func toUserDTOs(ctx context.Context, users []model.User, storageManager *storage
 	return items, nil
 }
 
-func resolveUserAvatar(ctx context.Context, avatar *string, storageManager *storage.Manager) (*string, error) {
+func resolveUserAvatar(ctx context.Context, avatar *string, storageManager storage.Manager) (*string, error) {
 	if avatar == nil {
 		return nil, nil
 	}

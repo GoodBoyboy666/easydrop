@@ -16,14 +16,19 @@ import (
 const ContextUserIDKey = "userID"
 
 // Auth 持有认证中间件所需依赖。
-type Auth struct {
-	jwtManager *jwt.Manager
+type Auth interface {
+	RequireLogin(c *gin.Context)
+	RequireAdmin(c *gin.Context)
+}
+
+type auth struct {
+	jwtManager jwt.Manager
 	userRepo   repo.UserRepo
 }
 
 // NewAuth 构造认证中间件对象。
-func NewAuth(jwtManager *jwt.Manager, userRepo repo.UserRepo) *Auth {
-	return &Auth{
+func NewAuth(jwtManager jwt.Manager, userRepo repo.UserRepo) Auth {
+	return &auth{
 		jwtManager: jwtManager,
 		userRepo:   userRepo,
 	}
@@ -40,7 +45,7 @@ func GetUserID(c *gin.Context) (uint, bool) {
 }
 
 // RequireLogin 校验登录态、JWT、有无用户及用户状态，并将用户 ID 注入 gin context。
-func (a *Auth) RequireLogin(c *gin.Context) {
+func (a *auth) RequireLogin(c *gin.Context) {
 	user, ok := a.authenticateUser(c)
 	if !ok {
 		return
@@ -52,7 +57,7 @@ func (a *Auth) RequireLogin(c *gin.Context) {
 }
 
 // RequireAdmin 校验管理员身份，并将用户 ID 注入 gin context。
-func (a *Auth) RequireAdmin(c *gin.Context) {
+func (a *auth) RequireAdmin(c *gin.Context) {
 	user, ok := a.authenticateUser(c)
 	if !ok {
 		return
@@ -68,7 +73,7 @@ func (a *Auth) RequireAdmin(c *gin.Context) {
 	c.Next()
 }
 
-func (a *Auth) authenticateUser(c *gin.Context) (*model.User, bool) {
+func (a *auth) authenticateUser(c *gin.Context) (*model.User, bool) {
 	if a == nil || a.jwtManager == nil || a.userRepo == nil {
 		abortWithMessage(c, http.StatusInternalServerError, "认证服务未正确初始化")
 		return nil, false
@@ -131,3 +136,5 @@ func extractBearerToken(header string) (string, bool) {
 func abortWithMessage(c *gin.Context, status int, message string) {
 	c.AbortWithStatusJSON(status, gin.H{"message": message})
 }
+
+var _ Auth = (*auth)(nil)

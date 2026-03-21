@@ -53,14 +53,20 @@ type store interface {
 	Consume(ctx context.Context, userID uint, kind, token string, now time.Time) (*Record, error)
 }
 
-type Manager struct {
+type Manager interface {
+	Backend() string
+	Issue(ctx context.Context, userID uint, kind string, ttl time.Duration, payload string) (string, error)
+	Consume(ctx context.Context, userID uint, kind, tokenValue string) (*Record, error)
+}
+
+type manager struct {
 	store   store
 	now     func() time.Time
 	random  io.Reader
 	backend string
 }
 
-func NewManager(cfg *Config, redisClient *red.Client) (*Manager, error) {
+func NewManager(cfg *Config, redisClient *red.Client) (Manager, error) {
 	if cfg == nil {
 		cfg = &Config{}
 	}
@@ -74,7 +80,7 @@ func NewManager(cfg *Config, redisClient *red.Client) (*Manager, error) {
 		backend = newMemoryStore()
 	}
 
-	return &Manager{
+	return &manager{
 		store:   backend,
 		now:     time.Now,
 		random:  cryptorand.Reader,
@@ -82,11 +88,11 @@ func NewManager(cfg *Config, redisClient *red.Client) (*Manager, error) {
 	}, nil
 }
 
-func (m *Manager) Backend() string {
+func (m *manager) Backend() string {
 	return m.backend
 }
 
-func (m *Manager) Issue(ctx context.Context, userID uint, kind string, ttl time.Duration, payload string) (string, error) {
+func (m *manager) Issue(ctx context.Context, userID uint, kind string, ttl time.Duration, payload string) (string, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -118,7 +124,7 @@ func (m *Manager) Issue(ctx context.Context, userID uint, kind string, ttl time.
 	return tokenValue, nil
 }
 
-func (m *Manager) Consume(ctx context.Context, userID uint, kind, tokenValue string) (*Record, error) {
+func (m *manager) Consume(ctx context.Context, userID uint, kind, tokenValue string) (*Record, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -136,7 +142,7 @@ func (m *Manager) Consume(ctx context.Context, userID uint, kind, tokenValue str
 	return record, nil
 }
 
-func (m *Manager) generateToken() (string, error) {
+func (m *manager) generateToken() (string, error) {
 	reader := m.random
 	if reader == nil {
 		reader = cryptorand.Reader
@@ -149,6 +155,8 @@ func (m *Manager) generateToken() (string, error) {
 
 	return base64.RawURLEncoding.EncodeToString(buf), nil
 }
+
+var _ Manager = (*manager)(nil)
 
 func validateIssueInput(userID uint, kind string, ttl time.Duration) (string, error) {
 	if userID == 0 {

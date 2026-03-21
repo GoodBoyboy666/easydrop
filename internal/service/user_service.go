@@ -57,11 +57,6 @@ type UserService interface {
 	List(ctx context.Context, input dto.UserListInput) (*dto.UserListResult, error)
 }
 
-type userTokenManager interface {
-	Issue(ctx context.Context, userID uint, kind string, ttl time.Duration, payload string) (string, error)
-	Consume(ctx context.Context, userID uint, kind, tokenValue string) (*token.Record, error)
-}
-
 type emailChangeTokenPayload struct {
 	OldEmail string `json:"old_email"`
 	NewEmail string `json:"new_email"`
@@ -69,14 +64,14 @@ type emailChangeTokenPayload struct {
 
 type userService struct {
 	userRepo       repo.UserRepo
-	storageManager *storage.Manager
-	dbConfig       *config.DBConfig
-	tokenManager   userTokenManager
+	storageManager storage.Manager
+	dbConfig       config.DBConfig
+	tokenManager   token.Manager
 	emailService   EmailService
 }
 
 // NewUserService 创建用户服务实例。
-func NewUserService(userRepo repo.UserRepo, storageManager *storage.Manager, dbConfig *config.DBConfig, tokenManager *token.Manager, emailService EmailService) UserService {
+func NewUserService(userRepo repo.UserRepo, storageManager storage.Manager, dbConfig config.DBConfig, tokenManager token.Manager, emailService EmailService) UserService {
 	return &userService{
 		userRepo:       userRepo,
 		storageManager: storageManager,

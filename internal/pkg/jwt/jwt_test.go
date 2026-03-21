@@ -70,6 +70,22 @@ func testKeyPairPaths(t *testing.T) (string, string) {
 	return privatePath, publicPath
 }
 
+func mustNewConcreteManager(t *testing.T, cfg *Config) *manager {
+	t.Helper()
+
+	mgr, err := NewManager(cfg)
+	if err != nil {
+		t.Fatalf("创建管理器失败: %v", err)
+	}
+
+	concrete, ok := mgr.(*manager)
+	if !ok {
+		t.Fatal("unexpected jwt manager implementation")
+	}
+
+	return concrete
+}
+
 func TestNewManager(t *testing.T) {
 	t.Parallel()
 	privatePath, publicPath := testKeyPairPaths(t)
@@ -112,10 +128,7 @@ func TestIssueAndParseToken(t *testing.T) {
 	t.Parallel()
 	privatePath, publicPath := testKeyPairPaths(t)
 
-	manager, err := NewManager(&Config{PrivateKeyPath: privatePath, PublicKeyPath: publicPath, Issuer: "easydrop", Expire: time.Hour})
-	if err != nil {
-		t.Fatalf("创建管理器失败: %v", err)
-	}
+	manager := mustNewConcreteManager(t, &Config{PrivateKeyPath: privatePath, PublicKeyPath: publicPath, Issuer: "easydrop", Expire: time.Hour})
 
 	fixedNow := time.Date(2026, 3, 14, 10, 0, 0, 0, time.UTC)
 	manager.now = func() time.Time { return fixedNow }
@@ -142,10 +155,7 @@ func TestParseExpiredToken(t *testing.T) {
 	t.Parallel()
 	privatePath, publicPath := testKeyPairPaths(t)
 
-	manager, err := NewManager(&Config{PrivateKeyPath: privatePath, PublicKeyPath: publicPath, Issuer: "easydrop", Expire: time.Minute})
-	if err != nil {
-		t.Fatalf("创建管理器失败: %v", err)
-	}
+	manager := mustNewConcreteManager(t, &Config{PrivateKeyPath: privatePath, PublicKeyPath: publicPath, Issuer: "easydrop", Expire: time.Minute})
 
 	issuedAt := time.Date(2026, 3, 14, 10, 0, 0, 0, time.UTC)
 	manager.now = func() time.Time { return issuedAt }
@@ -169,14 +179,8 @@ func TestParseTokenWithWrongPublicKey(t *testing.T) {
 	_, otherPublicPEM := testNewRSAKeyPair(t)
 	otherPublicPath := writeKeyFile(t, t.TempDir(), "other-public.pem", otherPublicPEM)
 
-	issuer, err := NewManager(&Config{PrivateKeyPath: privatePath, PublicKeyPath: publicPath, Issuer: "easydrop", Expire: time.Hour})
-	if err != nil {
-		t.Fatalf("创建签发方管理器失败: %v", err)
-	}
-	verifier, err := NewManager(&Config{PrivateKeyPath: privatePath, PublicKeyPath: otherPublicPath, Issuer: "easydrop", Expire: time.Hour})
-	if err != nil {
-		t.Fatalf("创建校验方管理器失败: %v", err)
-	}
+	issuer := mustNewConcreteManager(t, &Config{PrivateKeyPath: privatePath, PublicKeyPath: publicPath, Issuer: "easydrop", Expire: time.Hour})
+	verifier := mustNewConcreteManager(t, &Config{PrivateKeyPath: privatePath, PublicKeyPath: otherPublicPath, Issuer: "easydrop", Expire: time.Hour})
 
 	fixedNow := time.Date(2026, 3, 14, 10, 0, 0, 0, time.UTC)
 	issuer.now = func() time.Time { return fixedNow }
@@ -197,14 +201,8 @@ func TestParseTokenWithWrongIssuer(t *testing.T) {
 	t.Parallel()
 	privatePath, publicPath := testKeyPairPaths(t)
 
-	issuer, err := NewManager(&Config{PrivateKeyPath: privatePath, PublicKeyPath: publicPath, Issuer: "issuer-a", Expire: time.Hour})
-	if err != nil {
-		t.Fatalf("创建签发方管理器失败: %v", err)
-	}
-	verifier, err := NewManager(&Config{PrivateKeyPath: privatePath, PublicKeyPath: publicPath, Issuer: "issuer-b", Expire: time.Hour})
-	if err != nil {
-		t.Fatalf("创建校验方管理器失败: %v", err)
-	}
+	issuer := mustNewConcreteManager(t, &Config{PrivateKeyPath: privatePath, PublicKeyPath: publicPath, Issuer: "issuer-a", Expire: time.Hour})
+	verifier := mustNewConcreteManager(t, &Config{PrivateKeyPath: privatePath, PublicKeyPath: publicPath, Issuer: "issuer-b", Expire: time.Hour})
 
 	fixedNow := time.Date(2026, 3, 14, 10, 0, 0, 0, time.UTC)
 	issuer.now = func() time.Time { return fixedNow }
@@ -225,12 +223,9 @@ func TestParseMalformedToken(t *testing.T) {
 	t.Parallel()
 	privatePath, publicPath := testKeyPairPaths(t)
 
-	manager, err := NewManager(&Config{PrivateKeyPath: privatePath, PublicKeyPath: publicPath, Issuer: "easydrop", Expire: time.Hour})
-	if err != nil {
-		t.Fatalf("创建管理器失败: %v", err)
-	}
+	manager := mustNewConcreteManager(t, &Config{PrivateKeyPath: privatePath, PublicKeyPath: publicPath, Issuer: "easydrop", Expire: time.Hour})
 
-	_, err = manager.ParseToken("not-a-token")
+	_, err := manager.ParseToken("not-a-token")
 	if !errors.Is(err, ErrInvalidToken) {
 		t.Fatalf("期望错误 ErrInvalidToken，实际为: %v", err)
 	}
@@ -240,10 +235,7 @@ func TestParseHS256Token(t *testing.T) {
 	t.Parallel()
 	privatePath, publicPath := testKeyPairPaths(t)
 
-	manager, err := NewManager(&Config{PrivateKeyPath: privatePath, PublicKeyPath: publicPath, Issuer: "easydrop", Expire: time.Hour})
-	if err != nil {
-		t.Fatalf("创建管理器失败: %v", err)
-	}
+	manager := mustNewConcreteManager(t, &Config{PrivateKeyPath: privatePath, PublicKeyPath: publicPath, Issuer: "easydrop", Expire: time.Hour})
 
 	fixedNow := time.Date(2026, 3, 14, 10, 0, 0, 0, time.UTC)
 	manager.now = func() time.Time { return fixedNow }

@@ -43,12 +43,12 @@ type AttachmentService interface {
 type attachmentService struct {
 	attachmentRepo repo.AttachmentRepo
 	userRepo       repo.UserRepo
-	storageManager *storage.Manager
-	dbConfig       *config.DBConfig
+	storageManager storage.Manager
+	dbConfig       config.DBConfig
 }
 
 // NewAttachmentService 创建附件服务实例。
-func NewAttachmentService(attachmentRepo repo.AttachmentRepo, userRepo repo.UserRepo, storageManager *storage.Manager, dbConfig *config.DBConfig) AttachmentService {
+func NewAttachmentService(attachmentRepo repo.AttachmentRepo, userRepo repo.UserRepo, storageManager storage.Manager, dbConfig config.DBConfig) AttachmentService {
 	return &attachmentService{
 		attachmentRepo: attachmentRepo,
 		userRepo:       userRepo,
