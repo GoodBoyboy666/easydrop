@@ -87,6 +87,30 @@ definitions:
       message:
         type: string
     type: object
+  dto.InitInput:
+    properties:
+      allow_register:
+        type: boolean
+      email:
+        type: string
+      nickname:
+        type: string
+      password:
+        type: string
+      site_announcement:
+        type: string
+      site_name:
+        type: string
+      site_url:
+        type: string
+      username:
+        type: string
+    type: object
+  dto.InitStatusResult:
+    properties:
+      initialized:
+        type: boolean
+    type: object
   dto.LoginInput:
     properties:
       account:
@@ -1297,6 +1321,57 @@ paths:
       summary: 验证码公开配置
       tags:
       - captcha
+  /init:
+    post:
+      consumes:
+      - application/json
+      description: 仅在未初始化时创建首个管理员并设置站点配置
+      parameters:
+      - description: 初始化参数
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.InitInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "400":
+          description: 参数校验失败
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "409":
+          description: 系统已初始化
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: 初始化系统
+      tags:
+      - init
+  /init/status:
+    get:
+      description: 返回系统是否已初始化
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.InitStatusResult'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: 查询系统初始化状态
+      tags:
+      - init
   /settings/public:
     get:
       description: 返回前端可公开读取的站点配置

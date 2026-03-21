@@ -12,6 +12,7 @@ type App struct {
 	Middleware             middleware.Auth
 	AuthHandler            *handler.AuthHandler
 	CaptchaHandler         *handler.CaptchaHandler
+	InitHandler            *handler.InitHandler
 	UserHandler            *handler.UserHandler
 	UserAdminHandler       *handler.UserAdminHandler
 	AttachmentHandler      *handler.AttachmentHandler
@@ -28,6 +29,7 @@ func NewApp(
 	middlewares middleware.Auth,
 	authHandler *handler.AuthHandler,
 	captchaHandler *handler.CaptchaHandler,
+	initHandler *handler.InitHandler,
 	userHandler *handler.UserHandler,
 	userAdminHandler *handler.UserAdminHandler,
 	attachmentHandler *handler.AttachmentHandler,
@@ -43,6 +45,7 @@ func NewApp(
 		Middleware:             middlewares,
 		AuthHandler:            authHandler,
 		CaptchaHandler:         captchaHandler,
+		InitHandler:            initHandler,
 		UserHandler:            userHandler,
 		UserAdminHandler:       userAdminHandler,
 		AttachmentHandler:      attachmentHandler,

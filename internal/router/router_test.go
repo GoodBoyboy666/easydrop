@@ -33,6 +33,8 @@ func TestBuildEngineRegistersAllRoutes(t *testing.T) {
 		"POST /api/v1/auth/register":                  {},
 		"POST /api/v1/auth/login":                     {},
 		"GET /api/v1/captcha/config":                  {},
+		"GET /api/v1/init/status":                     {},
+		"POST /api/v1/init":                           {},
 		"GET /api/v1/settings/public":                 {},
 		"GET /api/v1/users/me":                        {},
 		"PATCH /api/v1/users/me/profile":              {},
@@ -132,6 +134,24 @@ func TestBuildEngineAppliesMiddlewareGroups(t *testing.T) {
 			t.Fatalf("public captcha route should not be blocked by auth middleware, got %d", w.Code)
 		}
 	}
+
+	{
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/init/status", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code == http.StatusUnauthorized || w.Code == http.StatusForbidden {
+			t.Fatalf("public init status route should not be blocked by auth middleware, got %d", w.Code)
+		}
+	}
+
+	{
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/init", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code == http.StatusUnauthorized || w.Code == http.StatusForbidden {
+			t.Fatalf("public init route should not be blocked by auth middleware, got %d", w.Code)
+		}
+	}
 }
 
 func TestBuildEngineNilApp(t *testing.T) {
@@ -175,6 +195,7 @@ func newTestAppWithMode(auth middleware.Auth, mode string) *di.App {
 		Middleware:             auth,
 		AuthHandler:            handler.NewAuthHandler(nil),
 		CaptchaHandler:         handler.NewCaptchaHandler(nil),
+		InitHandler:            handler.NewInitHandler(nil),
 		UserHandler:            handler.NewUserHandler(nil),
 		UserAdminHandler:       handler.NewUserAdminHandler(nil),
 		AttachmentHandler:      handler.NewAttachmentHandler(nil),

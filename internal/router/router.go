@@ -49,6 +49,7 @@ func BuildEngine(app *di.App) *gin.Engine {
 
 	authHandler := app.AuthHandler
 	captchaHandler := app.CaptchaHandler
+	initHandler := app.InitHandler
 	userHandler := app.UserHandler
 	userAdminHandler := app.UserAdminHandler
 	attachmentHandler := app.AttachmentHandler
@@ -76,6 +77,12 @@ func BuildEngine(app *di.App) *gin.Engine {
 		captchaGroup := v1.Group("/captcha")
 		{
 			captchaGroup.GET("/config", captchaHandler.GetConfig)
+		}
+
+		initGroup := v1.Group("/init")
+		{
+			initGroup.GET("/status", initHandler.Status)
+			initGroup.POST("", initHandler.Initialize)
 		}
 
 		loginGroup := v1.Group("")

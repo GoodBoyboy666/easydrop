@@ -83,6 +83,8 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	}
 	emailService := service.NewEmailService(emailClient, settingService)
 	userService := service.NewUserService(userRepo, storageManager, settingService, tokenManager, emailService)
+	initService := service.NewInitService(userService, settingService)
+	initHandler := handler.NewInitHandler(initService)
 	userHandler := handler.NewUserHandler(userService)
 	userAdminHandler := handler.NewUserAdminHandler(userService)
 	attachmentRepo := repo.NewAttachmentRepo(db)
@@ -98,6 +100,6 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	postService := service.NewPostService(postRepo, tagRepo)
 	postAdminHandler := handler.NewPostAdminHandler(postService)
 	settingAdminHandler := handler.NewSettingAdminHandler(settingService)
-	app := NewApp(staticConfig, auth, authHandler, captchaHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, postAdminHandler, settingAdminHandler)
+	app := NewApp(staticConfig, auth, authHandler, captchaHandler, initHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, postAdminHandler, settingAdminHandler)
 	return app, nil
 }
