@@ -34,29 +34,41 @@ func TestNewClient_ConfigValidation(t *testing.T) {
 		t.Fatalf("期望错误 ErrNilConfig，实际为: %v", err)
 	}
 
-	_, err = NewClient(&Config{Port: 25, Username: "user", FromEmail: "noreply@example.com"})
+	_, err = NewClient(&Config{Enable: true, Port: 25, Username: "user", FromEmail: "noreply@example.com"})
 	if !errors.Is(err, ErrEmptyHost) {
 		t.Fatalf("期望错误 ErrEmptyHost，实际为: %v", err)
 	}
 
-	_, err = NewClient(&Config{Host: "smtp.example.com", Port: 0, Username: "user", FromEmail: "noreply@example.com"})
+	_, err = NewClient(&Config{Enable: true, Host: "smtp.example.com", Port: 0, Username: "user", FromEmail: "noreply@example.com"})
 	if !errors.Is(err, ErrInvalidPort) {
 		t.Fatalf("期望错误 ErrInvalidPort，实际为: %v", err)
 	}
 
-	_, err = NewClient(&Config{Host: "smtp.example.com", Port: 25, FromEmail: "noreply@example.com"})
+	_, err = NewClient(&Config{Enable: true, Host: "smtp.example.com", Port: 25, FromEmail: "noreply@example.com"})
 	if !errors.Is(err, ErrEmptyUsername) {
 		t.Fatalf("期望错误 ErrEmptyUsername，实际为: %v", err)
 	}
 
-	_, err = NewClient(&Config{Host: "smtp.example.com", Port: 25, Username: "user"})
+	_, err = NewClient(&Config{Enable: true, Host: "smtp.example.com", Port: 25, Username: "user"})
 	if !errors.Is(err, ErrEmptyFromEmail) {
 		t.Fatalf("期望错误 ErrEmptyFromEmail，实际为: %v", err)
 	}
 
-	_, err = NewClient(&Config{Host: "smtp.example.com", Port: 25, Username: "user", FromEmail: "noreply@example.com", TLSMode: "unknown"})
+	_, err = NewClient(&Config{Enable: true, Host: "smtp.example.com", Port: 25, Username: "user", FromEmail: "noreply@example.com", TLSMode: "unknown"})
 	if !errors.Is(err, ErrInvalidTLSMode) {
 		t.Fatalf("期望错误 ErrInvalidTLSMode，实际为: %v", err)
+	}
+}
+
+func TestNewClient_DisabledReturnsNil(t *testing.T) {
+	t.Parallel()
+
+	got, err := NewClient(&Config{Enable: false})
+	if err != nil {
+		t.Fatalf("期望禁用邮件时不返回错误，实际为: %v", err)
+	}
+	if got != nil {
+		t.Fatalf("期望禁用邮件时返回 nil 客户端，实际为: %#v", got)
 	}
 }
 
@@ -78,6 +90,7 @@ func TestNewClient_TLSModeMapping(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			client := mustNewConcreteClient(t, &Config{
+				Enable:    true,
 				Host:      "smtp.example.com",
 				Port:      25,
 				Username:  "user",
@@ -95,6 +108,7 @@ func TestSendHTML_ValidateInput(t *testing.T) {
 	t.Parallel()
 
 	client := mustNewConcreteClient(t, &Config{
+		Enable:    true,
 		Host:      "smtp.example.com",
 		Port:      25,
 		Username:  "user",
@@ -131,6 +145,7 @@ func TestSendHTML_Success(t *testing.T) {
 	t.Parallel()
 
 	client := mustNewConcreteClient(t, &Config{
+		Enable:         true,
 		Host:           "smtp.example.com",
 		Port:           465,
 		Username:       "user",
@@ -180,6 +195,7 @@ func TestSendHTML_SendFail(t *testing.T) {
 	t.Parallel()
 
 	client := mustNewConcreteClient(t, &Config{
+		Enable:    true,
 		Host:      "smtp.example.com",
 		Port:      25,
 		Username:  "user",

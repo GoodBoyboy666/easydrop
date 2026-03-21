@@ -32,6 +32,7 @@ var (
 )
 
 type Config struct {
+	Enable         bool          `mapstructure:"enable" yaml:"enable"`
 	Host           string        `mapstructure:"host" yaml:"host"`
 	Port           int           `mapstructure:"port" yaml:"port"`
 	Username       string        `mapstructure:"username" yaml:"username"`
@@ -64,6 +65,9 @@ type client struct {
 func NewClient(cfg *Config) (Client, error) {
 	if cfg == nil {
 		return nil, ErrNilConfig
+	}
+	if !cfg.Enable {
+		return nil, nil
 	}
 
 	host := strings.TrimSpace(cfg.Host)

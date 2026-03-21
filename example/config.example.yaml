@@ -40,6 +40,7 @@ redis:
   # max_retries: 3
 
 email:
+  enable: false
   # host: "smtp.example.com"
   # port: 587
   # username: "user"

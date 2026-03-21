@@ -28,6 +28,9 @@ func TestLoadDefaultsWithoutConfigFile(t *testing.T) {
 	if cfg.Server.ShutdownTimeout != 5*time.Second {
 		t.Fatalf("expected default shutdown timeout 5s, got %s", cfg.Server.ShutdownTimeout)
 	}
+	if cfg.Email.Enable {
+		t.Fatalf("expected email.enable default false, got true")
+	}
 }
 
 func TestLoadModeFromEnv(t *testing.T) {
