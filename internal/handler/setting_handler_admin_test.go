@@ -77,8 +77,8 @@ func TestSettingAdminHandlerUpdateSuccess(t *testing.T) {
 	h := NewSettingAdminHandler(&mockSettingAdminService{
 		updateItemFn: func(_ context.Context, input dto.SettingUpdateInput) error {
 			called = true
-			if input.Key != "site.url" || input.Value != "https://example.com" {
-				t.Fatalf("unexpected update input: %+v", input)
+			if input.Key != "site.url" || input.Value == nil || *input.Value != "https://example.com" {
+				t.Fatalf("unexpected value input: %+v", input)
 			}
 			return nil
 		},

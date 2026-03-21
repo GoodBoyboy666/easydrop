@@ -34,6 +34,7 @@ func TestNewSettingServiceRequiresCache(t *testing.T) {
 func TestSettingServiceUpdateItemAndGetValue(t *testing.T) {
 	svc, db := newTestSettingService(t)
 	ctx := context.Background()
+	v3 := "v3"
 
 	if err := upsertSetting(db, "custom.key", "v1"); err != nil {
 		t.Fatalf("upsert setting failed: %v", err)
@@ -59,7 +60,7 @@ func TestSettingServiceUpdateItemAndGetValue(t *testing.T) {
 		t.Fatalf("expected cached old value, got: found=%v value=%s", found, value)
 	}
 
-	if err := svc.UpdateItem(ctx, dto.SettingUpdateInput{Key: "custom.key", Value: "v3"}); err != nil {
+	if err := svc.UpdateItem(ctx, dto.SettingUpdateInput{Key: "custom.key", Value: &v3}); err != nil {
 		t.Fatalf("UpdateItem returned error: %v", err)
 	}
 
@@ -78,15 +79,21 @@ func TestSettingServiceGetPublicItems(t *testing.T) {
 
 	if err := db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "key"}},
-		DoUpdates: clause.AssignmentColumns([]string{"value", "category", "sensitive"}),
-	}).Create(&model.Setting{Key: "site.name", Value: "EasyDrop", Category: "site", Sensitive: false}).Error; err != nil {
+		DoUpdates: clause.AssignmentColumns([]string{"value", "category", "sensitive", "public"}),
+	}).Create(&model.Setting{Key: "site.name", Value: "EasyDrop", Category: "site", Sensitive: false, Public: true}).Error; err != nil {
 		t.Fatalf("upsert site.name failed: %v", err)
 	}
 	if err := db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "key"}},
-		DoUpdates: clause.AssignmentColumns([]string{"value", "category", "sensitive"}),
-	}).Create(&model.Setting{Key: "site.secret", Value: "hidden", Category: "site", Sensitive: true}).Error; err != nil {
+		DoUpdates: clause.AssignmentColumns([]string{"value", "category", "sensitive", "public"}),
+	}).Create(&model.Setting{Key: "site.secret", Value: "hidden", Category: "site", Sensitive: true, Public: false}).Error; err != nil {
 		t.Fatalf("upsert site.secret failed: %v", err)
+	}
+	if err := db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "key"}},
+		DoUpdates: clause.AssignmentColumns([]string{"value", "category", "public"}),
+	}).Create(&model.Setting{Key: "storage.quota", Value: "10737418240", Category: "storage", Public: true}).Error; err != nil {
+		t.Fatalf("upsert storage.quota failed: %v", err)
 	}
 
 	result, err := svc.GetPublicItems(ctx)
@@ -96,10 +103,21 @@ func TestSettingServiceGetPublicItems(t *testing.T) {
 	if len(result.Items) == 0 {
 		t.Fatal("expected public items")
 	}
+	hasQuota := false
+	hasSecret := false
 	for i := range result.Items {
-		if result.Items[i].Key == "site.secret" {
-			t.Fatalf("sensitive key should not be exposed: %s", result.Items[i].Key)
+		if result.Items[i].Key == "storage.quota" {
+			hasQuota = true
 		}
+		if result.Items[i].Key == "site.secret" {
+			hasSecret = true
+		}
+	}
+	if !hasQuota {
+		t.Fatal("expected storage.quota in public items")
+	}
+	if hasSecret {
+		t.Fatal("expected non-public setting to be excluded")
 	}
 }
 

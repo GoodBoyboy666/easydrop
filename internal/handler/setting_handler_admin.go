@@ -29,7 +29,7 @@ type settingAdminListQueryRequest struct {
 }
 
 type settingAdminUpdateRequest struct {
-	Value string `json:"value"`
+	Value *string `json:"value"`
 }
 
 // NewSettingAdminHandler 创建管理端配置处理器。

@@ -115,6 +115,7 @@ func (s *settingService) ListItems(ctx context.Context, input dto.SettingListInp
 			Desc:      settings[i].Desc,
 			Category:  settings[i].Category,
 			Sensitive: settings[i].Sensitive,
+			Public:    settings[i].Public,
 		})
 	}
 
@@ -122,11 +123,39 @@ func (s *settingService) ListItems(ctx context.Context, input dto.SettingListInp
 }
 
 func (s *settingService) UpdateItem(ctx context.Context, input dto.SettingUpdateInput) error {
-	return s.set(ctx, strings.TrimSpace(input.Key), input.Value)
+	cleanKey := strings.TrimSpace(input.Key)
+	if cleanKey == "" {
+		return ErrSettingKeyRequired
+	}
+
+	setting, err := s.settingRepo.GetByKey(ctx, cleanKey)
+	found := true
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			found = false
+			setting = &model.Setting{Key: cleanKey}
+		} else {
+			return ErrInternal
+		}
+	}
+
+	if input.Value != nil {
+		setting.Value = *input.Value
+	} else if !found {
+		setting.Value = ""
+	}
+
+	if err := s.settingRepo.UpsertByKey(ctx, setting); err != nil {
+		return ErrInternal
+	}
+
+	_ = s.cache.Set(ctx, settingCacheKey(cleanKey), setting.Value, 0)
+	return nil
 }
 
 func (s *settingService) GetPublicItems(ctx context.Context) (*dto.SettingPublicResult, error) {
-	settings, _, err := s.settingRepo.List(ctx, repo.SettingFilter{Category: "site"}, repo.ListOptions{
+	public := true
+	settings, _, err := s.settingRepo.List(ctx, repo.SettingFilter{Public: &public}, repo.ListOptions{
 		Limit:  100,
 		Offset: 0,
 		Order:  "key asc",
@@ -137,9 +166,6 @@ func (s *settingService) GetPublicItems(ctx context.Context) (*dto.SettingPublic
 
 	items := make([]dto.SettingPublicItem, 0, len(settings))
 	for i := range settings {
-		if settings[i].Sensitive {
-			continue
-		}
 		items = append(items, dto.SettingPublicItem{
 			Key:   settings[i].Key,
 			Value: settings[i].Value,
@@ -171,30 +197,35 @@ func initDefaultSettings(db *gorm.DB) error {
 			Value:    "EasyDrop",
 			Desc:     "站点名称",
 			Category: "site",
+			Public:   true,
 		},
 		{
 			Key:      "site.url",
 			Value:    "http://localhost:8080",
 			Desc:     "站点访问地址",
 			Category: "site",
+			Public:   true,
 		},
 		{
 			Key:      "site.allow_register",
 			Value:    "true",
 			Desc:     "是否允许注册",
 			Category: "site",
+			Public:   true,
 		},
 		{
 			Key:      "site.announcement",
 			Value:    "",
 			Desc:     "站点公告",
 			Category: "site",
+			Public:   true,
 		},
 		{
 			Key:      "storage.quota",
 			Value:    "10737418240",
 			Desc:     "存储配额（字节，默认10GB）",
 			Category: "storage",
+			Public:   true,
 		},
 	}
 

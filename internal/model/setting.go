@@ -6,4 +6,5 @@ type Setting struct {
 	Desc      string
 	Category  string
 	Sensitive bool
+	Public    bool
 }

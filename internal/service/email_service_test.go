@@ -112,7 +112,8 @@ func TestEmailServiceBuildsAbsoluteActionURLFromSiteURL(t *testing.T) {
 		t.Fatalf("create setting service failed: %v", err)
 	}
 
-	if err := settings.UpdateItem(context.Background(), dto.SettingUpdateInput{Key: "site.url", Value: "https://example.com"}); err != nil {
+	url := "https://example.com"
+	if err := settings.UpdateItem(context.Background(), dto.SettingUpdateInput{Key: "site.url", Value: &url}); err != nil {
 		t.Fatalf("set site.url failed: %v", err)
 	}
 

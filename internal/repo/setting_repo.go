@@ -25,6 +25,7 @@ type SettingRepo interface {
 type SettingFilter struct {
 	Category string
 	Key      string
+	Public   *bool
 }
 
 // GormSettingRepo 基于 Gorm 的设置仓储实现。
@@ -55,9 +56,7 @@ func (r *GormSettingRepo) UpsertByKey(ctx context.Context, setting *model.Settin
 		Columns: []clause.Column{{Name: "key"}},
 		DoUpdates: clause.AssignmentColumns([]string{
 			"value",
-			"desc",
-			"category",
-			"sensitive",
+			"public",
 		}),
 	}).Create(setting).Error
 }
@@ -86,6 +85,9 @@ func (r *GormSettingRepo) List(ctx context.Context, filter SettingFilter, opts L
 	}
 	if key := strings.TrimSpace(filter.Key); key != "" {
 		db = db.Where("key LIKE ?", "%"+key+"%")
+	}
+	if filter.Public != nil {
+		db = db.Where("public = ?", *filter.Public)
 	}
 
 	var total int64

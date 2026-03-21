@@ -6,6 +6,7 @@ type SettingItem struct {
 	Desc      string `json:"desc"`
 	Category  string `json:"category"`
 	Sensitive bool   `json:"sensitive"`
+	Public    bool   `json:"public"`
 }
 
 type SettingListInput struct {
@@ -22,8 +23,8 @@ type SettingListResult struct {
 }
 
 type SettingUpdateInput struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
+	Key   string  `json:"key"`
+	Value *string `json:"value"`
 }
 
 type SettingPublicItem struct {
