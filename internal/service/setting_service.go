@@ -78,22 +78,6 @@ func (s *settingService) GetValue(ctx context.Context, key string) (string, bool
 	return setting.Value, true, nil
 }
 
-func (s *settingService) set(ctx context.Context, key, value string) error {
-	cleanKey := strings.TrimSpace(key)
-	if cleanKey == "" {
-		return ErrSettingKeyRequired
-	}
-	err := s.settingRepo.UpsertByKey(ctx, &model.Setting{
-		Key:   cleanKey,
-		Value: value,
-	})
-	if err != nil {
-		return err
-	}
-	_ = s.cache.Set(ctx, settingCacheKey(cleanKey), value, 0)
-	return nil
-}
-
 func (s *settingService) ListItems(ctx context.Context, input dto.SettingListInput) (*dto.SettingListResult, error) {
 	settings, total, err := s.settingRepo.List(ctx, repo.SettingFilter{
 		Category: strings.TrimSpace(input.Category),

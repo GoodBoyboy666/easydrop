@@ -1,0 +1,41 @@
+run:
+  timeout: 5m
+  tests: false
+
+linters:
+  disable-all: true
+  enable:
+    - govet       # 官方 vet
+    - staticcheck # 高级检查
+    - errcheck    # 检查是否忽略了错误
+    - gosimple    # 代码简化建议
+    - ineffassign # 检查无效赋值
+    - typecheck   # 类型检查
+    - unused      # 检查未使用的变量/常量
+    - gocyclo     # 检查函数复杂度
+    - gofmt       # 格式化检查
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15 # 函数圈复杂度
+  errcheck:
+    check-type-assertions: true
+
+issues:
+  exclude-rules:
+    - path: internal/pkg/pathsecurity/pathsecurity.go
+      linters:
+        - gocyclo
+      text: "cyclomatic complexity .*SecureJoin.*"
+    - path: internal/pkg/token/redis.go
+      linters:
+        - gocyclo
+      text: "cyclomatic complexity .*\\(\\*redisStore\\)\\.Consume.*"
+    - path: internal/service/user_service.go
+      linters:
+        - gocyclo
+      text: "cyclomatic complexity .*\\(\\*userService\\)\\.Update.*"
+    - path: internal/service/user_service.go
+      linters:
+        - gocyclo
+      text: "cyclomatic complexity .*\\(\\*userService\\)\\.UploadAvatar.*"

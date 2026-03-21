@@ -95,10 +95,7 @@ func (s *s3Storage) Download(ctx context.Context, objectKey string) ([]byte, err
 		return nil, fmt.Errorf("s3 下载失败: %w", err)
 	}
 	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-
-		}
+		_ = Body.Close()
 	}(out.Body)
 
 	data, err := io.ReadAll(out.Body)

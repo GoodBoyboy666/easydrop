@@ -169,4 +169,3 @@ func existingPathChain(path string) []string {
 func containsNUL(s string) bool {
 	return strings.ContainsRune(s, '\x00')
 }
-

@@ -63,10 +63,7 @@ func (h *AttachmentHandler) Upload(c *gin.Context) {
 		return
 	}
 	defer func(file multipart.File) {
-		err := file.Close()
-		if err != nil {
-
-		}
+		_ = file.Close()
 	}(file)
 
 	content, err := io.ReadAll(file)
