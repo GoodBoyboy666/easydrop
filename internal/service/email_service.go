@@ -110,7 +110,7 @@ type EmailService interface {
 
 type emailService struct {
 	sender   email.Client
-	dbConfig config.DBConfig
+	settings SettingService
 }
 
 type emailTemplateData struct {
@@ -121,8 +121,8 @@ type emailTemplateData struct {
 }
 
 // NewEmailService 创建邮件服务。
-func NewEmailService(sender email.Client, dbConfig config.DBConfig) EmailService {
-	return &emailService{sender: sender, dbConfig: dbConfig}
+func NewEmailService(sender email.Client, settings SettingService) EmailService {
+	return &emailService{sender: sender, settings: settings}
 }
 
 func (s *emailService) SendPasswordResetEmail(ctx context.Context, to, tokenValue string, ttl time.Duration) error {
@@ -204,11 +204,11 @@ func (s *emailService) newTemplateData(ctx context.Context, tokenValue string, t
 }
 
 func (s *emailService) getSiteURL(ctx context.Context) string {
-	if s.dbConfig == nil {
+	if s.settings == nil {
 		return ""
 	}
 
-	value, ok, err := s.dbConfig.GetValue(ctx, "site.url")
+	value, ok, err := s.settings.GetValue(ctx, "site.url")
 	if err != nil {
 		log.Printf("读取站点地址配置失败: %v", err)
 		return ""

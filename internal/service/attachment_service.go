@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"easydrop/internal/config"
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
 	"easydrop/internal/pkg/storage"
@@ -44,16 +43,16 @@ type attachmentService struct {
 	attachmentRepo repo.AttachmentRepo
 	userRepo       repo.UserRepo
 	storageManager storage.Manager
-	dbConfig       config.DBConfig
+	settings       SettingService
 }
 
 // NewAttachmentService 创建附件服务实例。
-func NewAttachmentService(attachmentRepo repo.AttachmentRepo, userRepo repo.UserRepo, storageManager storage.Manager, dbConfig config.DBConfig) AttachmentService {
+func NewAttachmentService(attachmentRepo repo.AttachmentRepo, userRepo repo.UserRepo, storageManager storage.Manager, settings SettingService) AttachmentService {
 	return &attachmentService{
 		attachmentRepo: attachmentRepo,
 		userRepo:       userRepo,
 		storageManager: storageManager,
-		dbConfig:       dbConfig,
+		settings:       settings,
 	}
 }
 
@@ -338,5 +337,5 @@ func (s *attachmentService) toAttachmentDTOs(ctx context.Context, attachments []
 
 // getDefaultStorageQuota 获取全局默认存储配额（字节）。
 func (s *attachmentService) getDefaultStorageQuota(ctx context.Context) (int64, error) {
-	return getDefaultStorageQuota(ctx, s.dbConfig)
+	return getDefaultStorageQuota(ctx, s.settings)
 }

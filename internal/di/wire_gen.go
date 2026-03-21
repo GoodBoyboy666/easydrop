@@ -42,26 +42,27 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	}
 	userRepo := repo.NewUserRepo(db)
 	auth := middleware.NewAuth(manager, userRepo)
+	settingRepo := repo.NewSettingRepo(db)
 	redisConfig := config.ProvideRedisConfig(staticConfig)
-	redisClient, err := redis.NewOptionalClient(redisConfig)
+	client, err := redis.NewOptionalClient(redisConfig)
 	if err != nil {
 		return nil, err
 	}
-	kvCache, err := cache.NewCache(redisClient)
+	cacheCache, err := cache.NewCache(client)
 	if err != nil {
 		return nil, err
 	}
-	dbConfig, err := config.NewDBConfig(db, kvCache)
+	settingService, err := service.NewSettingService(db, settingRepo, cacheCache)
 	if err != nil {
 		return nil, err
 	}
 	allCaptchaConfig := config.ProvideCaptchaConfig(staticConfig)
-	client := captcha.NewHttpClient()
-	verifier, err := captcha.NewVerifier(allCaptchaConfig, client)
+	httpClient := captcha.NewHttpClient()
+	verifier, err := captcha.NewVerifier(allCaptchaConfig, httpClient)
 	if err != nil {
 		return nil, err
 	}
-	authService := service.NewAuthService(userRepo, dbConfig, manager, verifier)
+	authService := service.NewAuthService(userRepo, settingService, manager, verifier)
 	authHandler := handler.NewAuthHandler(authService)
 	storageConfig := config.ProvideStorageConfig(staticConfig)
 	storageManager, err := storage.NewManager(storageConfig)
@@ -69,7 +70,7 @@ func Initialize(configDir string, strict bool) (*App, error) {
 		return nil, err
 	}
 	tokenConfig := config.ProvideTokenConfig(staticConfig)
-	tokenManager, err := token.NewManager(tokenConfig, redisClient)
+	tokenManager, err := token.NewManager(tokenConfig, client)
 	if err != nil {
 		return nil, err
 	}
@@ -78,12 +79,12 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	emailService := service.NewEmailService(emailClient, dbConfig)
-	userService := service.NewUserService(userRepo, storageManager, dbConfig, tokenManager, emailService)
+	emailService := service.NewEmailService(emailClient, settingService)
+	userService := service.NewUserService(userRepo, storageManager, settingService, tokenManager, emailService)
 	userHandler := handler.NewUserHandler(userService)
 	userAdminHandler := handler.NewUserAdminHandler(userService)
 	attachmentRepo := repo.NewAttachmentRepo(db)
-	attachmentService := service.NewAttachmentService(attachmentRepo, userRepo, storageManager, dbConfig)
+	attachmentService := service.NewAttachmentService(attachmentRepo, userRepo, storageManager, settingService)
 	attachmentHandler := handler.NewAttachmentHandler(attachmentService)
 	attachmentAdminHandler := handler.NewAttachmentAdminHandler(attachmentService)
 	commentRepo := repo.NewCommentRepo(db)
@@ -94,6 +95,7 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	tagRepo := repo.NewTagRepo(db)
 	postService := service.NewPostService(postRepo, tagRepo)
 	postAdminHandler := handler.NewPostAdminHandler(postService)
-	app := NewApp(staticConfig, auth, authHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, postAdminHandler)
+	settingAdminHandler := handler.NewSettingAdminHandler(settingService)
+	app := NewApp(staticConfig, auth, authHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, postAdminHandler, settingAdminHandler)
 	return app, nil
 }

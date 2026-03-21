@@ -4,18 +4,16 @@ import (
 	"context"
 	"log"
 	"strconv"
-
-	"easydrop/internal/config"
 )
 
 const defaultStorageQuotaBytes int64 = 10 * 1024 * 1024 * 1024
 
-func getDefaultStorageQuota(ctx context.Context, dbConfig config.DBConfig) (int64, error) {
-	if dbConfig == nil {
+func getDefaultStorageQuota(ctx context.Context, settings SettingService) (int64, error) {
+	if settings == nil {
 		return defaultStorageQuotaBytes, nil
 	}
 
-	quotaStr, found, err := dbConfig.GetValue(ctx, "storage.quota")
+	quotaStr, found, err := settings.GetValue(ctx, "storage.quota")
 	if err != nil {
 		log.Printf("获取全局存储配额失败: %v", err)
 		return 0, ErrFailedToCalculateQuota

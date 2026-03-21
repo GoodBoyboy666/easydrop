@@ -31,6 +31,7 @@ func TestBuildEngineRegistersAllRoutes(t *testing.T) {
 	expected := map[string]struct{}{
 		"POST /api/v1/auth/register":                  {},
 		"POST /api/v1/auth/login":                     {},
+		"GET /api/v1/settings/public":                 {},
 		"GET /api/v1/users/me":                        {},
 		"PATCH /api/v1/users/me/profile":              {},
 		"PATCH /api/v1/users/me/password":             {},
@@ -64,6 +65,8 @@ func TestBuildEngineRegistersAllRoutes(t *testing.T) {
 		"GET /api/v1/admin/comments/:id":              {},
 		"PATCH /api/v1/admin/comments/:id":            {},
 		"DELETE /api/v1/admin/comments/:id":           {},
+		"GET /api/v1/admin/settings":                  {},
+		"PATCH /api/v1/admin/settings/:key":           {},
 	}
 
 	seen := make(map[string]struct{}, len(routes))
@@ -98,6 +101,15 @@ func TestBuildEngineAppliesMiddlewareGroups(t *testing.T) {
 		r.ServeHTTP(w, req)
 		if w.Code != http.StatusForbidden {
 			t.Fatalf("expected 403 for admin route, got %d", w.Code)
+		}
+	}
+
+	{
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/settings/public", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code == http.StatusUnauthorized || w.Code == http.StatusForbidden {
+			t.Fatalf("public settings route should not be blocked by auth middleware, got %d", w.Code)
 		}
 	}
 
@@ -137,5 +149,6 @@ func newTestApp(auth middleware.Auth) *di.App {
 		CommentHandler:         handler.NewCommentHandler(nil),
 		CommentAdminHandler:    handler.NewCommentAdminHandler(nil),
 		PostAdminHandler:       handler.NewPostAdminHandler(nil),
+		SettingAdminHandler:    handler.NewSettingAdminHandler(nil),
 	}
 }

@@ -7,14 +7,17 @@ import (
 	"easydrop/internal/model"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // SettingRepo 定义设置仓储接口。
 type SettingRepo interface {
 	Create(ctx context.Context, setting *model.Setting) error
 	GetByKey(ctx context.Context, key string) (*model.Setting, error)
+	UpsertByKey(ctx context.Context, setting *model.Setting) error
 	Update(ctx context.Context, setting *model.Setting) error
 	DeleteByKey(ctx context.Context, key string) error
+	All(ctx context.Context) ([]model.Setting, error)
 	List(ctx context.Context, filter SettingFilter, opts ListOptions) ([]model.Setting, int64, error)
 }
 
@@ -47,12 +50,32 @@ func (r *GormSettingRepo) GetByKey(ctx context.Context, key string) (*model.Sett
 	return &setting, nil
 }
 
+func (r *GormSettingRepo) UpsertByKey(ctx context.Context, setting *model.Setting) error {
+	return r.db.WithContext(withContext(ctx)).Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "key"}},
+		DoUpdates: clause.AssignmentColumns([]string{
+			"value",
+			"desc",
+			"category",
+			"sensitive",
+		}),
+	}).Create(setting).Error
+}
+
 func (r *GormSettingRepo) Update(ctx context.Context, setting *model.Setting) error {
 	return r.db.WithContext(withContext(ctx)).Save(setting).Error
 }
 
 func (r *GormSettingRepo) DeleteByKey(ctx context.Context, key string) error {
 	return r.db.WithContext(withContext(ctx)).Where("key = ?", key).Delete(&model.Setting{}).Error
+}
+
+func (r *GormSettingRepo) All(ctx context.Context) ([]model.Setting, error) {
+	var settings []model.Setting
+	if err := r.db.WithContext(withContext(ctx)).Order("key asc").Find(&settings).Error; err != nil {
+		return nil, err
+	}
+	return settings, nil
 }
 
 func (r *GormSettingRepo) List(ctx context.Context, filter SettingFilter, opts ListOptions) ([]model.Setting, int64, error) {

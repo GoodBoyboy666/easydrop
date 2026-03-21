@@ -28,7 +28,6 @@ func Initialize(configDir string, strict bool) (*App, error) {
 		database.NewDB,
 		redis.NewOptionalClient,
 		cache.NewCache,
-		config.DBProviderSet,
 		email.NewClient,
 		jwt.NewManager,
 		storage.NewManager,

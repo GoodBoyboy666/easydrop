@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"easydrop/internal/config"
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
 	"easydrop/internal/pkg/storage"
@@ -65,17 +64,17 @@ type emailChangeTokenPayload struct {
 type userService struct {
 	userRepo       repo.UserRepo
 	storageManager storage.Manager
-	dbConfig       config.DBConfig
+	settings       SettingService
 	tokenManager   token.Manager
 	emailService   EmailService
 }
 
 // NewUserService 创建用户服务实例。
-func NewUserService(userRepo repo.UserRepo, storageManager storage.Manager, dbConfig config.DBConfig, tokenManager token.Manager, emailService EmailService) UserService {
+func NewUserService(userRepo repo.UserRepo, storageManager storage.Manager, settings SettingService, tokenManager token.Manager, emailService EmailService) UserService {
 	return &userService{
 		userRepo:       userRepo,
 		storageManager: storageManager,
-		dbConfig:       dbConfig,
+		settings:       settings,
 		tokenManager:   tokenManager,
 		emailService:   emailService,
 	}
@@ -499,7 +498,7 @@ func (s *userService) UploadAvatar(ctx context.Context, input dto.UserAvatarUplo
 		return nil, ErrInternal
 	}
 
-	defaultQuota, err := getDefaultStorageQuota(ctx, s.dbConfig)
+	defaultQuota, err := getDefaultStorageQuota(ctx, s.settings)
 	if err != nil {
 		return nil, err
 	}

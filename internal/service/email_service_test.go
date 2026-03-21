@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"easydrop/internal/config"
+	"easydrop/internal/dto"
 	"easydrop/internal/pkg/cache"
+	"easydrop/internal/repo"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -104,12 +106,13 @@ func TestEmailServiceBuildsAbsoluteActionURLFromSiteURL(t *testing.T) {
 		t.Fatalf("create cache failed: %v", err)
 	}
 
-	dbConfig, err := config.NewDBConfig(db, kvCache)
+	settingRepo := repo.NewSettingRepo(db)
+	settings, err := NewSettingService(db, settingRepo, kvCache)
 	if err != nil {
-		t.Fatalf("create db config failed: %v", err)
+		t.Fatalf("create setting service failed: %v", err)
 	}
 
-	if err := dbConfig.Set(context.Background(), "site.url", "https://example.com"); err != nil {
+	if err := settings.UpdateItem(context.Background(), dto.SettingUpdateInput{Key: "site.url", Value: "https://example.com"}); err != nil {
 		t.Fatalf("set site.url failed: %v", err)
 	}
 
@@ -120,7 +123,7 @@ func TestEmailServiceBuildsAbsoluteActionURLFromSiteURL(t *testing.T) {
 	})
 
 	sender := &captureEmailSender{}
-	svc := NewEmailService(sender, dbConfig)
+	svc := NewEmailService(sender, settings)
 
 	err = svc.SendVerifyEmail(context.Background(), "u@example.com", "verify-1", 10*time.Minute)
 	if err != nil {

@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"easydrop/internal/config"
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
 	"easydrop/internal/pkg/captcha"
@@ -42,16 +41,16 @@ type AuthService interface {
 
 type authService struct {
 	userRepo repo.UserRepo
-	dbConfig config.DBConfig
+	settings SettingService
 	jwt      jwt.Manager
 	captcha  captcha.Verifier
 }
 
 // NewAuthService 创建认证服务实例。
-func NewAuthService(userRepo repo.UserRepo, dbConfig config.DBConfig, jwtManager jwt.Manager, captchaVerifier captcha.Verifier) AuthService {
+func NewAuthService(userRepo repo.UserRepo, settings SettingService, jwtManager jwt.Manager, captchaVerifier captcha.Verifier) AuthService {
 	return &authService{
 		userRepo: userRepo,
-		dbConfig: dbConfig,
+		settings: settings,
 		jwt:      jwtManager,
 		captcha:  captchaVerifier,
 	}
@@ -179,11 +178,11 @@ func (s *authService) buildAuthResult(user *model.User) (*dto.AuthResult, error)
 
 // ensureRegisterEnabled 检查站点是否允许新用户注册。
 func (s *authService) ensureRegisterEnabled(ctx context.Context) error {
-	if s.dbConfig == nil {
+	if s.settings == nil {
 		return ErrInvalidSiteSetting
 	}
 
-	value, ok, err := s.dbConfig.GetValue(ctx, "site.allow_register")
+	value, ok, err := s.settings.GetValue(ctx, "site.allow_register")
 	if err != nil {
 		log.Printf("读取注册配置失败: %v", err)
 		return ErrInternal
