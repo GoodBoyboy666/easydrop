@@ -33,6 +33,15 @@ definitions:
       access_token:
         type: string
     type: object
+  dto.CaptchaConfigResult:
+    properties:
+      enabled:
+        type: boolean
+      provider:
+        type: string
+      site_key:
+        type: string
+    type: object
   dto.CaptchaInput:
     properties:
       captcha_output:
@@ -44,8 +53,6 @@ definitions:
       pass_token:
         type: string
       provider:
-        type: string
-      remote_ip:
         type: string
       token:
         type: string
@@ -1265,6 +1272,23 @@ paths:
       summary: 用户注册
       tags:
       - auth
+  /api/v1/captcha/config:
+    get:
+      description: 返回验证码是否开启、提供商及前端所需 site_key
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CaptchaConfigResult'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/handler.MessageResponse'
+      summary: 验证码公开配置
+      tags:
+      - captcha
   /api/v1/settings/public:
     get:
       description: 返回前端可公开读取的站点配置

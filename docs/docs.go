@@ -1514,6 +1514,32 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/captcha/config": {
+            "get": {
+                "description": "返回验证码是否开启、提供商及前端所需 site_key",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "captcha"
+                ],
+                "summary": "验证码公开配置",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CaptchaConfigResult"
+                        }
+                    },
+                    "500": {
+                        "description": "服务内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/handler.MessageResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/settings/public": {
             "get": {
                 "description": "返回前端可公开读取的站点配置",
@@ -1903,6 +1929,20 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.CaptchaConfigResult": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "provider": {
+                    "type": "string"
+                },
+                "site_key": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.CaptchaInput": {
             "type": "object",
             "properties": {
@@ -1919,9 +1959,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "provider": {
-                    "type": "string"
-                },
-                "remote_ip": {
                     "type": "string"
                 },
                 "token": {

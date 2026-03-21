@@ -6,6 +6,7 @@ var HandlerSet = wire.NewSet(
 	NewAttachmentAdminHandler,
 	NewAttachmentHandler,
 	NewAuthHandler,
+	NewCaptchaHandler,
 	NewCommentAdminHandler,
 	NewCommentHandler,
 	NewPostAdminHandler,

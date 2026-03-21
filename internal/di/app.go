@@ -11,6 +11,7 @@ type App struct {
 	Config                 *config.StaticConfig
 	Middleware             middleware.Auth
 	AuthHandler            *handler.AuthHandler
+	CaptchaHandler         *handler.CaptchaHandler
 	UserHandler            *handler.UserHandler
 	UserAdminHandler       *handler.UserAdminHandler
 	AttachmentHandler      *handler.AttachmentHandler
@@ -26,6 +27,7 @@ func NewApp(
 	cfg *config.StaticConfig,
 	middlewares middleware.Auth,
 	authHandler *handler.AuthHandler,
+	captchaHandler *handler.CaptchaHandler,
 	userHandler *handler.UserHandler,
 	userAdminHandler *handler.UserAdminHandler,
 	attachmentHandler *handler.AttachmentHandler,
@@ -40,6 +42,7 @@ func NewApp(
 		Config:                 cfg,
 		Middleware:             middlewares,
 		AuthHandler:            authHandler,
+		CaptchaHandler:         captchaHandler,
 		UserHandler:            userHandler,
 		UserAdminHandler:       userAdminHandler,
 		AttachmentHandler:      attachmentHandler,

@@ -64,6 +64,8 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	}
 	authService := service.NewAuthService(userRepo, settingService, manager, verifier)
 	authHandler := handler.NewAuthHandler(authService)
+	captchaConfigService := service.NewCaptchaConfigService(allCaptchaConfig)
+	captchaHandler := handler.NewCaptchaHandler(captchaConfigService)
 	storageConfig := config.ProvideStorageConfig(staticConfig)
 	storageManager, err := storage.NewManager(storageConfig)
 	if err != nil {
@@ -96,6 +98,6 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	postService := service.NewPostService(postRepo, tagRepo)
 	postAdminHandler := handler.NewPostAdminHandler(postService)
 	settingAdminHandler := handler.NewSettingAdminHandler(settingService)
-	app := NewApp(staticConfig, auth, authHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, postAdminHandler, settingAdminHandler)
+	app := NewApp(staticConfig, auth, authHandler, captchaHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, postAdminHandler, settingAdminHandler)
 	return app, nil
 }
