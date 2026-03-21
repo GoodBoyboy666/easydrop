@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"easydrop/internal/config"
+	"easydrop/internal/pkg/cache"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -98,7 +99,12 @@ func TestEmailServiceBuildsAbsoluteActionURLFromSiteURL(t *testing.T) {
 		t.Fatalf("open sqlite failed: %v", err)
 	}
 
-	dbConfig, err := config.NewDBConfig(db)
+	kvCache, err := cache.NewCache(nil)
+	if err != nil {
+		t.Fatalf("create cache failed: %v", err)
+	}
+
+	dbConfig, err := config.NewDBConfig(db, kvCache)
 	if err != nil {
 		t.Fatalf("create db config failed: %v", err)
 	}

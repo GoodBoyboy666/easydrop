@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"easydrop/internal/model"
+	"easydrop/internal/pkg/cache"
 )
 
 // DBConfig 管理存储在数据库中的配置。
@@ -17,19 +18,25 @@ type DBConfig interface {
 	GetValue(ctx context.Context, key string) (string, bool, error)
 	Set(ctx context.Context, key, value string) error
 	All(ctx context.Context) ([]model.Setting, error)
+	ClearCache(ctx context.Context) error
+	ClearCacheKey(ctx context.Context, key string) error
 }
 
 type dbConfig struct {
-	db *gorm.DB
+	db    *gorm.DB
+	cache cache.Cache
 }
 
 // DBProviderSet 提供 DBConfig 的 Wire 注入入口。
 var DBProviderSet = wire.NewSet(NewDBConfig)
 
 // NewDBConfig 创建 DBConfig，并负责迁移与初始化默认配置。
-func NewDBConfig(db *gorm.DB) (DBConfig, error) {
+func NewDBConfig(db *gorm.DB, kvCache cache.Cache) (DBConfig, error) {
 	if db == nil {
 		return nil, errors.New("db is required")
+	}
+	if kvCache == nil {
+		return nil, errors.New("cache is required")
 	}
 
 	if err := db.AutoMigrate(&model.Setting{}); err != nil {
@@ -40,12 +47,19 @@ func NewDBConfig(db *gorm.DB) (DBConfig, error) {
 		return nil, err
 	}
 
-	return &dbConfig{db: db}, nil
+	return &dbConfig{db: db, cache: kvCache}, nil
 }
 
 func (c *dbConfig) Get(ctx context.Context, key string) (model.Setting, error) {
+	if value, found, err := c.cache.Get(ctx, dbConfigCacheKey(key)); err == nil && found {
+		return model.Setting{Key: key, Value: value}, nil
+	}
+
 	var setting model.Setting
 	err := c.db.WithContext(ctx).Where("key = ?", key).First(&setting).Error
+	if err == nil {
+		_ = c.cache.Set(ctx, dbConfigCacheKey(key), setting.Value, 0)
+	}
 	return setting, err
 }
 
@@ -61,13 +75,19 @@ func (c *dbConfig) GetValue(ctx context.Context, key string) (string, bool, erro
 }
 
 func (c *dbConfig) Set(ctx context.Context, key, value string) error {
-	return c.db.WithContext(ctx).Clauses(clause.OnConflict{
+	err := c.db.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "key"}},
 		DoUpdates: clause.AssignmentColumns([]string{"value"}),
 	}).Create(&model.Setting{
 		Key:   key,
 		Value: value,
 	}).Error
+	if err != nil {
+		return err
+	}
+
+	_ = c.cache.Set(ctx, dbConfigCacheKey(key), value, 0)
+	return nil
 }
 
 func (c *dbConfig) All(ctx context.Context) ([]model.Setting, error) {
@@ -78,7 +98,19 @@ func (c *dbConfig) All(ctx context.Context) ([]model.Setting, error) {
 	return settings, nil
 }
 
+func (c *dbConfig) ClearCache(ctx context.Context) error {
+	return c.cache.Clear(ctx)
+}
+
+func (c *dbConfig) ClearCacheKey(ctx context.Context, key string) error {
+	return c.cache.Delete(ctx, dbConfigCacheKey(key))
+}
+
 var _ DBConfig = (*dbConfig)(nil)
+
+func dbConfigCacheKey(key string) string {
+	return "setting:" + key
+}
 
 func initDefaultSettings(db *gorm.DB) error {
 	defaults := []model.Setting{

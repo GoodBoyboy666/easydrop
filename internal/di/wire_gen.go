@@ -10,6 +10,7 @@ import (
 	"easydrop/internal/config"
 	"easydrop/internal/handler"
 	"easydrop/internal/middleware"
+	"easydrop/internal/pkg/cache"
 	"easydrop/internal/pkg/captcha"
 	"easydrop/internal/pkg/database"
 	"easydrop/internal/pkg/email"
@@ -41,7 +42,16 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	}
 	userRepo := repo.NewUserRepo(db)
 	auth := middleware.NewAuth(manager, userRepo)
-	dbConfig, err := config.NewDBConfig(db)
+	redisConfig := config.ProvideRedisConfig(staticConfig)
+	redisClient, err := redis.NewOptionalClient(redisConfig)
+	if err != nil {
+		return nil, err
+	}
+	kvCache, err := cache.NewCache(redisClient)
+	if err != nil {
+		return nil, err
+	}
+	dbConfig, err := config.NewDBConfig(db, kvCache)
 	if err != nil {
 		return nil, err
 	}
@@ -59,11 +69,6 @@ func Initialize(configDir string, strict bool) (*App, error) {
 		return nil, err
 	}
 	tokenConfig := config.ProvideTokenConfig(staticConfig)
-	redisConfig := config.ProvideRedisConfig(staticConfig)
-	redisClient, err := redis.NewOptionalClient(redisConfig)
-	if err != nil {
-		return nil, err
-	}
 	tokenManager, err := token.NewManager(tokenConfig, redisClient)
 	if err != nil {
 		return nil, err

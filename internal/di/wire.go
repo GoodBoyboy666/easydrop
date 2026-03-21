@@ -7,6 +7,7 @@ import (
 	"easydrop/internal/config"
 	"easydrop/internal/handler"
 	"easydrop/internal/middleware"
+	"easydrop/internal/pkg/cache"
 	"easydrop/internal/pkg/captcha"
 	"easydrop/internal/pkg/database"
 	"easydrop/internal/pkg/email"
@@ -25,8 +26,9 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	wire.Build(
 		config.StaticProviderSet,
 		database.NewDB,
-		config.DBProviderSet,
 		redis.NewOptionalClient,
+		cache.NewCache,
+		config.DBProviderSet,
 		email.NewClient,
 		jwt.NewManager,
 		storage.NewManager,
