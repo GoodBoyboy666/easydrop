@@ -1,4 +1,4 @@
-basePath: /
+basePath: /api/v1
 definitions:
   dto.AttachmentBatchDeleteFailedItem:
     properties:
@@ -315,7 +315,7 @@ info:
   title: EasyDrop API
   version: "1.0"
 paths:
-  /api/v1/admin/attachments:
+  /admin/attachments:
     get:
       description: 分页查询附件列表，支持按用户、业务类型、上传时间区间过滤
       parameters:
@@ -379,7 +379,7 @@ paths:
       summary: 管理端查询附件列表
       tags:
       - attachment-admin
-  /api/v1/admin/attachments/{id}:
+  /admin/attachments/{id}:
     delete:
       description: 按附件 ID 删除任意用户附件
       parameters:
@@ -420,7 +420,7 @@ paths:
       summary: 管理端删除附件
       tags:
       - attachment-admin
-  /api/v1/admin/attachments/batch-delete:
+  /admin/attachments/batch-delete:
     post:
       consumes:
       - application/json
@@ -460,7 +460,7 @@ paths:
       summary: 管理端批量删除附件
       tags:
       - attachment-admin
-  /api/v1/admin/posts:
+  /admin/posts:
     get:
       description: 分页查询说说列表，支持按用户和标签过滤
       parameters:
@@ -551,7 +551,7 @@ paths:
       summary: 管理端创建说说
       tags:
       - post-admin
-  /api/v1/admin/posts/{id}:
+  /admin/posts/{id}:
     delete:
       description: 根据说说 ID 删除说说
       parameters:
@@ -680,7 +680,7 @@ paths:
       summary: 管理端更新说说
       tags:
       - post-admin
-  /api/v1/admin/settings:
+  /admin/settings:
     get:
       description: 分页查询配置列表，支持按分类和键名过滤
       parameters:
@@ -732,7 +732,7 @@ paths:
       summary: 管理端查询配置列表
       tags:
       - setting-admin
-  /api/v1/admin/settings/{key}:
+  /admin/settings/{key}:
     patch:
       consumes:
       - application/json
@@ -777,7 +777,7 @@ paths:
       summary: 管理端更新配置
       tags:
       - setting-admin
-  /api/v1/admin/users:
+  /admin/users:
     get:
       description: 分页查询用户列表，支持按用户名、邮箱、状态过滤
       parameters:
@@ -876,7 +876,7 @@ paths:
       summary: 管理端创建用户
       tags:
       - user-admin
-  /api/v1/admin/users/{id}:
+  /admin/users/{id}:
     delete:
       description: 根据用户 ID 删除用户
       parameters:
@@ -961,7 +961,7 @@ paths:
       summary: 管理端更新用户
       tags:
       - user-admin
-  /api/v1/admin/users/{id}/avatar:
+  /admin/users/{id}/avatar:
     delete:
       description: 删除指定用户头像并更新存储占用
       parameters:
@@ -1041,7 +1041,7 @@ paths:
       summary: 管理端上传用户头像
       tags:
       - user-admin
-  /api/v1/attachments:
+  /attachments:
     get:
       description: 分页查询当前用户附件列表
       parameters:
@@ -1131,7 +1131,7 @@ paths:
       summary: 上传附件
       tags:
       - attachment
-  /api/v1/attachments/{id}:
+  /attachments/{id}:
     delete:
       description: 删除当前用户的附件
       parameters:
@@ -1204,7 +1204,7 @@ paths:
       summary: 查询附件详情
       tags:
       - attachment
-  /api/v1/auth/login:
+  /auth/login:
     post:
       consumes:
       - application/json
@@ -1242,7 +1242,7 @@ paths:
       summary: 用户登录
       tags:
       - auth
-  /api/v1/auth/register:
+  /auth/register:
     post:
       consumes:
       - application/json
@@ -1280,7 +1280,7 @@ paths:
       summary: 用户注册
       tags:
       - auth
-  /api/v1/captcha/config:
+  /captcha/config:
     get:
       description: 返回验证码是否开启、提供商及前端所需 site_key
       produces:
@@ -1297,7 +1297,7 @@ paths:
       summary: 验证码公开配置
       tags:
       - captcha
-  /api/v1/settings/public:
+  /settings/public:
     get:
       description: 返回前端可公开读取的站点配置
       produces:
@@ -1314,7 +1314,7 @@ paths:
       summary: 前端公开配置
       tags:
       - setting
-  /api/v1/users/me:
+  /users/me:
     get:
       description: 获取当前登录用户的资料信息
       produces:
@@ -1337,7 +1337,7 @@ paths:
       summary: 获取当前用户资料
       tags:
       - user
-  /api/v1/users/me/avatar:
+  /users/me/avatar:
     delete:
       description: 删除当前登录用户头像并更新存储占用
       produces:
@@ -1398,7 +1398,7 @@ paths:
       summary: 上传当前用户头像
       tags:
       - user
-  /api/v1/users/me/email-change:
+  /users/me/email-change:
     post:
       consumes:
       - application/json
@@ -1438,7 +1438,7 @@ paths:
       summary: 请求修改当前用户邮箱
       tags:
       - user
-  /api/v1/users/me/password:
+  /users/me/password:
     patch:
       consumes:
       - application/json
@@ -1474,7 +1474,7 @@ paths:
       summary: 修改当前用户密码
       tags:
       - user
-  /api/v1/users/me/profile:
+  /users/me/profile:
     patch:
       consumes:
       - application/json

@@ -38,7 +38,7 @@ func NewAttachmentHandler(attachmentService service.AttachmentService) *Attachme
 // @Failure 403 {object} dto.ErrorResponse "存储配额不足"
 // @Failure 404 {object} dto.ErrorResponse "用户不存在"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/attachments [post]
+// @Router /attachments [post]
 func (h *AttachmentHandler) Upload(c *gin.Context) {
 	if h.attachmentService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -107,7 +107,7 @@ func (h *AttachmentHandler) Upload(c *gin.Context) {
 // @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
 // @Failure 404 {object} dto.ErrorResponse "附件不存在"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/attachments/{id} [get]
+// @Router /attachments/{id} [get]
 func (h *AttachmentHandler) Get(c *gin.Context) {
 	if h.attachmentService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -156,7 +156,7 @@ func (h *AttachmentHandler) Get(c *gin.Context) {
 // @Failure 400 {object} dto.ErrorResponse "参数校验失败"
 // @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/attachments [get]
+// @Router /attachments [get]
 func (h *AttachmentHandler) List(c *gin.Context) {
 	if h.attachmentService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -199,7 +199,7 @@ func (h *AttachmentHandler) List(c *gin.Context) {
 // @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
 // @Failure 404 {object} dto.ErrorResponse "附件不存在"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/attachments/{id} [delete]
+// @Router /attachments/{id} [delete]
 func (h *AttachmentHandler) Delete(c *gin.Context) {
 	if h.attachmentService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})

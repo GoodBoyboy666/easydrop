@@ -15,7 +15,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/v1/admin/attachments": {
+        "/admin/attachments": {
             "get": {
                 "security": [
                     {
@@ -114,7 +114,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/admin/attachments/batch-delete": {
+        "/admin/attachments/batch-delete": {
             "post": {
                 "security": [
                     {
@@ -177,7 +177,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/admin/attachments/{id}": {
+        "/admin/attachments/{id}": {
             "delete": {
                 "security": [
                     {
@@ -241,7 +241,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/admin/posts": {
+        "/admin/posts": {
             "get": {
                 "security": [
                     {
@@ -383,7 +383,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/admin/posts/{id}": {
+        "/admin/posts/{id}": {
             "get": {
                 "security": [
                     {
@@ -583,7 +583,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/admin/settings": {
+        "/admin/settings": {
             "get": {
                 "security": [
                     {
@@ -664,7 +664,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/admin/settings/{key}": {
+        "/admin/settings/{key}": {
             "patch": {
                 "security": [
                     {
@@ -734,7 +734,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/admin/users": {
+        "/admin/users": {
             "get": {
                 "security": [
                     {
@@ -888,7 +888,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/admin/users/{id}": {
+        "/admin/users/{id}": {
             "delete": {
                 "security": [
                     {
@@ -1020,7 +1020,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/admin/users/{id}/avatar": {
+        "/admin/users/{id}/avatar": {
             "post": {
                 "security": [
                     {
@@ -1144,7 +1144,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/attachments": {
+        "/attachments": {
             "get": {
                 "security": [
                     {
@@ -1284,7 +1284,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/attachments/{id}": {
+        "/attachments/{id}": {
             "get": {
                 "security": [
                     {
@@ -1398,7 +1398,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/auth/login": {
+        "/auth/login": {
             "post": {
                 "description": "使用用户名或邮箱登录并返回访问令牌",
                 "consumes": [
@@ -1456,7 +1456,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/auth/register": {
+        "/auth/register": {
             "post": {
                 "description": "注册新用户并返回登录态信息",
                 "consumes": [
@@ -1514,7 +1514,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/captcha/config": {
+        "/captcha/config": {
             "get": {
                 "description": "返回验证码是否开启、提供商及前端所需 site_key",
                 "produces": [
@@ -1540,7 +1540,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/settings/public": {
+        "/settings/public": {
             "get": {
                 "description": "返回前端可公开读取的站点配置",
                 "produces": [
@@ -1566,7 +1566,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/users/me": {
+        "/users/me": {
             "get": {
                 "security": [
                     {
@@ -1603,7 +1603,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/users/me/avatar": {
+        "/users/me/avatar": {
             "post": {
                 "security": [
                     {
@@ -1699,7 +1699,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/users/me/email-change": {
+        "/users/me/email-change": {
             "post": {
                 "security": [
                     {
@@ -1762,7 +1762,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/users/me/password": {
+        "/users/me/password": {
             "patch": {
                 "security": [
                     {
@@ -1819,7 +1819,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/users/me/profile": {
+        "/users/me/profile": {
             "patch": {
                 "security": [
                     {
@@ -2368,7 +2368,7 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "localhost:8080",
-	BasePath:         "/",
+	BasePath:         "/api/v1",
 	Schemes:          []string{},
 	Title:            "EasyDrop API",
 	Description:      "这是一个轻量级的说说服务",

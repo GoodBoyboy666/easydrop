@@ -33,7 +33,7 @@ func NewAuthHandler(authService service.AuthService) *AuthHandler {
 // @Failure 403 {object} dto.ErrorResponse "注册关闭"
 // @Failure 409 {object} dto.ErrorResponse "用户名或邮箱已存在"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/auth/register [post]
+// @Router /auth/register [post]
 func (h *AuthHandler) Register(c *gin.Context) {
 	if h.authService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -71,7 +71,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 // @Failure 401 {object} dto.ErrorResponse "账号不存在或密码错误"
 // @Failure 403 {object} dto.ErrorResponse "用户状态异常"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/auth/login [post]
+// @Router /auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	if h.authService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})

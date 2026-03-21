@@ -37,7 +37,7 @@ func NewPostAdminHandler(postService service.PostService) *PostAdminHandler {
 // @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
 // @Failure 403 {object} dto.ErrorResponse "无管理员权限"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/admin/posts [get]
+// @Router /admin/posts [get]
 func (h *PostAdminHandler) List(c *gin.Context) {
 	if h.postService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -73,7 +73,7 @@ func (h *PostAdminHandler) List(c *gin.Context) {
 // @Failure 403 {object} dto.ErrorResponse "无管理员权限"
 // @Failure 404 {object} dto.ErrorResponse "说说不存在"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/admin/posts/{id} [get]
+// @Router /admin/posts/{id} [get]
 func (h *PostAdminHandler) Get(c *gin.Context) {
 	if h.postService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -108,7 +108,7 @@ func (h *PostAdminHandler) Get(c *gin.Context) {
 // @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
 // @Failure 403 {object} dto.ErrorResponse "无管理员权限"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/admin/posts [post]
+// @Router /admin/posts [post]
 func (h *PostAdminHandler) Create(c *gin.Context) {
 	if h.postService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -145,7 +145,7 @@ func (h *PostAdminHandler) Create(c *gin.Context) {
 // @Failure 403 {object} dto.ErrorResponse "无管理员权限"
 // @Failure 404 {object} dto.ErrorResponse "说说不存在"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/admin/posts/{id} [patch]
+// @Router /admin/posts/{id} [patch]
 func (h *PostAdminHandler) Update(c *gin.Context) {
 	if h.postService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -187,7 +187,7 @@ func (h *PostAdminHandler) Update(c *gin.Context) {
 // @Failure 403 {object} dto.ErrorResponse "无管理员权限"
 // @Failure 404 {object} dto.ErrorResponse "说说不存在"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/admin/posts/{id} [delete]
+// @Router /admin/posts/{id} [delete]
 func (h *PostAdminHandler) Delete(c *gin.Context) {
 	if h.postService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})

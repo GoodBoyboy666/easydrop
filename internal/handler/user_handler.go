@@ -33,7 +33,7 @@ func NewUserHandler(userService service.UserService) *UserHandler {
 // @Success 200 {object} dto.UserDTO
 // @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/users/me [get]
+// @Router /users/me [get]
 func (h *UserHandler) GetProfile(c *gin.Context) {
 	if h.userService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -67,7 +67,7 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 // @Failure 400 {object} dto.ErrorResponse "请求参数格式错误"
 // @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/users/me/profile [patch]
+// @Router /users/me/profile [patch]
 func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	if h.userService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -108,7 +108,7 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 // @Failure 400 {object} dto.ErrorResponse "参数校验失败"
 // @Failure 401 {object} dto.ErrorResponse "旧密码错误或未登录"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/users/me/password [patch]
+// @Router /users/me/password [patch]
 func (h *UserHandler) ChangePassword(c *gin.Context) {
 	if h.userService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -150,7 +150,7 @@ func (h *UserHandler) ChangePassword(c *gin.Context) {
 // @Failure 401 {object} dto.ErrorResponse "密码错误或未登录"
 // @Failure 409 {object} dto.ErrorResponse "邮箱已被占用"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/users/me/email-change [post]
+// @Router /users/me/email-change [post]
 func (h *UserHandler) RequestEmailChange(c *gin.Context) {
 	if h.userService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -192,7 +192,7 @@ func (h *UserHandler) RequestEmailChange(c *gin.Context) {
 // @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
 // @Failure 403 {object} dto.ErrorResponse "存储配额不足"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/users/me/avatar [post]
+// @Router /users/me/avatar [post]
 func (h *UserHandler) UploadAvatar(c *gin.Context) {
 	if h.userService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -252,7 +252,7 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 // @Success 200 {object} dto.ErrorResponse
 // @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/users/me/avatar [delete]
+// @Router /users/me/avatar [delete]
 func (h *UserHandler) DeleteAvatar(c *gin.Context) {
 	if h.userService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})

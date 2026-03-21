@@ -39,7 +39,7 @@ func NewAttachmentAdminHandler(attachmentService service.AttachmentService) *Att
 // @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
 // @Failure 403 {object} dto.ErrorResponse "无管理员权限"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/admin/attachments [get]
+// @Router /admin/attachments [get]
 func (h *AttachmentAdminHandler) List(c *gin.Context) {
 	if h.attachmentService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -81,7 +81,7 @@ func (h *AttachmentAdminHandler) List(c *gin.Context) {
 // @Failure 403 {object} dto.ErrorResponse "无管理员权限"
 // @Failure 404 {object} dto.ErrorResponse "附件不存在"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/admin/attachments/{id} [delete]
+// @Router /admin/attachments/{id} [delete]
 func (h *AttachmentAdminHandler) Delete(c *gin.Context) {
 	if h.attachmentService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -116,7 +116,7 @@ func (h *AttachmentAdminHandler) Delete(c *gin.Context) {
 // @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
 // @Failure 403 {object} dto.ErrorResponse "无管理员权限"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/admin/attachments/batch-delete [post]
+// @Router /admin/attachments/batch-delete [post]
 func (h *AttachmentAdminHandler) BatchDelete(c *gin.Context) {
 	if h.attachmentService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})

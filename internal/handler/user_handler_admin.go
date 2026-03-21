@@ -38,7 +38,7 @@ func NewUserAdminHandler(userService service.UserService) *UserAdminHandler {
 // @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
 // @Failure 403 {object} dto.ErrorResponse "无管理员权限"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/admin/users [get]
+// @Router /admin/users [get]
 func (h *UserAdminHandler) List(c *gin.Context) {
 	if h.userService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -77,7 +77,7 @@ func (h *UserAdminHandler) List(c *gin.Context) {
 // @Failure 403 {object} dto.ErrorResponse "无管理员权限"
 // @Failure 409 {object} dto.ErrorResponse "用户名或邮箱冲突"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/admin/users [post]
+// @Router /admin/users [post]
 func (h *UserAdminHandler) Create(c *gin.Context) {
 	if h.userService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -114,7 +114,7 @@ func (h *UserAdminHandler) Create(c *gin.Context) {
 // @Failure 403 {object} dto.ErrorResponse "无管理员权限"
 // @Failure 409 {object} dto.ErrorResponse "用户名或邮箱冲突"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/admin/users/{id} [patch]
+// @Router /admin/users/{id} [patch]
 func (h *UserAdminHandler) Update(c *gin.Context) {
 	if h.userService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -155,7 +155,7 @@ func (h *UserAdminHandler) Update(c *gin.Context) {
 // @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
 // @Failure 403 {object} dto.ErrorResponse "无管理员权限"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/admin/users/{id} [delete]
+// @Router /admin/users/{id} [delete]
 func (h *UserAdminHandler) Delete(c *gin.Context) {
 	if h.userService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -190,7 +190,7 @@ func (h *UserAdminHandler) Delete(c *gin.Context) {
 // @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
 // @Failure 403 {object} dto.ErrorResponse "无管理员权限或配额不足"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/admin/users/{id}/avatar [post]
+// @Router /admin/users/{id}/avatar [post]
 func (h *UserAdminHandler) UploadAvatar(c *gin.Context) {
 	if h.userService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -253,7 +253,7 @@ func (h *UserAdminHandler) UploadAvatar(c *gin.Context) {
 // @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
 // @Failure 403 {object} dto.ErrorResponse "无管理员权限"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/admin/users/{id}/avatar [delete]
+// @Router /admin/users/{id}/avatar [delete]
 func (h *UserAdminHandler) DeleteAvatar(c *gin.Context) {
 	if h.userService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})

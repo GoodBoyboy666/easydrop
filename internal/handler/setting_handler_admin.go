@@ -37,7 +37,7 @@ func NewSettingAdminHandler(settingService service.SettingService) *SettingAdmin
 // @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
 // @Failure 403 {object} dto.ErrorResponse "无管理员权限"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/admin/settings [get]
+// @Router /admin/settings [get]
 func (h *SettingAdminHandler) List(c *gin.Context) {
 	if h.settingService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -69,7 +69,7 @@ func (h *SettingAdminHandler) List(c *gin.Context) {
 // @Produce json
 // @Success 200 {object} dto.SettingPublicResult
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/settings/public [get]
+// @Router /settings/public [get]
 func (h *SettingAdminHandler) Public(c *gin.Context) {
 	if h.settingService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -99,7 +99,7 @@ func (h *SettingAdminHandler) Public(c *gin.Context) {
 // @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
 // @Failure 403 {object} dto.ErrorResponse "无管理员权限"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /api/v1/admin/settings/{key} [patch]
+// @Router /admin/settings/{key} [patch]
 func (h *SettingAdminHandler) Update(c *gin.Context) {
 	if h.settingService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
