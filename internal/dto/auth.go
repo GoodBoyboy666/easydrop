@@ -3,7 +3,7 @@ package dto
 type CaptchaInput struct {
 	Provider      string `json:"provider"`
 	Token         string `json:"token"`
-	RemoteIP      string `json:"remote_ip"`
+	RemoteIP      string `json:"-"`
 	LotNumber     string `json:"lot_number"`
 	CaptchaOutput string `json:"captcha_output"`
 	PassToken     string `json:"pass_token"`

@@ -50,6 +50,9 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, MessageResponse{Message: "请求参数格式错误"})
 		return
 	}
+	if input.Captcha != nil {
+		input.Captcha.RemoteIP = c.ClientIP()
+	}
 
 	result, err := h.authService.Register(c.Request.Context(), input)
 	if err != nil {
@@ -84,6 +87,9 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, MessageResponse{Message: "请求参数格式错误"})
 		return
+	}
+	if input.Captcha != nil {
+		input.Captcha.RemoteIP = c.ClientIP()
 	}
 
 	result, err := h.authService.Login(c.Request.Context(), input)

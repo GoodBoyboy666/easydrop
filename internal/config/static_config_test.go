@@ -19,6 +19,12 @@ func TestLoadDefaultsWithoutConfigFile(t *testing.T) {
 	if cfg.Server.Addr != ":8080" {
 		t.Fatalf("expected default addr :8080, got %q", cfg.Server.Addr)
 	}
+	if len(cfg.Server.TrustedProxies) != 0 {
+		t.Fatalf("expected default trusted proxies empty, got %v", cfg.Server.TrustedProxies)
+	}
+	if len(cfg.Server.RemoteIPHeaders) != 2 || cfg.Server.RemoteIPHeaders[0] != "X-Forwarded-For" || cfg.Server.RemoteIPHeaders[1] != "X-Real-IP" {
+		t.Fatalf("expected default remote ip headers [X-Forwarded-For X-Real-IP], got %v", cfg.Server.RemoteIPHeaders)
+	}
 	if cfg.Server.ReadTimeout != 10*time.Second {
 		t.Fatalf("expected default read timeout 10s, got %s", cfg.Server.ReadTimeout)
 	}

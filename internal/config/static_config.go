@@ -32,6 +32,8 @@ const (
 type ServerConfig struct {
 	Mode            string        `mapstructure:"mode" yaml:"mode"`
 	Addr            string        `mapstructure:"addr" yaml:"addr"`
+	TrustedProxies  []string      `mapstructure:"trusted_proxies" yaml:"trusted_proxies"`
+	RemoteIPHeaders []string      `mapstructure:"remote_ip_headers" yaml:"remote_ip_headers"`
 	ReadTimeout     time.Duration `mapstructure:"read_timeout" yaml:"read_timeout"`
 	WriteTimeout    time.Duration `mapstructure:"write_timeout" yaml:"write_timeout"`
 	ShutdownTimeout time.Duration `mapstructure:"shutdown_timeout" yaml:"shutdown_timeout"`
@@ -75,6 +77,8 @@ func Load(configDir string, strict bool) (*StaticConfig, error) {
 	// 本地开发默认值。
 	v.SetDefault("server.mode", ServerModeDevelopment)
 	v.SetDefault("server.addr", ":8080")
+	v.SetDefault("server.trusted_proxies", []string{})
+	v.SetDefault("server.remote_ip_headers", []string{"X-Forwarded-For", "X-Real-IP"})
 	v.SetDefault("server.read_timeout", 10*time.Second)
 	v.SetDefault("server.write_timeout", 15*time.Second)
 	v.SetDefault("server.shutdown_timeout", 5*time.Second)

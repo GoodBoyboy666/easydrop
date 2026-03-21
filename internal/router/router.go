@@ -1,6 +1,7 @@
 package router
 
 import (
+	"log"
 	"net/http"
 
 	_ "easydrop/docs"
@@ -23,6 +24,22 @@ func BuildEngine(app *di.App) *gin.Engine {
 	}
 
 	r := gin.New()
+	if err := r.SetTrustedProxies(nil); err != nil {
+		log.Printf("禁用可信代理失败: %v", err)
+	}
+	if app != nil && app.Config != nil {
+		if len(app.Config.Server.RemoteIPHeaders) > 0 {
+			r.RemoteIPHeaders = app.Config.Server.RemoteIPHeaders
+		}
+		if len(app.Config.Server.TrustedProxies) > 0 {
+			if err := r.SetTrustedProxies(app.Config.Server.TrustedProxies); err != nil {
+				log.Printf("设置可信代理失败，回退为关闭: %v", err)
+				if fallbackErr := r.SetTrustedProxies(nil); fallbackErr != nil {
+					log.Printf("回退关闭可信代理失败: %v", fallbackErr)
+				}
+			}
+		}
+	}
 	r.Use(gin.Recovery())
 	r.GET("/api/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 

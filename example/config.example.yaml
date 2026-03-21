@@ -5,6 +5,13 @@ server:
   # development: 本地开发（默认）；production: 生产环境
   mode: "development"
   addr: ":8080"
+  # 可信代理列表。默认空数组表示关闭可信代理，不信任 X-Forwarded-For/X-Real-IP。
+  # 生产环境部署在反向代理后时，填写代理网段或地址（如 "127.0.0.1", "10.0.0.0/8"）。
+  trusted_proxies: []
+  # 仅在请求来自 trusted_proxies 时，按以下顺序解析客户端真实IP。
+  remote_ip_headers:
+    - X-Forwarded-For
+    - X-Real-IP
   read_timeout: 10s
   write_timeout: 15s
   shutdown_timeout: 5s
