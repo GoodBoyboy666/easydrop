@@ -212,7 +212,7 @@ func (h *AttachmentHandler) List(c *gin.Context) {
 // @Security BearerAuth
 // @Param id path int true "附件ID"
 // @Success 200 {object} MessageResponse
-// @Failure 40di0 {object} MessageResponse "参数校验失败"
+// @Failure 400 {object} MessageResponse "参数校验失败"
 // @Failure 401 {object} MessageResponse "未登录或登录失效"
 // @Failure 404 {object} MessageResponse "附件不存在"
 // @Failure 500 {object} MessageResponse "服务内部错误"

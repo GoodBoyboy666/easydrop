@@ -21,6 +21,14 @@ import (
 	"time"
 )
 
+// @title           EasyDrop API
+// @version         1.0
+// @description     这是一个轻量级的说说服务
+// @host            localhost:8080
+// @BasePath        /
+// @securityDefinitions.apikey BearerAuth
+// @in              header
+// @name            Authorization
 func main() {
 	var configDir string
 	flag.StringVar(&configDir, "config-dir", "", "config directory containing config.yaml")

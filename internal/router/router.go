@@ -3,15 +3,19 @@ package router
 import (
 	"net/http"
 
+	_ "easydrop/docs"
 	"easydrop/internal/di"
 
+	swaggerFiles "github.com/swaggo/files"
 	"github.com/gin-gonic/gin"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 // BuildEngine 构建并返回应用的 HTTP 路由引擎。
 func BuildEngine(app *di.App) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Recovery())
+	r.GET("/api/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	if app == nil {
 		return r
