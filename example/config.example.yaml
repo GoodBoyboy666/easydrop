@@ -1,6 +1,12 @@
 # Example configuration for easydrop.
 # Copy to data/config.yaml and edit for your environment.
 
+server:
+  addr: ":8080"
+  read_timeout: 10s
+  write_timeout: 15s
+  shutdown_timeout: 5s
+
 db:
   driver: sqlite
   sqlite_path: data/easydrop.db
