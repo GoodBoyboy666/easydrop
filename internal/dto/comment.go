@@ -21,6 +21,22 @@ type CommentListInput struct {
 	Order  string `json:"order"`
 }
 
+type CommentUserListInput struct {
+	UserID uint   `json:"user_id"`
+	PostID *uint  `json:"post_id"`
+	Limit  int    `json:"limit"`
+	Offset int    `json:"offset"`
+	Order  string `json:"order"`
+}
+
+type CommentAdminListInput struct {
+	PostID *uint  `json:"post_id"`
+	UserID *uint  `json:"user_id"`
+	Limit  int    `json:"limit"`
+	Offset int    `json:"offset"`
+	Order  string `json:"order"`
+}
+
 type CommentDTO struct {
 	ID            uint      `json:"id"`
 	PostID        uint      `json:"post_id"`

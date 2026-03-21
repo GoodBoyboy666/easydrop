@@ -19,7 +19,7 @@ type CommentRepo interface {
 
 // CommentFilter 评论查询过滤条件。
 type CommentFilter struct {
-	PostID   uint
+	PostID   *uint
 	UserID   *uint
 	RootID   *uint
 	ParentID *uint
@@ -57,8 +57,11 @@ func (r *GormCommentRepo) Delete(ctx context.Context, id uint) error {
 }
 
 func (r *GormCommentRepo) List(ctx context.Context, filter CommentFilter, opts ListOptions) ([]model.Comment, int64, error) {
-	db := r.db.WithContext(withContext(ctx)).Model(&model.Comment{}).
-		Where("post_id = ?", filter.PostID)
+	db := r.db.WithContext(withContext(ctx)).Model(&model.Comment{})
+
+	if filter.PostID != nil {
+		db = db.Where("post_id = ?", *filter.PostID)
+	}
 
 	if filter.UserID != nil {
 		db = db.Where("user_id = ?", *filter.UserID)

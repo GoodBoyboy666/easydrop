@@ -33,6 +33,10 @@ type CommentService interface {
 	Delete(ctx context.Context, id uint) error
 	// ListByPost 查询指定说说下的评论列表。
 	ListByPost(ctx context.Context, input dto.CommentListInput) (*dto.CommentListResult, error)
+	// ListByUser 查询指定用户的评论列表。
+	ListByUser(ctx context.Context, input dto.CommentUserListInput) (*dto.CommentListResult, error)
+	// List 查询评论列表（管理端）。
+	List(ctx context.Context, input dto.CommentAdminListInput) (*dto.CommentListResult, error)
 }
 
 type commentService struct {
@@ -201,12 +205,55 @@ func (s *commentService) ListByPost(ctx context.Context, input dto.CommentListIn
 		return nil, err
 	}
 
+	postID := input.PostID
+	return s.list(ctx, repo.CommentFilter{PostID: &postID}, input.Limit, input.Offset, input.Order)
+}
+
+// ListByUser 查询指定用户的评论列表。
+func (s *commentService) ListByUser(ctx context.Context, input dto.CommentUserListInput) (*dto.CommentListResult, error) {
+	if input.UserID == 0 {
+		return nil, ErrInvalidCommentUser
+	}
+	if input.PostID != nil && *input.PostID == 0 {
+		return nil, ErrInvalidCommentPost
+	}
+	if input.PostID != nil {
+		if err := s.ensurePostExists(ctx, *input.PostID); err != nil {
+			return nil, err
+		}
+	}
+
+	userID := input.UserID
+	return s.list(ctx, repo.CommentFilter{PostID: input.PostID, UserID: &userID}, input.Limit, input.Offset, input.Order)
+}
+
+// List 查询评论列表（管理端）。
+func (s *commentService) List(ctx context.Context, input dto.CommentAdminListInput) (*dto.CommentListResult, error) {
+	if input.PostID != nil && *input.PostID == 0 {
+		return nil, ErrInvalidCommentPost
+	}
+	if input.UserID != nil && *input.UserID == 0 {
+		return nil, ErrInvalidCommentUser
+	}
+	if input.PostID != nil {
+		if err := s.ensurePostExists(ctx, *input.PostID); err != nil {
+			return nil, err
+		}
+	}
+
+	return s.list(ctx, repo.CommentFilter{PostID: input.PostID, UserID: input.UserID}, input.Limit, input.Offset, input.Order)
+}
+
+func (s *commentService) list(ctx context.Context, filter repo.CommentFilter, limit, offset int, order string) (*dto.CommentListResult, error) {
 	comments, total, err := s.commentRepo.List(ctx, repo.CommentFilter{
-		PostID: input.PostID,
+		PostID:   filter.PostID,
+		UserID:   filter.UserID,
+		RootID:   filter.RootID,
+		ParentID: filter.ParentID,
 	}, repo.ListOptions{
-		Limit:  normalizeServiceListLimit(input.Limit),
-		Offset: normalizeServiceListOffset(input.Offset),
-		Order:  normalizeCommentListOrder(input.Order),
+		Limit:  normalizeServiceListLimit(limit),
+		Offset: normalizeServiceListOffset(offset),
+		Order:  normalizeCommentListOrder(order),
 	})
 	if err != nil {
 		log.Printf("查询评论列表失败: %v", err)
