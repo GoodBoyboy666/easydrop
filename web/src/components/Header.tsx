@@ -15,7 +15,6 @@ export default function Header() {
           >
             <span className="inline-flex size-2.5 rounded-full bg-[linear-gradient(90deg,#56c6be,#7ed3bf)]" />
             <span className="font-semibold">EasyDrop</span>
-            <span className="text-muted-foreground">Memos 风格首页</span>
           </Link>
         </h2>
 

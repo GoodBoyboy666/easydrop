@@ -470,9 +470,6 @@ function HomePage() {
                   <LoaderCircleIcon />
                 </EmptyMedia>
                 <EmptyTitle>这里还没有公开说说</EmptyTitle>
-                <EmptyDescription>
-                  等第一条内容出现后，首页会像 memos 一样直接滚动展示时间线。
-                </EmptyDescription>
               </EmptyHeader>
             </Empty>
           ) : null}

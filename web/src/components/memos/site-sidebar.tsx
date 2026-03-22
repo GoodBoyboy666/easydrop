@@ -84,9 +84,7 @@ export function SiteSidebar({
   tagsStatus,
 }: SiteSidebarProps) {
   const siteName = settings.site_name?.trim() || 'EasyDrop'
-  const siteAnnouncement =
-    settings.site_announcement?.trim() ||
-    '像 memos 一样，把短内容安静地堆叠成可回看的时间线。'
+  const siteAnnouncement = settings.site_announcement?.trim()
   const siteUrl = settings.site_url?.trim()
 
   return (
@@ -97,18 +95,14 @@ export function SiteSidebar({
             站点公告
           </Badge>
           <CardTitle className="text-xl">{siteName}</CardTitle>
-          <CardDescription>{siteAnnouncement}</CardDescription>
+          {siteAnnouncement ? (
+            <CardDescription>{siteAnnouncement}</CardDescription>
+          ) : null}
         </CardHeader>
         <CardContent className="flex flex-col gap-4 pt-4">
           {settingsError ? (
             <ModuleError description={settingsError} title="公告配置加载失败" />
           ) : null}
-
-          <div className="rounded-2xl border bg-background/70 p-4 text-sm text-muted-foreground">
-            <p className="m-0">
-              首页即时间流，管理员登录后可直接在前台发布说说。
-            </p>
-          </div>
 
           {siteUrl ? (
             <Button
@@ -129,11 +123,8 @@ export function SiteSidebar({
         <CardHeader className="gap-2 border-b border-border/60">
           <div className="flex items-center gap-2">
             <MessageSquareQuoteIcon className="size-4 text-foreground" />
-            <CardTitle className="text-base">最新根评论</CardTitle>
+            <CardTitle className="text-base">最新评论</CardTitle>
           </div>
-          <CardDescription>
-            仅展示 `parent_id` 与 `root_id` 都为 0 或空值的顶层评论。
-          </CardDescription>
         </CardHeader>
         <CardContent className="pt-4">
           {latestRootCommentsStatus === 'loading' ? <ModuleSkeleton /> : null}
@@ -153,9 +144,6 @@ export function SiteSidebar({
                   <MessageSquareQuoteIcon />
                 </EmptyMedia>
                 <EmptyTitle>暂时没有根评论</EmptyTitle>
-                <EmptyDescription>
-                  等新的顶层评论出现后，这里会滚动展示最新动态。
-                </EmptyDescription>
               </EmptyHeader>
             </Empty>
           ) : null}
@@ -195,7 +183,6 @@ export function SiteSidebar({
             <ShapesIcon className="size-4 text-foreground" />
             <CardTitle className="text-base">标签</CardTitle>
           </div>
-          <CardDescription>优先按热度展示公开标签。</CardDescription>
         </CardHeader>
         <CardContent className="pt-4">
           {tagsStatus === 'loading' ? <ModuleSkeleton /> : null}
@@ -211,9 +198,6 @@ export function SiteSidebar({
                   <ShapesIcon />
                 </EmptyMedia>
                 <EmptyTitle>还没有标签</EmptyTitle>
-                <EmptyDescription>
-                  标签出现后，会在这里展示当前可见的主题索引。
-                </EmptyDescription>
               </EmptyHeader>
             </Empty>
           ) : null}

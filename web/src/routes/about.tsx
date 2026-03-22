@@ -24,10 +24,6 @@ function About() {
           <CardTitle className="display-title text-4xl sm:text-5xl">
             一个公开阅读优先的说说首页
           </CardTitle>
-          <CardDescription className="max-w-3xl text-base leading-7">
-            首页直接拉取公开说说、评论和站点配置，用较克制的双栏布局呈现 memos
-            风格的时间流。
-          </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 pt-6 md:grid-cols-3">
           <div className="rounded-2xl border bg-background/70 p-5">
