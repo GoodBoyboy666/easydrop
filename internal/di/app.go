@@ -22,6 +22,7 @@ type App struct {
 	PostAdminHandler       *handler.PostAdminHandler
 	PostHandler            *handler.PostHandler
 	SettingAdminHandler    *handler.SettingAdminHandler
+	TagHandler             *handler.TagHandler
 }
 
 // NewApp 构造 App 聚合对象。
@@ -40,6 +41,7 @@ func NewApp(
 	postAdminHandler *handler.PostAdminHandler,
 	postHandler *handler.PostHandler,
 	settingAdminHandler *handler.SettingAdminHandler,
+	tagHandler *handler.TagHandler,
 
 ) *App {
 	return &App{
@@ -57,5 +59,6 @@ func NewApp(
 		PostAdminHandler:       postAdminHandler,
 		PostHandler:            postHandler,
 		SettingAdminHandler:    settingAdminHandler,
+		TagHandler:             tagHandler,
 	}
 }

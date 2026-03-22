@@ -195,6 +195,44 @@ func (h *CommentHandler) List(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// ListPublic 查询公开评论列表。
+// @Summary 前端查询评论列表
+// @Description 分页查询公开评论列表
+// @Tags comment
+// @Produce json
+// @Param limit query int false "分页大小"
+// @Param offset query int false "偏移量"
+// @Param order query string false "排序，如 created_at_desc 或 created_at_asc"
+// @Success 200 {object} dto.CommentListResult
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
+// @Router /comments [get]
+func (h *CommentHandler) ListPublic(c *gin.Context) {
+	if h.commentService == nil {
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+		return
+	}
+
+	var req dto.CommentPublicListQueryInput
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "查询参数不合法"})
+		return
+	}
+	req.Order = strings.TrimSpace(req.Order)
+
+	result, err := h.commentService.List(c.Request.Context(), dto.CommentAdminListInput{
+		Limit:  req.Limit,
+		Offset: req.Offset,
+		Order:  req.Order,
+	})
+	if err != nil {
+		c.JSON(mapCommentErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
 // ListByPost 查询指定说说的评论列表（公开）。
 // @Summary 前端查询说说评论列表
 // @Description 分页查询指定说说下的评论（扁平）

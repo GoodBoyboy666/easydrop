@@ -263,6 +263,15 @@ definitions:
       name:
         type: string
     type: object
+  dto.TagListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/dto.TagDTO'
+        type: array
+      total:
+        type: integer
+    type: object
   dto.UserChangeEmailInput:
     properties:
       current_password:
@@ -1357,6 +1366,40 @@ paths:
       summary: 验证码公开配置
       tags:
       - captcha
+  /comments:
+    get:
+      description: 分页查询公开评论列表
+      parameters:
+      - description: 分页大小
+        in: query
+        name: limit
+        type: integer
+      - description: 偏移量
+        in: query
+        name: offset
+        type: integer
+      - description: 排序，如 created_at_desc 或 created_at_asc
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CommentListResult'
+        "400":
+          description: 参数校验失败
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: 前端查询评论列表
+      tags:
+      - comment
   /init:
     post:
       consumes:
@@ -1510,6 +1553,44 @@ paths:
       summary: 前端公开配置
       tags:
       - setting
+  /tags:
+    get:
+      description: 分页查询标签列表，支持按关键字过滤
+      parameters:
+      - description: 标签关键字
+        in: query
+        name: keyword
+        type: string
+      - description: 分页大小
+        in: query
+        name: limit
+        type: integer
+      - description: 偏移量
+        in: query
+        name: offset
+        type: integer
+      - description: 排序，如 created_at_desc、hot_desc
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.TagListResult'
+        "400":
+          description: 参数校验失败
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: 前端查询公开标签列表
+      tags:
+      - tag
   /users/me:
     get:
       description: 获取当前登录用户的资料信息

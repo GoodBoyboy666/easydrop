@@ -13,6 +13,7 @@ var HandlerSet = wire.NewSet(
 	NewPostAdminHandler,
 	NewPostHandler,
 	NewSettingAdminHandler,
+	NewTagHandler,
 	NewUserAdminHandler,
 	NewUserHandler,
 )

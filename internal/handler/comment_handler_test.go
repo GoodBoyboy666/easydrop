@@ -195,7 +195,7 @@ func TestCommentHandlerListSuccess(t *testing.T) {
 		},
 	})
 
-	c, w := newTestContext(http.MethodGet, "/api/v1/comments?post_id=9&limit=10&offset=20&order=created_at_asc")
+	c, w := newTestContext(http.MethodGet, "/api/v1/users/me/comments?post_id=9&limit=10&offset=20&order=created_at_asc")
 	c.Set(middleware.ContextUserIDKey, uint(101))
 
 	h.List(c)
@@ -205,6 +205,64 @@ func TestCommentHandlerListSuccess(t *testing.T) {
 	}
 	if !called {
 		t.Fatal("expected ListByUser to be called")
+	}
+}
+
+func TestCommentHandlerListPublicSuccess(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	called := false
+	h := NewCommentHandler(&mockCommentServiceForHandler{
+		listFn: func(_ context.Context, input dto.CommentAdminListInput) (*dto.CommentListResult, error) {
+			called = true
+			if input.PostID != nil || input.UserID != nil {
+				t.Fatalf("public list should not pass post/user filters: %+v", input)
+			}
+			if input.Limit != 10 || input.Offset != 20 || input.Order != "created_at_desc" {
+				t.Fatalf("unexpected public list input: %+v", input)
+			}
+			return &dto.CommentListResult{Items: []dto.CommentDTO{}, Total: 0}, nil
+		},
+	})
+
+	c, w := newTestContext(http.MethodGet, "/api/v1/comments?limit=10&offset=20&order=created_at_desc")
+
+	h.ListPublic(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+	if !called {
+		t.Fatal("expected List to be called")
+	}
+}
+
+func TestCommentHandlerListPublicRejectsUnknownQuery(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	called := false
+	h := NewCommentHandler(&mockCommentServiceForHandler{
+		listFn: func(_ context.Context, input dto.CommentAdminListInput) (*dto.CommentListResult, error) {
+			called = true
+			if input.PostID != nil || input.UserID != nil {
+				t.Fatalf("public list should ignore unknown filters: %+v", input)
+			}
+			if input.Order != "" || input.Limit != 0 || input.Offset != 0 {
+				t.Fatalf("unexpected list defaults: %+v", input)
+			}
+			return &dto.CommentListResult{Items: []dto.CommentDTO{}, Total: 0}, nil
+		},
+	})
+
+	c, w := newTestContext(http.MethodGet, "/api/v1/comments?post_id=9&user_id=2")
+
+	h.ListPublic(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+	if !called {
+		t.Fatal("expected List to be called")
 	}
 }
 
@@ -275,7 +333,7 @@ func TestCommentHandlerUnauthorized(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	h := NewCommentHandler(&mockCommentServiceForHandler{})
-	c, w := newTestContext(http.MethodGet, "/api/v1/comments/1")
+	c, w := newTestContext(http.MethodGet, "/api/v1/users/me/comments/1")
 	c.Params = gin.Params{{Key: "id", Value: "1"}}
 
 	h.Get(c)

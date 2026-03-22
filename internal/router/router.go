@@ -59,6 +59,7 @@ func BuildEngine(app *di.App) *gin.Engine {
 	postAdminHandler := app.PostAdminHandler
 	postHandler := app.PostHandler
 	settingAdminHandler := app.SettingAdminHandler
+	tagHandler := app.TagHandler
 
 	requireLogin := fallbackMiddleware(http.StatusInternalServerError, "认证中间件未正确初始化")
 	requireAdmin := fallbackMiddleware(http.StatusInternalServerError, "认证中间件未正确初始化")
@@ -97,6 +98,15 @@ func BuildEngine(app *di.App) *gin.Engine {
 				usersMe.POST("/email-change", userHandler.RequestEmailChange)
 				usersMe.POST("/avatar", userHandler.UploadAvatar)
 				usersMe.DELETE("/avatar", userHandler.DeleteAvatar)
+
+				comments := usersMe.Group("/comments")
+				{
+					comments.POST("", commentHandler.Create)
+					comments.GET("", commentHandler.List)
+					comments.GET("/:id", commentHandler.Get)
+					comments.PATCH("/:id", commentHandler.Update)
+					comments.DELETE("/:id", commentHandler.Delete)
+				}
 			}
 
 			attachments := loginGroup.Group("/attachments")
@@ -107,14 +117,11 @@ func BuildEngine(app *di.App) *gin.Engine {
 				attachments.DELETE("/:id", attachmentHandler.Delete)
 			}
 
-			comments := loginGroup.Group("/comments")
-			{
-				comments.POST("", commentHandler.Create)
-				comments.GET("", commentHandler.List)
-				comments.GET("/:id", commentHandler.Get)
-				comments.PATCH("/:id", commentHandler.Update)
-				comments.DELETE("/:id", commentHandler.Delete)
-			}
+		}
+
+		comments := v1.Group("/comments")
+		{
+			comments.GET("", commentHandler.ListPublic)
 		}
 
 		settings := v1.Group("/settings")
@@ -126,6 +133,11 @@ func BuildEngine(app *di.App) *gin.Engine {
 		{
 			posts.GET("", postHandler.List)
 			posts.GET("/:id/comments", commentHandler.ListByPost)
+		}
+
+		tags := v1.Group("/tags")
+		{
+			tags.GET("", tagHandler.List)
 		}
 
 		adminGroup := v1.Group("/admin")

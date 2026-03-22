@@ -38,6 +38,7 @@ func TestBuildEngineRegistersAllRoutes(t *testing.T) {
 		"GET /api/v1/settings/public":                 {},
 		"GET /api/v1/posts":                           {},
 		"GET /api/v1/posts/:id/comments":              {},
+		"GET /api/v1/tags":                            {},
 		"GET /api/v1/users/me":                        {},
 		"PATCH /api/v1/users/me/profile":              {},
 		"PATCH /api/v1/users/me/password":             {},
@@ -48,11 +49,12 @@ func TestBuildEngineRegistersAllRoutes(t *testing.T) {
 		"GET /api/v1/attachments":                     {},
 		"GET /api/v1/attachments/:id":                 {},
 		"DELETE /api/v1/attachments/:id":              {},
-		"POST /api/v1/comments":                       {},
 		"GET /api/v1/comments":                        {},
-		"GET /api/v1/comments/:id":                    {},
-		"PATCH /api/v1/comments/:id":                  {},
-		"DELETE /api/v1/comments/:id":                 {},
+		"POST /api/v1/users/me/comments":              {},
+		"GET /api/v1/users/me/comments":               {},
+		"GET /api/v1/users/me/comments/:id":           {},
+		"PATCH /api/v1/users/me/comments/:id":         {},
+		"DELETE /api/v1/users/me/comments/:id":        {},
 		"GET /api/v1/admin/users":                     {},
 		"POST /api/v1/admin/users":                    {},
 		"PATCH /api/v1/admin/users/:id":               {},
@@ -102,11 +104,29 @@ func TestBuildEngineAppliesMiddlewareGroups(t *testing.T) {
 	}
 
 	{
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/users/me/comments", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401 for me comments route, got %d", w.Code)
+		}
+	}
+
+	{
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/users", nil)
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, req)
 		if w.Code != http.StatusForbidden {
 			t.Fatalf("expected 403 for admin route, got %d", w.Code)
+		}
+	}
+
+	{
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/comments", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code == http.StatusUnauthorized || w.Code == http.StatusForbidden {
+			t.Fatalf("public comments route should not be blocked by auth middleware, got %d", w.Code)
 		}
 	}
 
@@ -125,6 +145,15 @@ func TestBuildEngineAppliesMiddlewareGroups(t *testing.T) {
 		r.ServeHTTP(w, req)
 		if w.Code == http.StatusUnauthorized || w.Code == http.StatusForbidden {
 			t.Fatalf("public post comments route should not be blocked by auth middleware, got %d", w.Code)
+		}
+	}
+
+	{
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/tags", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code == http.StatusUnauthorized || w.Code == http.StatusForbidden {
+			t.Fatalf("public tags route should not be blocked by auth middleware, got %d", w.Code)
 		}
 	}
 
@@ -216,5 +245,6 @@ func newTestAppWithMode(auth middleware.Auth, mode string) *di.App {
 		PostAdminHandler:       handler.NewPostAdminHandler(nil),
 		PostHandler:            handler.NewPostHandler(nil),
 		SettingAdminHandler:    handler.NewSettingAdminHandler(nil),
+		TagHandler:             handler.NewTagHandler(nil),
 	}
 }

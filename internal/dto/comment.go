@@ -31,6 +31,12 @@ type CommentPostListQueryInput struct {
 	Order  string `json:"order" form:"order"`
 }
 
+type CommentPublicListQueryInput struct {
+	Limit  int    `json:"limit" form:"limit"`
+	Offset int    `json:"offset" form:"offset"`
+	Order  string `json:"order" form:"order"`
+}
+
 type CommentUserListInput struct {
 	UserID uint   `json:"user_id"`
 	PostID *uint  `json:"post_id" form:"post_id" binding:"omitempty,gt=0"`

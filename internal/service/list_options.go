@@ -83,10 +83,12 @@ func normalizeCommentListOrder(order string) string {
 	switch strings.ToLower(strings.TrimSpace(order)) {
 	case "created_at_desc":
 		return "created_at desc"
-	case "created_at_asc", "":
+	case "created_at_asc":
 		return "created_at asc"
+	case "":
+		return "created_at desc"
 	default:
-		return "created_at asc"
+		return "created_at desc"
 	}
 }
 

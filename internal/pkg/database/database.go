@@ -1,8 +1,10 @@
 package database
 
 import (
+	"easydrop/internal/model"
 	"errors"
 	"fmt"
+	"log"
 	"net/url"
 	"strings"
 	"time"
@@ -74,10 +76,24 @@ func NewDB(cfg *Config) (*gorm.DB, error) {
 		return nil, err
 	}
 
+	err = db.AutoMigrate(
+		&model.Attachment{},
+		&model.Comment{},
+		&model.Post{},
+		&model.Setting{},
+		&model.Tag{},
+		&model.User{},
+	)
+	if err != nil {
+		log.Fatalf("自动迁移建表失败: %v", err)
+	}
+
 	sqlDB, err := db.DB()
 	if err != nil {
 		return nil, err
 	}
+
+	log.Println("数据库连接与表结构同步成功！")
 
 	if cfg.MaxOpenConns > 0 {
 		sqlDB.SetMaxOpenConns(cfg.MaxOpenConns)
