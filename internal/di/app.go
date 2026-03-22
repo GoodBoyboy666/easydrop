@@ -20,6 +20,7 @@ type App struct {
 	CommentHandler         *handler.CommentHandler
 	CommentAdminHandler    *handler.CommentAdminHandler
 	PostAdminHandler       *handler.PostAdminHandler
+	PostHandler            *handler.PostHandler
 	SettingAdminHandler    *handler.SettingAdminHandler
 }
 
@@ -37,6 +38,7 @@ func NewApp(
 	commentHandler *handler.CommentHandler,
 	commentAdminHandler *handler.CommentAdminHandler,
 	postAdminHandler *handler.PostAdminHandler,
+	postHandler *handler.PostHandler,
 	settingAdminHandler *handler.SettingAdminHandler,
 
 ) *App {
@@ -53,6 +55,7 @@ func NewApp(
 		CommentHandler:         commentHandler,
 		CommentAdminHandler:    commentAdminHandler,
 		PostAdminHandler:       postAdminHandler,
+		PostHandler:            postHandler,
 		SettingAdminHandler:    settingAdminHandler,
 	}
 }

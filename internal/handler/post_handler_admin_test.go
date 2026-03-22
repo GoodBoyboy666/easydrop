@@ -130,11 +130,14 @@ func TestPostAdminHandlerCreateSuccess(t *testing.T) {
 			if input.Content != "post content" {
 				t.Fatalf("unexpected content: %s", input.Content)
 			}
-			return &dto.PostDTO{ID: 11, UserID: input.UserID, Content: input.Content}, nil
+			if !input.Hide {
+				t.Fatal("expected hide=true")
+			}
+			return &dto.PostDTO{ID: 11, UserID: input.UserID, Content: input.Content, Hide: input.Hide}, nil
 		},
 	})
 
-	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/admin/posts", `{"user_id":5,"content":"post content"}`)
+	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/admin/posts", `{"user_id":5,"content":"post content","hide":true}`)
 	h.Create(c)
 
 	if w.Code != http.StatusCreated {
@@ -165,11 +168,14 @@ func TestPostAdminHandlerUpdateBindsPathID(t *testing.T) {
 			if input.Content == nil || *input.Content != "updated" {
 				t.Fatalf("unexpected content: %#v", input.Content)
 			}
-			return &dto.PostDTO{ID: input.ID, Content: *input.Content, UserID: 2}, nil
+			if input.Hide == nil || !*input.Hide {
+				t.Fatalf("unexpected hide: %#v", input.Hide)
+			}
+			return &dto.PostDTO{ID: input.ID, Content: *input.Content, UserID: 2, Hide: *input.Hide}, nil
 		},
 	})
 
-	c, w := newTestContextWithBody(http.MethodPatch, "/api/v1/admin/posts/9", `{"id":999,"content":"updated"}`)
+	c, w := newTestContextWithBody(http.MethodPatch, "/api/v1/admin/posts/9", `{"id":999,"content":"updated","hide":true}`)
 	c.Params = gin.Params{{Key: "id", Value: "9"}}
 	h.Update(c)
 

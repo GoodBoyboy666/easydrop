@@ -124,6 +124,8 @@ definitions:
     properties:
       content:
         type: string
+      hide:
+        type: boolean
       user_id:
         type: integer
     type: object
@@ -133,6 +135,8 @@ definitions:
         type: string
       created_at:
         type: string
+      hide:
+        type: boolean
       id:
         type: integer
       tags:
@@ -157,6 +161,8 @@ definitions:
     properties:
       content:
         type: string
+      hide:
+        type: boolean
       id:
         type: integer
     type: object
@@ -1372,6 +1378,48 @@ paths:
       summary: 查询系统初始化状态
       tags:
       - init
+  /posts:
+    get:
+      description: 分页查询公开说说，支持按用户和标签过滤
+      parameters:
+      - description: 用户ID
+        in: query
+        name: user_id
+        type: integer
+      - description: 标签ID
+        in: query
+        name: tag_id
+        type: integer
+      - description: 分页大小
+        in: query
+        name: limit
+        type: integer
+      - description: 偏移量
+        in: query
+        name: offset
+        type: integer
+      - description: 排序，如 created_at_desc
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.PostListResult'
+        "400":
+          description: 参数校验失败
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: 前端查询公开说说列表
+      tags:
+      - post
   /settings/public:
     get:
       description: 返回前端可公开读取的站点配置

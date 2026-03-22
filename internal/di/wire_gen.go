@@ -99,7 +99,8 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	tagRepo := repo.NewTagRepo(db)
 	postService := service.NewPostService(postRepo, tagRepo)
 	postAdminHandler := handler.NewPostAdminHandler(postService)
+	postHandler := handler.NewPostHandler(postService)
 	settingAdminHandler := handler.NewSettingAdminHandler(settingService)
-	app := NewApp(staticConfig, auth, authHandler, captchaHandler, initHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, postAdminHandler, settingAdminHandler)
+	app := NewApp(staticConfig, auth, authHandler, captchaHandler, initHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, postAdminHandler, postHandler, settingAdminHandler)
 	return app, nil
 }

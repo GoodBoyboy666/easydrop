@@ -21,6 +21,7 @@ type PostRepo interface {
 type PostFilter struct {
 	UserID *uint
 	TagID  *uint
+	Hide   *bool
 }
 
 // GormPostRepo 基于 Gorm 的帖子仓储实现。
@@ -74,6 +75,9 @@ func (r *GormPostRepo) List(ctx context.Context, filter PostFilter, opts ListOpt
 	if filter.TagID != nil {
 		db = db.Joins("JOIN post_tags ON post_tags.post_id = posts.id").
 			Where("post_tags.tag_id = ?", *filter.TagID)
+	}
+	if filter.Hide != nil {
+		db = db.Where("hide = ?", *filter.Hide)
 	}
 
 	countDB := db

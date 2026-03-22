@@ -57,6 +57,7 @@ func BuildEngine(app *di.App) *gin.Engine {
 	commentHandler := app.CommentHandler
 	commentAdminHandler := app.CommentAdminHandler
 	postAdminHandler := app.PostAdminHandler
+	postHandler := app.PostHandler
 	settingAdminHandler := app.SettingAdminHandler
 
 	requireLogin := fallbackMiddleware(http.StatusInternalServerError, "认证中间件未正确初始化")
@@ -119,6 +120,11 @@ func BuildEngine(app *di.App) *gin.Engine {
 		settings := v1.Group("/settings")
 		{
 			settings.GET("/public", settingAdminHandler.Public)
+		}
+
+		posts := v1.Group("/posts")
+		{
+			posts.GET("", postHandler.List)
 		}
 
 		adminGroup := v1.Group("/admin")

@@ -36,6 +36,7 @@ func TestBuildEngineRegistersAllRoutes(t *testing.T) {
 		"GET /api/v1/init/status":                     {},
 		"POST /api/v1/init":                           {},
 		"GET /api/v1/settings/public":                 {},
+		"GET /api/v1/posts":                           {},
 		"GET /api/v1/users/me":                        {},
 		"PATCH /api/v1/users/me/profile":              {},
 		"PATCH /api/v1/users/me/password":             {},
@@ -203,6 +204,7 @@ func newTestAppWithMode(auth middleware.Auth, mode string) *di.App {
 		CommentHandler:         handler.NewCommentHandler(nil),
 		CommentAdminHandler:    handler.NewCommentAdminHandler(nil),
 		PostAdminHandler:       handler.NewPostAdminHandler(nil),
+		PostHandler:            handler.NewPostHandler(nil),
 		SettingAdminHandler:    handler.NewSettingAdminHandler(nil),
 	}
 }

@@ -5,6 +5,7 @@ import "time"
 type PostCreateInput struct {
 	UserID  uint   `json:"user_id"`
 	Content string `json:"content"`
+	Hide    bool   `json:"hide"`
 }
 
 type PostIDURIInput struct {
@@ -14,11 +15,13 @@ type PostIDURIInput struct {
 type PostUpdateInput struct {
 	ID      uint    `json:"id"`
 	Content *string `json:"content"`
+	Hide    *bool   `json:"hide"`
 }
 
 type PostListInput struct {
 	UserID *uint  `json:"user_id" form:"user_id" binding:"omitempty,gt=0"`
 	TagID  *uint  `json:"tag_id" form:"tag_id" binding:"omitempty,gt=0"`
+	Hide   *bool  `json:"hide" form:"hide"`
 	Limit  int    `json:"limit" form:"limit"`
 	Offset int    `json:"offset" form:"offset"`
 	Order  string `json:"order" form:"order"`
@@ -27,6 +30,7 @@ type PostListInput struct {
 type PostDTO struct {
 	ID        uint      `json:"id"`
 	Content   string    `json:"content"`
+	Hide      bool      `json:"hide"`
 	UserID    uint      `json:"user_id"`
 	Tags      []TagDTO  `json:"tags"`
 	CreatedAt time.Time `json:"created_at"`

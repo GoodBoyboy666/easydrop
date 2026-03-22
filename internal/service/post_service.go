@@ -67,6 +67,7 @@ func (s *postService) Create(ctx context.Context, input dto.PostCreateInput) (*d
 
 	post := &model.Post{
 		Content: content,
+		Hide:    input.Hide,
 		UserID:  input.UserID,
 		Tags:    tags,
 	}
@@ -121,6 +122,9 @@ func (s *postService) Update(ctx context.Context, input dto.PostUpdateInput) (*d
 		}
 		post.Tags = tags
 	}
+	if input.Hide != nil {
+		post.Hide = *input.Hide
+	}
 
 	if err := s.postRepo.Update(ctx, post); err != nil {
 		log.Printf("更新说说失败: %v", err)
@@ -161,6 +165,7 @@ func (s *postService) List(ctx context.Context, input dto.PostListInput) (*dto.P
 	posts, total, err := s.postRepo.List(ctx, repo.PostFilter{
 		UserID: input.UserID,
 		TagID:  input.TagID,
+		Hide:   input.Hide,
 	}, repo.ListOptions{
 		Limit:  normalizeServiceListLimit(input.Limit),
 		Offset: normalizeServiceListOffset(input.Offset),
@@ -288,6 +293,7 @@ func toPostDTO(post *model.Post) *dto.PostDTO {
 	return &dto.PostDTO{
 		ID:        post.ID,
 		Content:   post.Content,
+		Hide:      post.Hide,
 		UserID:    post.UserID,
 		Tags:      toTagDTOs(post.Tags),
 		CreatedAt: post.CreatedAt,
