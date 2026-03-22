@@ -23,6 +23,19 @@ func NewCommentHandler(commentService service.CommentService) *CommentHandler {
 }
 
 // Create 创建评论。
+// @Summary 用户创建评论
+// @Description 当前登录用户创建评论
+// @Tags comment
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param input body dto.CommentCreateInput true "评论创建参数"
+// @Success 201 {object} dto.CommentDTO
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
+// @Failure 404 {object} dto.ErrorResponse "说说或用户不存在"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
+// @Router /users/me/comments [post]
 func (h *CommentHandler) Create(c *gin.Context) {
 	if h.commentService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -52,6 +65,18 @@ func (h *CommentHandler) Create(c *gin.Context) {
 }
 
 // Get 查询当前用户评论详情。
+// @Summary 用户查询评论详情
+// @Description 当前登录用户按评论 ID 查询自己的评论详情
+// @Tags comment
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "评论ID"
+// @Success 200 {object} dto.CommentDTO
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
+// @Failure 404 {object} dto.ErrorResponse "评论不存在"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
+// @Router /users/me/comments/{id} [get]
 func (h *CommentHandler) Get(c *gin.Context) {
 	if h.commentService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -84,6 +109,20 @@ func (h *CommentHandler) Get(c *gin.Context) {
 }
 
 // Update 更新当前用户评论。
+// @Summary 用户更新评论
+// @Description 当前登录用户按评论 ID 更新自己的评论
+// @Tags comment
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "评论ID"
+// @Param input body dto.CommentUpdateInput true "评论更新参数"
+// @Success 200 {object} dto.CommentDTO
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
+// @Failure 404 {object} dto.ErrorResponse "评论不存在"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
+// @Router /users/me/comments/{id} [patch]
 func (h *CommentHandler) Update(c *gin.Context) {
 	if h.commentService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -129,6 +168,18 @@ func (h *CommentHandler) Update(c *gin.Context) {
 }
 
 // Delete 删除当前用户评论。
+// @Summary 用户删除评论
+// @Description 当前登录用户按评论 ID 删除自己的评论
+// @Tags comment
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "评论ID"
+// @Success 200 {object} dto.ErrorResponse
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
+// @Failure 404 {object} dto.ErrorResponse "评论不存在"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
+// @Router /users/me/comments/{id} [delete]
 func (h *CommentHandler) Delete(c *gin.Context) {
 	if h.commentService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -166,6 +217,21 @@ func (h *CommentHandler) Delete(c *gin.Context) {
 }
 
 // List 查询当前用户评论列表。
+// @Summary 用户查询评论列表
+// @Description 分页查询当前登录用户自己的评论列表
+// @Tags comment
+// @Produce json
+// @Security BearerAuth
+// @Param post_id query int false "说说ID"
+// @Param limit query int false "分页大小"
+// @Param offset query int false "偏移量"
+// @Param order query string false "排序，如 created_at_desc 或 created_at_asc"
+// @Success 200 {object} dto.CommentListResult
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
+// @Failure 404 {object} dto.ErrorResponse "说说不存在"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
+// @Router /users/me/comments [get]
 func (h *CommentHandler) List(c *gin.Context) {
 	if h.commentService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
