@@ -1,7 +1,4 @@
-import { MonitorCogIcon, MoonStarIcon, SunMediumIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
-
-import { Button } from '#/components/ui/button'
 
 type ThemeMode = 'light' | 'dark' | 'auto'
 
@@ -71,18 +68,14 @@ export default function ThemeToggle() {
       : `Theme mode: ${mode}. Click to switch mode.`
 
   return (
-    <Button
-      aria-label={label}
-      onClick={toggleMode}
-      size="sm"
-      title={label}
+    <button
       type="button"
-      variant="outline"
+      onClick={toggleMode}
+      aria-label={label}
+      title={label}
+      className="rounded-full border border-[var(--chip-line)] bg-[var(--chip-bg)] px-3 py-1.5 text-sm font-semibold text-[var(--sea-ink)] shadow-[0_8px_22px_rgba(30,90,72,0.08)] transition hover:-translate-y-0.5"
     >
-      {mode === 'auto' ? <MonitorCogIcon data-icon="inline-start" /> : null}
-      {mode === 'dark' ? <MoonStarIcon data-icon="inline-start" /> : null}
-      {mode === 'light' ? <SunMediumIcon data-icon="inline-start" /> : null}
-      {mode === 'auto' ? '跟随系统' : mode === 'dark' ? '深色' : '浅色'}
-    </Button>
+      {mode === 'auto' ? 'Auto' : mode === 'dark' ? 'Dark' : 'Light'}
+    </button>
   )
 }
