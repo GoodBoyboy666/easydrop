@@ -208,6 +208,69 @@ func TestCommentHandlerListSuccess(t *testing.T) {
 	}
 }
 
+func TestCommentHandlerListByPostSuccess(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	called := false
+	h := NewCommentHandler(&mockCommentServiceForHandler{
+		listByPostFn: func(_ context.Context, input dto.CommentListInput) (*dto.CommentListResult, error) {
+			called = true
+			if input.PostID != 9 {
+				t.Fatalf("expected post id 9, got %d", input.PostID)
+			}
+			if input.Limit != 10 || input.Offset != 20 || input.Order != "created_at_desc" {
+				t.Fatalf("unexpected list input: %+v", input)
+			}
+			return &dto.CommentListResult{Items: []dto.CommentDTO{}, Total: 0}, nil
+		},
+	})
+
+	c, w := newTestContext(http.MethodGet, "/api/v1/posts/9/comments?limit=10&offset=20&order=created_at_desc")
+	c.Params = gin.Params{{Key: "id", Value: "9"}}
+
+	h.ListByPost(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+	if !called {
+		t.Fatal("expected ListByPost to be called")
+	}
+}
+
+func TestCommentHandlerListByPostInvalidPathID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	h := NewCommentHandler(&mockCommentServiceForHandler{})
+	c, w := newTestContext(http.MethodGet, "/api/v1/posts/0/comments")
+	c.Params = gin.Params{{Key: "id", Value: "0"}}
+
+	h.ListByPost(c)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestCommentHandlerListByPostServiceError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	h := NewCommentHandler(&mockCommentServiceForHandler{
+		listByPostFn: func(_ context.Context, _ dto.CommentListInput) (*dto.CommentListResult, error) {
+			return nil, service.ErrPostNotFound
+		},
+	})
+
+	c, w := newTestContext(http.MethodGet, "/api/v1/posts/9/comments")
+	c.Params = gin.Params{{Key: "id", Value: "9"}}
+
+	h.ListByPost(c)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected status 404, got %d", w.Code)
+	}
+}
+
 func TestCommentHandlerUnauthorized(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

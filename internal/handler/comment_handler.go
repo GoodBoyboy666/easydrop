@@ -195,6 +195,52 @@ func (h *CommentHandler) List(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// ListByPost 查询指定说说的评论列表（公开）。
+// @Summary 前端查询说说评论列表
+// @Description 分页查询指定说说下的评论（扁平）
+// @Tags comment
+// @Produce json
+// @Param id path int true "说说ID"
+// @Param limit query int false "分页大小"
+// @Param offset query int false "偏移量"
+// @Param order query string false "排序，如 created_at_asc 或 created_at_desc"
+// @Success 200 {object} dto.CommentListResult
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 404 {object} dto.ErrorResponse "说说不存在"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
+// @Router /posts/{id}/comments [get]
+func (h *CommentHandler) ListByPost(c *gin.Context) {
+	if h.commentService == nil {
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+		return
+	}
+
+	var uriReq dto.PostIDURIInput
+	if err := c.ShouldBindUri(&uriReq); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "路径参数不合法"})
+		return
+	}
+
+	var queryReq dto.CommentPostListQueryInput
+	if err := c.ShouldBindQuery(&queryReq); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "查询参数不合法"})
+		return
+	}
+
+	result, err := h.commentService.ListByPost(c.Request.Context(), dto.CommentListInput{
+		PostID: uriReq.ID,
+		Limit:  queryReq.Limit,
+		Offset: queryReq.Offset,
+		Order:  strings.TrimSpace(queryReq.Order),
+	})
+	if err != nil {
+		c.JSON(mapCommentErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
 func mapCommentErrorStatus(err error) int {
 	switch {
 	case errors.Is(err, service.ErrEmptyCommentContent),

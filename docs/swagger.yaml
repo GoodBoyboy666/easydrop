@@ -82,6 +82,36 @@ definitions:
       token:
         type: string
     type: object
+  dto.CommentDTO:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      parent_id:
+        type: integer
+      post_id:
+        type: integer
+      reply_to_user_id:
+        type: integer
+      root_id:
+        type: integer
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  dto.CommentListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/dto.CommentDTO'
+        type: array
+      total:
+        type: integer
+    type: object
   dto.ErrorResponse:
     properties:
       message:
@@ -1420,6 +1450,49 @@ paths:
       summary: 前端查询公开说说列表
       tags:
       - post
+  /posts/{id}/comments:
+    get:
+      description: 分页查询指定说说下的评论（扁平）
+      parameters:
+      - description: 说说ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 分页大小
+        in: query
+        name: limit
+        type: integer
+      - description: 偏移量
+        in: query
+        name: offset
+        type: integer
+      - description: 排序，如 created_at_asc 或 created_at_desc
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CommentListResult'
+        "400":
+          description: 参数校验失败
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: 说说不存在
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: 前端查询说说评论列表
+      tags:
+      - comment
   /settings/public:
     get:
       description: 返回前端可公开读取的站点配置

@@ -125,6 +125,7 @@ func BuildEngine(app *di.App) *gin.Engine {
 		posts := v1.Group("/posts")
 		{
 			posts.GET("", postHandler.List)
+			posts.GET("/:id/comments", commentHandler.ListByPost)
 		}
 
 		adminGroup := v1.Group("/admin")
