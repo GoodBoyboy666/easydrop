@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"easydrop/internal/middleware"
 	"errors"
 	"net/http"
 	"strings"
@@ -120,6 +121,13 @@ func (h *PostAdminHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "请求参数格式错误"})
 		return
 	}
+
+	userID, ok := middleware.GetUserID(c)
+	if !ok || userID == 0 {
+		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{Message: "未登录或登录已失效"})
+		return
+	}
+	input.UserID = userID
 
 	result, err := h.postService.Create(c.Request.Context(), input)
 	if err != nil {

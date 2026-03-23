@@ -3,7 +3,7 @@ package dto
 import "time"
 
 type PostCreateInput struct {
-	UserID  uint   `json:"user_id"`
+	UserID  uint   `json:"-"`
 	Content string `json:"content"`
 	Hide    bool   `json:"hide"`
 }
