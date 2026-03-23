@@ -5,6 +5,7 @@ import { api } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
 import { formatDateTime, formatRelativeTime } from '#/lib/format'
 import type { CommentDTO } from '#/lib/types'
+import { MarkdownContent } from '#/components/markdown/markdown-content'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import { Button } from '#/components/ui/button'
 import {
@@ -118,14 +119,14 @@ function MyCommentsPage() {
         <div className="flex flex-col gap-4">
           {comments.map((comment) => (
             <Card key={comment.id} className="border border-border/70 bg-card/90 shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-base">日志 #{comment.post_id}</CardTitle>
+              <CardHeader className="px-4 py-4">
+                <CardTitle className="text-sm">日志 #{comment.post_id}</CardTitle>
                 <CardDescription>
                   {formatRelativeTime(comment.created_at)} · {formatDateTime(comment.created_at)}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex flex-col gap-4">
-                <p className="text-sm leading-7 text-foreground/90">{comment.content}</p>
+              <CardContent className="flex flex-col gap-3 px-4 pb-4">
+                <MarkdownContent compact content={comment.content} />
                 <div className="flex justify-end">
                   <Button asChild size="sm" variant="ghost">
                     <Link to="/">返回首页继续浏览</Link>

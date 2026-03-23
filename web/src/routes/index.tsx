@@ -10,8 +10,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { api } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
 import { formatRelativeTime, getInitials } from '#/lib/format'
+import { hasMarkdownContent, normalizeMarkdownContent } from '#/lib/markdown'
 import { useSiteSettings } from '#/lib/site-settings'
 import type { CommentDTO, PagedResult, PostDTO, TagDTO } from '#/lib/types'
+import { MarkdownContent } from '#/components/markdown/markdown-content'
+import { MarkdownEditor } from '#/components/markdown/markdown-editor'
 import { PostCard } from '#/components/home/post-card'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar'
@@ -36,10 +39,8 @@ import {
   FieldDescription,
   FieldError,
   FieldGroup,
-  FieldLabel,
 } from '#/components/ui/field'
 import { Skeleton } from '#/components/ui/skeleton'
-import { Textarea } from '#/components/ui/textarea'
 
 export const Route = createFileRoute('/')({
   component: HomePage,
@@ -191,7 +192,7 @@ function HomePage() {
   async function handlePublish(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (!publishDraft.trim()) {
+    if (!hasMarkdownContent(publishDraft)) {
       setPublishError('发布内容不能为空')
       return
     }
@@ -205,7 +206,10 @@ function HomePage() {
     setPublishError(null)
 
     try {
-      await api.createAdminPost({ content: publishDraft.trim() }, auth.token)
+      await api.createAdminPost(
+        { content: normalizeMarkdownContent(publishDraft) },
+        auth.token
+      )
       setPublishDraft('')
       await loadFeed()
     } catch (error) {
@@ -228,16 +232,14 @@ function HomePage() {
                 <form onSubmit={handlePublish}>
                   <FieldGroup>
                     <Field data-invalid={!!publishError}>
-                      <Textarea
-                        aria-invalid={!!publishError}
-                        id="quick-publish"
-                        onChange={(event) => setPublishDraft(event.target.value)}
-                        placeholder="写下一条新的日志、更新或公告摘要。"
-                        rows={5}
+                      <MarkdownEditor
+                        height={200}
+                        onChange={setPublishDraft}
+                        placeholder="写下一条新的日志、更新或公告摘要。支持 Markdown。"
                         value={publishDraft}
                       />
                       <FieldDescription>
-                        首版仅支持纯文本发布，附件和标签编辑后续再补。
+                        支持 Markdown 语法，当前默认禁用原始 HTML，附件和标签编辑后续再补。
                       </FieldDescription>
                       <FieldError>{publishError}</FieldError>
                     </Field>
@@ -386,13 +388,13 @@ function HomePage() {
                 ? Array.from({ length: 3 }).map((_, index) => (
                     <div
                       key={index}
-                      className="rounded-xl border border-border/60 bg-muted/30 p-3"
+                      className="rounded-lg border border-border/60 bg-muted/25 p-2.5"
                     >
                       <div className="flex items-center gap-3">
-                        <Skeleton className="size-8 rounded-full" />
+                        <Skeleton className="size-6 rounded-full" />
                         <div className="flex flex-1 flex-col gap-2">
-                          <Skeleton className="h-4 w-24" />
-                          <Skeleton className="h-4 w-full" />
+                          <Skeleton className="h-3.5 w-20" />
+                          <Skeleton className="h-3.5 w-full" />
                         </div>
                       </div>
                     </div>
@@ -423,7 +425,7 @@ function HomePage() {
                 ? latestComments.items.map((comment) => (
                     <article
                       key={comment.id}
-                      className="rounded-xl border border-border/60 bg-muted/30 p-3"
+                      className="rounded-lg border border-border/60 bg-muted/25 p-2.5"
                     >
                       <div className="flex items-start gap-3">
                         <Avatar size="sm">
@@ -436,16 +438,16 @@ function HomePage() {
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2 text-sm">
-                            <span className="font-medium">{comment.author.nickname}</span>
-                            <span className="text-xs text-muted-foreground">
+                          <div className="flex flex-wrap items-center gap-2 text-[0.8rem]">
+                            <span className="font-medium leading-none">{comment.author.nickname}</span>
+                            <span className="text-[0.7rem] text-muted-foreground">
                               {formatRelativeTime(comment.created_at)}
                             </span>
                           </div>
-                          <div className="mt-1 text-sm leading-6 text-foreground/85">
-                            {comment.content}
+                          <div className="mt-1 text-foreground/85">
+                            <MarkdownContent compact content={comment.content} />
                           </div>
-                          <div className="mt-2 text-xs text-muted-foreground">
+                          <div className="mt-1.5 text-[0.7rem] text-muted-foreground">
                             来自日志 #{comment.post_id}
                           </div>
                         </div>

@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { Link } from '@tanstack/react-router'
 import {
   ChevronDownIcon,
   MessageSquareMoreIcon,
@@ -10,7 +9,10 @@ import {
 import { api, ApiError } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
 import { formatDateTime, formatRelativeTime, getInitials } from '#/lib/format'
+import { hasMarkdownContent, normalizeMarkdownContent } from '#/lib/markdown'
 import type { CommentDTO, PostDTO } from '#/lib/types'
+import { MarkdownContent } from '#/components/markdown/markdown-content'
+import { MarkdownEditor } from '#/components/markdown/markdown-editor'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar'
 import { Badge } from '#/components/ui/badge'
@@ -28,22 +30,13 @@ import {
   CollapsibleTrigger,
 } from '#/components/ui/collapsible'
 import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from '#/components/ui/empty'
-import {
   Field,
   FieldDescription,
   FieldError,
   FieldGroup,
-  FieldLabel,
 } from '#/components/ui/field'
 import { Separator } from '#/components/ui/separator'
 import { Skeleton } from '#/components/ui/skeleton'
-import { Textarea } from '#/components/ui/textarea'
 
 interface PostCardProps {
   onPostRefreshed?: () => Promise<void> | void
@@ -56,6 +49,9 @@ interface CommentState {
   loadingMore: boolean
   total: number
 }
+
+const INITIAL_COMMENT_PAGE_SIZE = 3
+const LOAD_MORE_COMMENT_PAGE_SIZE = 5
 
 export function PostCard({ onPostRefreshed, post }: PostCardProps) {
   const auth = useAuth()
@@ -80,7 +76,7 @@ export function PostCard({ onPostRefreshed, post }: PostCardProps) {
 
       try {
         const result = await api.getPostComments(post.id, {
-          limit: 5,
+          limit: INITIAL_COMMENT_PAGE_SIZE,
           offset: 0,
           order: 'created_at_desc',
         })
@@ -125,7 +121,7 @@ export function PostCard({ onPostRefreshed, post }: PostCardProps) {
 
     try {
       const result = await api.getPostComments(post.id, {
-        limit: 5,
+        limit: LOAD_MORE_COMMENT_PAGE_SIZE,
         offset: commentState.items.length,
         order: 'created_at_desc',
       })
@@ -152,7 +148,7 @@ export function PostCard({ onPostRefreshed, post }: PostCardProps) {
   async function handleCommentSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (!commentDraft.trim()) {
+    if (!hasMarkdownContent(commentDraft)) {
       setSubmitError('评论内容不能为空')
       return
     }
@@ -169,7 +165,7 @@ export function PostCard({ onPostRefreshed, post }: PostCardProps) {
       await api.createPostComment(
         post.id,
         {
-          content: commentDraft.trim(),
+          content: normalizeMarkdownContent(commentDraft),
         },
         auth.token
       )
@@ -178,7 +174,10 @@ export function PostCard({ onPostRefreshed, post }: PostCardProps) {
       setComposerOpen(true)
 
       const result = await api.getPostComments(post.id, {
-        limit: Math.max(5, commentState.items.length || 5),
+        limit: Math.max(
+          LOAD_MORE_COMMENT_PAGE_SIZE,
+          commentState.items.length || INITIAL_COMMENT_PAGE_SIZE
+        ),
         offset: 0,
         order: 'created_at_desc',
       })
@@ -226,9 +225,7 @@ export function PostCard({ onPostRefreshed, post }: PostCardProps) {
 
       <CardContent className="flex flex-col gap-4 pt-4">
         <div className="flex flex-col gap-3">
-          <p className="whitespace-pre-wrap text-sm leading-7 text-foreground/90">
-            {post.content}
-          </p>
+          <MarkdownContent content={post.content} />
           <div className="flex flex-wrap gap-2">
             {post.tags?.length ? (
               post.tags.map((tag) => (
@@ -244,12 +241,14 @@ export function PostCard({ onPostRefreshed, post }: PostCardProps) {
 
         <Separator />
 
-        <div className="flex flex-col gap-3">
+        <Collapsible
+          className="flex w-full flex-col gap-3"
+          open={composerOpen}
+          onOpenChange={setComposerOpen}
+        >
           <div className="flex items-center justify-between gap-3">
-            <div className="text-sm font-medium">
-              评论 {commentState.total ? `(${commentState.total})` : ''}
-            </div>
-            <Collapsible open={composerOpen} onOpenChange={setComposerOpen}>
+            <div className="text-sm font-medium">评论 ({commentState.total})</div>
+            <div className="flex shrink-0 items-center">
               <CollapsibleTrigger asChild>
                 <Button
                   size="sm"
@@ -265,141 +264,126 @@ export function PostCard({ onPostRefreshed, post }: PostCardProps) {
                   发评论
                 </Button>
               </CollapsibleTrigger>
-
-              <CollapsibleContent className="mt-3">
-                <form className="rounded-xl border border-border/70 bg-muted/40 p-3" onSubmit={handleCommentSubmit}>
-                  <FieldGroup>
-                    <Field data-invalid={!!submitError}>
-                      <FieldLabel htmlFor={`comment-${post.id}`}>写下你的评论</FieldLabel>
-                      <Textarea
-                        aria-invalid={!!submitError}
-                        id={`comment-${post.id}`}
-                        onChange={(event) => setCommentDraft(event.target.value)}
-                        placeholder="说点什么，支持简短日志式评论。"
-                        rows={4}
-                        value={commentDraft}
-                      />
-                      <FieldDescription>
-                        当前仅支持发布顶层评论，后续可扩展回复链路。
-                      </FieldDescription>
-                      <FieldError>{submitError}</FieldError>
-                    </Field>
-                  </FieldGroup>
-
-                  <div className="mt-3 flex items-center justify-end">
-                    <Button disabled={submitting} type="submit">
-                      <SendHorizontalIcon data-icon="inline-start" />
-                      {submitting ? '正在提交…' : '发布评论'}
-                    </Button>
-                  </div>
-                </form>
-              </CollapsibleContent>
-            </Collapsible>
+            </div>
           </div>
 
-          {commentState.loading ? (
+          <CollapsibleContent className="w-full">
+            <form
+              className="rounded-xl border border-border/70 bg-muted/40 p-3"
+              onSubmit={handleCommentSubmit}
+            >
+              <FieldGroup>
+                <Field data-invalid={!!submitError}>
+                  <MarkdownEditor
+                    height={120}
+                    onChange={setCommentDraft}
+                    placeholder="说点什么，支持 Markdown 评论。"
+                    value={commentDraft}
+                  />
+                  <FieldDescription>
+                    当前仅支持发布顶层评论，支持 Markdown，原始 HTML 默认禁用。
+                  </FieldDescription>
+                  <FieldError>{submitError}</FieldError>
+                </Field>
+              </FieldGroup>
+
+              <div className="mt-3 flex items-center justify-end">
+                <Button disabled={submitting} type="submit">
+                  <SendHorizontalIcon data-icon="inline-start" />
+                  {submitting ? '正在提交…' : '发布评论'}
+                </Button>
+              </div>
+            </form>
+          </CollapsibleContent>
+        </Collapsible>
+
+        {commentState.loading ? (
             <div className="flex flex-col gap-3">
               {Array.from({ length: 2 }).map((_, index) => (
                 <div
                   key={index}
-                  className="rounded-xl border border-border/60 bg-muted/30 p-3"
+                  className="rounded-lg border border-border/60 bg-muted/25 p-2.5"
                 >
                   <div className="flex items-center gap-3">
-                    <Skeleton className="size-8 rounded-full" />
+                    <Skeleton className="size-6 rounded-full" />
                     <div className="flex flex-1 flex-col gap-2">
-                      <Skeleton className="h-4 w-28" />
-                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-3.5 w-24" />
+                      <Skeleton className="h-3.5 w-full" />
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-          ) : null}
+        ) : null}
 
-          {!commentState.loading && commentError ? (
-            <Alert variant="destructive">
-              <AlertTitle>评论加载失败</AlertTitle>
-              <AlertDescription>{commentError}</AlertDescription>
-            </Alert>
-          ) : null}
+        {!commentState.loading && commentError ? (
+          <Alert variant="destructive">
+            <AlertTitle>评论加载失败</AlertTitle>
+            <AlertDescription>{commentError}</AlertDescription>
+          </Alert>
+        ) : null}
 
-          {!commentState.loading &&
-          !commentError &&
-          commentState.items.length === 0 ? (
-            <Empty className="border border-dashed border-border/80 bg-muted/20">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <MessageSquareMoreIcon />
-                </EmptyMedia>
-                <EmptyTitle>还没有评论</EmptyTitle>
-                <EmptyDescription>
-                  当前日志下还没有评论，点击右上角的“发评论”试试。
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          ) : null}
-
-          {!commentState.loading && commentState.items.length > 0 ? (
-            <div className="flex flex-col gap-3">
-              {commentState.items.map((comment) => (
-                <article
-                  key={comment.id}
-                  className="rounded-xl border border-border/60 bg-muted/30 p-3"
-                >
-                  <div className="flex items-start gap-3">
-                    <Avatar size="sm">
-                      <AvatarImage
-                        alt={comment.author.nickname}
-                        src={comment.author.avatar}
-                      />
-                      <AvatarFallback>
-                        {getInitials(comment.author.nickname)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2 text-sm">
-                        <span className="font-medium">{comment.author.nickname}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatRelativeTime(comment.created_at)}
-                        </span>
-                      </div>
-                      <div className="mt-1 text-sm leading-6 text-foreground/85">
-                        {comment.reply_to_user ? (
-                          <span className="mr-1 text-muted-foreground">
-                            回复 {comment.reply_to_user.nickname}：
-                          </span>
-                        ) : null}
-                        {comment.content}
-                      </div>
+        {!commentState.loading &&
+        !commentError &&
+        commentState.items.length > 0 ? (
+          <div className="flex flex-col gap-3">
+            {commentState.items.map((comment) => (
+              <article
+                key={comment.id}
+                className="rounded-lg border border-border/60 bg-muted/25 p-2.5"
+              >
+                <div className="flex items-start gap-3">
+                  <Avatar size="sm">
+                    <AvatarImage
+                      alt={comment.author.nickname}
+                      src={comment.author.avatar}
+                    />
+                    <AvatarFallback>
+                      {getInitials(comment.author.nickname)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2 text-[0.8rem]">
+                      <span className="font-medium leading-none">{comment.author.nickname}</span>
+                      <span className="text-[0.7rem] text-muted-foreground">
+                        {formatRelativeTime(comment.created_at)}
+                      </span>
                     </div>
+                    {comment.reply_to_user ? (
+                      <div className="mt-1 text-[0.7rem] text-muted-foreground">
+                        回复 {comment.reply_to_user.nickname}
+                      </div>
+                    ) : null}
+                    <MarkdownContent
+                      compact
+                      className="mt-1"
+                      content={comment.content}
+                    />
                   </div>
-                </article>
-              ))}
+                </div>
+              </article>
+            ))}
 
-              {hasMoreComments ? (
-                <Button
-                  disabled={commentState.loadingMore}
-                  onClick={() => void loadMoreComments()}
-                  size="sm"
-                  type="button"
-                  variant="outline"
-                >
-                  <ChevronDownIcon data-icon="inline-start" />
-                  {commentState.loadingMore ? '正在加载…' : '更多评论'}
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
+            {hasMoreComments ? (
+              <Button
+                disabled={commentState.loadingMore}
+                onClick={() => void loadMoreComments()}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <ChevronDownIcon data-icon="inline-start" />
+                {commentState.loadingMore ? '正在加载…' : '更多评论'}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
       </CardContent>
 
       <CardFooter className="justify-between gap-3">
         <div className="text-xs text-muted-foreground">
           日志 #{post.id} · 评论 {commentState.total}
         </div>
-        <Button asChild size="sm" variant="ghost">
-          <Link to="/me/comments">查看我的评论</Link>
-        </Button>
       </CardFooter>
     </Card>
   )
