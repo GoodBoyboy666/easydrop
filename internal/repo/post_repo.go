@@ -40,7 +40,7 @@ func (r *GormPostRepo) Create(ctx context.Context, post *model.Post) error {
 
 func (r *GormPostRepo) GetByID(ctx context.Context, id uint) (*model.Post, error) {
 	var post model.Post
-	err := r.db.WithContext(withContext(ctx)).Preload("Tags").First(&post, id).Error
+	err := r.db.WithContext(withContext(ctx)).Preload("Tags").Preload("User").First(&post, id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func (r *GormPostRepo) List(ctx context.Context, filter PostFilter, opts ListOpt
 	if filter.TagID != nil {
 		db = db.Distinct("posts.id")
 	}
-	if err := db.Preload("Tags").Find(&posts).Error; err != nil {
+	if err := db.Preload("Tags").Preload("User").Find(&posts).Error; err != nil {
 		return nil, 0, err
 	}
 	return posts, total, nil

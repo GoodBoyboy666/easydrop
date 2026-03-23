@@ -75,7 +75,13 @@ func (s *postService) Create(ctx context.Context, input dto.PostCreateInput) (*d
 		log.Printf("创建说说失败: %v", err)
 		return nil, ErrInternal
 	}
-	return toPostDTO(post), nil
+
+	createdPost, err := s.postRepo.GetByID(ctx, post.ID)
+	if err != nil {
+		log.Printf("查询已创建说说失败: %v", err)
+		return nil, ErrInternal
+	}
+	return toPostDTO(createdPost), nil
 }
 
 // Get 根据说说 ID 查询详情。
@@ -291,10 +297,14 @@ func toPostDTO(post *model.Post) *dto.PostDTO {
 		return nil
 	}
 	return &dto.PostDTO{
-		ID:        post.ID,
-		Content:   post.Content,
-		Hide:      post.Hide,
-		UserID:    post.UserID,
+		ID:      post.ID,
+		Content: post.Content,
+		Hide:    post.Hide,
+		Author: dto.PostAuthorDTO{
+			ID:       post.User.ID,
+			Nickname: post.User.Nickname,
+			Avatar:   post.User.Avatar,
+		},
 		Tags:      toTagDTOs(post.Tags),
 		CreatedAt: post.CreatedAt,
 		UpdatedAt: post.UpdatedAt,

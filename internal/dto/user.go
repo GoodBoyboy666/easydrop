@@ -19,7 +19,7 @@ type UserIDURIInput struct {
 }
 
 type UserUpdateInput struct {
-	ID            uint    `json:"id"`
+	ID            uint    `json:"-"`
 	Username      *string `json:"username"`
 	Nickname      *string `json:"nickname"`
 	Email         *string `json:"email"`
@@ -32,29 +32,29 @@ type UserUpdateInput struct {
 }
 
 type UserProfileUpdateInput struct {
-	UserID   uint    `json:"user_id"`
+	UserID   uint    `json:"-"`
 	Nickname *string `json:"nickname"`
 }
 
 type UserChangePasswordInput struct {
-	UserID      uint   `json:"user_id"`
+	UserID      uint   `json:"-"`
 	OldPassword string `json:"old_password"`
 	NewPassword string `json:"new_password"`
 }
 
 type UserChangeEmailInput struct {
-	UserID          uint   `json:"user_id"`
+	UserID          uint   `json:"-"`
 	CurrentPassword string `json:"current_password"`
 	NewEmail        string `json:"new_email"`
 }
 
 type UserChangeEmailConfirmInput struct {
-	UserID            uint   `json:"user_id"`
+	UserID            uint   `json:"-"`
 	VerificationToken string `json:"verification_token"`
 }
 
 type UserAvatarUploadInput struct {
-	UserID           uint   `json:"user_id"`
+	UserID           uint   `json:"-"`
 	OriginalFilename string `json:"original_filename"`
 	ContentType      string `json:"content_type"`
 	Content          []byte `json:"content"`

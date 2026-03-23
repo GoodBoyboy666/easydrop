@@ -82,8 +82,26 @@ definitions:
       token:
         type: string
     type: object
+  dto.CommentAuthorDTO:
+    properties:
+      avatar:
+        type: string
+      id:
+        type: integer
+      nickname:
+        type: string
+    type: object
+  dto.CommentCreateInput:
+    properties:
+      content:
+        type: string
+      parent_id:
+        type: integer
+    type: object
   dto.CommentDTO:
     properties:
+      author:
+        $ref: '#/definitions/dto.CommentAuthorDTO'
       content:
         type: string
       created_at:
@@ -94,14 +112,12 @@ definitions:
         type: integer
       post_id:
         type: integer
-      reply_to_user_id:
-        type: integer
+      reply_to_user:
+        $ref: '#/definitions/dto.CommentAuthorDTO'
       root_id:
         type: integer
       updated_at:
         type: string
-      user_id:
-        type: integer
     type: object
   dto.CommentListResult:
     properties:
@@ -111,6 +127,11 @@ definitions:
         type: array
       total:
         type: integer
+    type: object
+  dto.CommentUpdateInput:
+    properties:
+      content:
+        type: string
     type: object
   dto.ErrorResponse:
     properties:
@@ -150,6 +171,15 @@ definitions:
       password:
         type: string
     type: object
+  dto.PostAuthorDTO:
+    properties:
+      avatar:
+        type: string
+      id:
+        type: integer
+      nickname:
+        type: string
+    type: object
   dto.PostCreateInput:
     properties:
       content:
@@ -161,6 +191,8 @@ definitions:
     type: object
   dto.PostDTO:
     properties:
+      author:
+        $ref: '#/definitions/dto.PostAuthorDTO'
       content:
         type: string
       created_at:
@@ -175,8 +207,6 @@ definitions:
         type: array
       updated_at:
         type: string
-      user_id:
-        type: integer
     type: object
   dto.PostListResult:
     properties:
@@ -193,8 +223,6 @@ definitions:
         type: string
       hide:
         type: boolean
-      id:
-        type: integer
     type: object
   dto.RegisterInput:
     properties:
@@ -249,8 +277,6 @@ definitions:
     type: object
   dto.SettingUpdateInput:
     properties:
-      key:
-        type: string
       value:
         type: string
     type: object
@@ -278,8 +304,6 @@ definitions:
         type: string
       new_email:
         type: string
-      user_id:
-        type: integer
     type: object
   dto.UserChangePasswordInput:
     properties:
@@ -287,8 +311,6 @@ definitions:
         type: string
       old_password:
         type: string
-      user_id:
-        type: integer
     type: object
   dto.UserCreateInput:
     properties:
@@ -351,8 +373,6 @@ definitions:
     properties:
       nickname:
         type: string
-      user_id:
-        type: integer
     type: object
   dto.UserUpdateInput:
     properties:
@@ -364,8 +384,6 @@ definitions:
         type: string
       email_verified:
         type: boolean
-      id:
-        type: integer
       nickname:
         type: string
       password:
@@ -529,6 +547,187 @@ paths:
       summary: 管理端批量删除附件
       tags:
       - attachment-admin
+  /admin/comments:
+    get:
+      description: 分页查询评论列表，支持按说说和用户过滤
+      parameters:
+      - description: 说说ID
+        in: query
+        name: post_id
+        type: integer
+      - description: 用户ID
+        in: query
+        name: user_id
+        type: integer
+      - description: 分页大小
+        in: query
+        name: limit
+        type: integer
+      - description: 偏移量
+        in: query
+        name: offset
+        type: integer
+      - description: 排序，如 created_at_desc 或 created_at_asc
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CommentListResult'
+        "400":
+          description: 参数校验失败
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: 未登录或登录失效
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: 无管理员权限
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 管理端查询评论列表
+      tags:
+      - comment-admin
+  /admin/comments/{id}:
+    delete:
+      description: 根据评论 ID 删除评论
+      parameters:
+      - description: 评论ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "400":
+          description: 参数校验失败
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: 未登录或登录失效
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: 无管理员权限
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: 评论不存在
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 管理端删除评论
+      tags:
+      - comment-admin
+    get:
+      description: 根据评论 ID 查询评论详情
+      parameters:
+      - description: 评论ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CommentDTO'
+        "400":
+          description: 参数校验失败
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: 未登录或登录失效
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: 无管理员权限
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: 评论不存在
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 管理端查询评论详情
+      tags:
+      - comment-admin
+    patch:
+      consumes:
+      - application/json
+      description: 根据评论 ID 更新评论内容
+      parameters:
+      - description: 评论ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 评论更新参数
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CommentUpdateInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CommentDTO'
+        "400":
+          description: 参数校验失败
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: 未登录或登录失效
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: 无管理员权限
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: 评论不存在
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 管理端更新评论
+      tags:
+      - comment-admin
   /admin/posts:
     get:
       description: 分页查询说说列表，支持按用户和标签过滤
@@ -1536,6 +1735,50 @@ paths:
       summary: 前端查询说说评论列表
       tags:
       - comment
+    post:
+      consumes:
+      - application/json
+      description: 当前登录用户创建评论
+      parameters:
+      - description: 说说ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 评论创建参数
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CommentCreateInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.CommentDTO'
+        "400":
+          description: 参数校验失败
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: 未登录或登录失效
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: 说说或用户不存在
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 用户创建评论
+      tags:
+      - comment
   /settings/public:
     get:
       description: 返回前端可公开读取的站点配置
@@ -1675,6 +1918,171 @@ paths:
       summary: 上传当前用户头像
       tags:
       - user
+  /users/me/comments:
+    get:
+      description: 分页查询当前登录用户自己的评论列表
+      parameters:
+      - description: 说说ID
+        in: query
+        name: post_id
+        type: integer
+      - description: 分页大小
+        in: query
+        name: limit
+        type: integer
+      - description: 偏移量
+        in: query
+        name: offset
+        type: integer
+      - description: 排序，如 created_at_desc 或 created_at_asc
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CommentListResult'
+        "400":
+          description: 参数校验失败
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: 未登录或登录失效
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: 说说不存在
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 用户查询评论列表
+      tags:
+      - comment
+  /users/me/comments/{id}:
+    delete:
+      description: 当前登录用户按评论 ID 删除自己的评论
+      parameters:
+      - description: 评论ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "400":
+          description: 参数校验失败
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: 未登录或登录失效
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: 评论不存在
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 用户删除评论
+      tags:
+      - comment
+    get:
+      description: 当前登录用户按评论 ID 查询自己的评论详情
+      parameters:
+      - description: 评论ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CommentDTO'
+        "400":
+          description: 参数校验失败
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: 未登录或登录失效
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: 评论不存在
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 用户查询评论详情
+      tags:
+      - comment
+    patch:
+      consumes:
+      - application/json
+      description: 当前登录用户按评论 ID 更新自己的评论
+      parameters:
+      - description: 评论ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 评论更新参数
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CommentUpdateInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CommentDTO'
+        "400":
+          description: 参数校验失败
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: 未登录或登录失效
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: 评论不存在
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 用户更新评论
+      tags:
+      - comment
   /users/me/email-change:
     post:
       consumes:

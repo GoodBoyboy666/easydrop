@@ -41,7 +41,7 @@ func (r *GormCommentRepo) Create(ctx context.Context, comment *model.Comment) er
 
 func (r *GormCommentRepo) GetByID(ctx context.Context, id uint) (*model.Comment, error) {
 	var comment model.Comment
-	err := r.db.WithContext(withContext(ctx)).First(&comment, id).Error
+	err := r.db.WithContext(withContext(ctx)).Preload("User").Preload("ReplyToUser").First(&comment, id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func (r *GormCommentRepo) List(ctx context.Context, filter CommentFilter, opts L
 
 	var comments []model.Comment
 	db = applyListOptions(db, opts, "created_at asc")
-	if err := db.Find(&comments).Error; err != nil {
+	if err := db.Preload("User").Preload("ReplyToUser").Find(&comments).Error; err != nil {
 		return nil, 0, err
 	}
 	return comments, total, nil

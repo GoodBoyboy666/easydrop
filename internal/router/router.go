@@ -101,12 +101,16 @@ func BuildEngine(app *di.App) *gin.Engine {
 
 				comments := usersMe.Group("/comments")
 				{
-					comments.POST("", commentHandler.Create)
 					comments.GET("", commentHandler.List)
 					comments.GET("/:id", commentHandler.Get)
 					comments.PATCH("/:id", commentHandler.Update)
 					comments.DELETE("/:id", commentHandler.Delete)
 				}
+			}
+
+			posts := loginGroup.Group("/posts")
+			{
+				posts.POST("/:id/comments", commentHandler.Create)
 			}
 
 			attachments := loginGroup.Group("/attachments")

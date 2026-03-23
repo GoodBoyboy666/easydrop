@@ -27,7 +27,7 @@ type SettingListResult struct {
 }
 
 type SettingUpdateInput struct {
-	Key   string  `json:"key"`
+	Key   string  `json:"-"`
 	Value *string `json:"value"`
 }
 

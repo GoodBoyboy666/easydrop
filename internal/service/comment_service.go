@@ -120,7 +120,13 @@ func (s *commentService) Create(ctx context.Context, input dto.CommentCreateInpu
 		return nil, ErrInternal
 	}
 
-	d := toCommentDTO(comment)
+	createdComment, err := s.commentRepo.GetByID(ctx, comment.ID)
+	if err != nil {
+		log.Printf("查询已创建评论失败: %v", err)
+		return nil, ErrInternal
+	}
+
+	d := toCommentDTO(createdComment)
 	return &d, nil
 }
 
@@ -292,16 +298,29 @@ func (s *commentService) ensureUserExists(ctx context.Context, userID uint) erro
 
 // toCommentDTO 将评论模型转换为 DTO。
 func toCommentDTO(comment *model.Comment) dto.CommentDTO {
+	var replyToUser *dto.CommentAuthorDTO
+	if comment.ReplyToUser != nil {
+		replyToUser = &dto.CommentAuthorDTO{
+			ID:       comment.ReplyToUser.ID,
+			Nickname: comment.ReplyToUser.Nickname,
+			Avatar:   comment.ReplyToUser.Avatar,
+		}
+	}
+
 	return dto.CommentDTO{
-		ID:            comment.ID,
-		PostID:        comment.PostID,
-		UserID:        comment.UserID,
-		Content:       comment.Content,
-		ParentID:      comment.ParentID,
-		RootID:        comment.RootID,
-		ReplyToUserID: comment.ReplyToUserID,
-		CreatedAt:     comment.CreatedAt,
-		UpdatedAt:     comment.UpdatedAt,
+		ID:     comment.ID,
+		PostID: comment.PostID,
+		Author: dto.CommentAuthorDTO{
+			ID:       comment.User.ID,
+			Nickname: comment.User.Nickname,
+			Avatar:   comment.User.Avatar,
+		},
+		Content:     comment.Content,
+		ParentID:    comment.ParentID,
+		RootID:      comment.RootID,
+		ReplyToUser: replyToUser,
+		CreatedAt:   comment.CreatedAt,
+		UpdatedAt:   comment.UpdatedAt,
 	}
 }
 

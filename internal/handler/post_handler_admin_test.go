@@ -93,7 +93,7 @@ func TestPostAdminHandlerGetSuccess(t *testing.T) {
 			if id != 8 {
 				t.Fatalf("expected id 8, got %d", id)
 			}
-			return &dto.PostDTO{ID: 8, Content: "hello", UserID: 1}, nil
+			return &dto.PostDTO{ID: 8, Content: "hello", Author: dto.PostAuthorDTO{ID: 1}}, nil
 		},
 	})
 
@@ -133,7 +133,7 @@ func TestPostAdminHandlerCreateSuccess(t *testing.T) {
 			if !input.Hide {
 				t.Fatal("expected hide=true")
 			}
-			return &dto.PostDTO{ID: 11, UserID: input.UserID, Content: input.Content, Hide: input.Hide}, nil
+			return &dto.PostDTO{ID: 11, Author: dto.PostAuthorDTO{ID: input.UserID}, Content: input.Content, Hide: input.Hide}, nil
 		},
 	})
 
@@ -171,7 +171,7 @@ func TestPostAdminHandlerUpdateBindsPathID(t *testing.T) {
 			if input.Hide == nil || !*input.Hide {
 				t.Fatalf("unexpected hide: %#v", input.Hide)
 			}
-			return &dto.PostDTO{ID: input.ID, Content: *input.Content, UserID: 2, Hide: *input.Hide}, nil
+			return &dto.PostDTO{ID: input.ID, Content: *input.Content, Author: dto.PostAuthorDTO{ID: 2}, Hide: *input.Hide}, nil
 		},
 	})
 

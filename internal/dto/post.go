@@ -13,7 +13,7 @@ type PostIDURIInput struct {
 }
 
 type PostUpdateInput struct {
-	ID      uint    `json:"id"`
+	ID      uint    `json:"-"`
 	Content *string `json:"content"`
 	Hide    *bool   `json:"hide"`
 }
@@ -28,13 +28,19 @@ type PostListInput struct {
 }
 
 type PostDTO struct {
-	ID        uint      `json:"id"`
-	Content   string    `json:"content"`
-	Hide      bool      `json:"hide"`
-	UserID    uint      `json:"user_id"`
-	Tags      []TagDTO  `json:"tags"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID        uint          `json:"id"`
+	Content   string        `json:"content"`
+	Hide      bool          `json:"hide"`
+	Author    PostAuthorDTO `json:"author"`
+	Tags      []TagDTO      `json:"tags"`
+	CreatedAt time.Time     `json:"created_at"`
+	UpdatedAt time.Time     `json:"updated_at"`
+}
+
+type PostAuthorDTO struct {
+	ID       uint    `json:"id"`
+	Nickname string  `json:"nickname"`
+	Avatar   *string `json:"avatar"`
 }
 
 type PostListResult struct {

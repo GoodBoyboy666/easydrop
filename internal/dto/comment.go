@@ -3,8 +3,8 @@ package dto
 import "time"
 
 type CommentCreateInput struct {
-	PostID   uint   `json:"post_id"`
-	UserID   uint   `json:"user_id"`
+	PostID   uint   `json:"-"`
+	UserID   uint   `json:"-"`
 	Content  string `json:"content"`
 	ParentID *uint  `json:"parent_id"`
 }
@@ -14,7 +14,7 @@ type CommentIDURIInput struct {
 }
 
 type CommentUpdateInput struct {
-	ID      uint    `json:"id"`
+	ID      uint    `json:"-"`
 	Content *string `json:"content"`
 }
 
@@ -54,15 +54,21 @@ type CommentAdminListInput struct {
 }
 
 type CommentDTO struct {
-	ID            uint      `json:"id"`
-	PostID        uint      `json:"post_id"`
-	UserID        uint      `json:"user_id"`
-	Content       string    `json:"content"`
-	ParentID      *uint     `json:"parent_id"`
-	RootID        *uint     `json:"root_id"`
-	ReplyToUserID *uint     `json:"reply_to_user_id"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID          uint              `json:"id"`
+	PostID      uint              `json:"post_id"`
+	Author      CommentAuthorDTO  `json:"author"`
+	Content     string            `json:"content"`
+	ParentID    *uint             `json:"parent_id"`
+	RootID      *uint             `json:"root_id"`
+	ReplyToUser *CommentAuthorDTO `json:"reply_to_user"`
+	CreatedAt   time.Time         `json:"created_at"`
+	UpdatedAt   time.Time         `json:"updated_at"`
+}
+
+type CommentAuthorDTO struct {
+	ID       uint    `json:"id"`
+	Nickname string  `json:"nickname"`
+	Avatar   *string `json:"avatar"`
 }
 
 type CommentListResult struct {

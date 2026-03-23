@@ -82,11 +82,12 @@ func TestCommentHandlerCreateSetsCurrentUser(t *testing.T) {
 			if input.PostID != 9 {
 				t.Fatalf("expected post id 9, got %d", input.PostID)
 			}
-			return &dto.CommentDTO{ID: 1, UserID: input.UserID, PostID: input.PostID}, nil
+			return &dto.CommentDTO{ID: 1, Author: dto.CommentAuthorDTO{ID: input.UserID}, PostID: input.PostID}, nil
 		},
 	})
 
-	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/comments", `{"post_id":9,"user_id":999,"content":"hello"}`)
+	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/posts/9/comments", `{"post_id":7,"user_id":999,"content":"hello"}`)
+	c.Params = gin.Params{{Key: "id", Value: "9"}}
 	c.Set(middleware.ContextUserIDKey, uint(101))
 
 	h.Create(c)
@@ -96,12 +97,37 @@ func TestCommentHandlerCreateSetsCurrentUser(t *testing.T) {
 	}
 }
 
+func TestCommentHandlerCreateInvalidPathID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	createCalled := false
+	h := NewCommentHandler(&mockCommentServiceForHandler{
+		createFn: func(_ context.Context, _ dto.CommentCreateInput) (*dto.CommentDTO, error) {
+			createCalled = true
+			return &dto.CommentDTO{}, nil
+		},
+	})
+
+	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/posts/0/comments", `{"content":"hello"}`)
+	c.Params = gin.Params{{Key: "id", Value: "0"}}
+	c.Set(middleware.ContextUserIDKey, uint(101))
+
+	h.Create(c)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", w.Code)
+	}
+	if createCalled {
+		t.Fatal("create should not be called when path id is invalid")
+	}
+}
+
 func TestCommentHandlerGetNotOwner(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	h := NewCommentHandler(&mockCommentServiceForHandler{
 		getFn: func(_ context.Context, id uint) (*dto.CommentDTO, error) {
-			return &dto.CommentDTO{ID: id, UserID: 202}, nil
+			return &dto.CommentDTO{ID: id, Author: dto.CommentAuthorDTO{ID: 202}}, nil
 		},
 	})
 
@@ -122,7 +148,7 @@ func TestCommentHandlerUpdateOnlyOwnComment(t *testing.T) {
 	updateCalled := false
 	h := NewCommentHandler(&mockCommentServiceForHandler{
 		getFn: func(_ context.Context, id uint) (*dto.CommentDTO, error) {
-			return &dto.CommentDTO{ID: id, UserID: 999}, nil
+			return &dto.CommentDTO{ID: id, Author: dto.CommentAuthorDTO{ID: 999}}, nil
 		},
 		updateFn: func(_ context.Context, _ dto.CommentUpdateInput) (*dto.CommentDTO, error) {
 			updateCalled = true
@@ -150,7 +176,7 @@ func TestCommentHandlerDeleteSuccess(t *testing.T) {
 	deleteCalled := false
 	h := NewCommentHandler(&mockCommentServiceForHandler{
 		getFn: func(_ context.Context, id uint) (*dto.CommentDTO, error) {
-			return &dto.CommentDTO{ID: id, UserID: 101}, nil
+			return &dto.CommentDTO{ID: id, Author: dto.CommentAuthorDTO{ID: 101}}, nil
 		},
 		deleteFn: func(_ context.Context, id uint) error {
 			deleteCalled = true

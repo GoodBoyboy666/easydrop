@@ -10,6 +10,8 @@ type Comment struct {
 	ParentID      *uint     `gorm:"index" json:"parent_id"`
 	RootID        *uint     `gorm:"index" json:"root_id"`
 	ReplyToUserID *uint     `gorm:"index" json:"reply_to_user_id"`
+	User          User      `gorm:"foreignKey:UserID" json:"-"`
+	ReplyToUser   *User     `gorm:"foreignKey:ReplyToUserID" json:"-"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }

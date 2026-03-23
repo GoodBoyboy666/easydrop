@@ -50,7 +50,7 @@ func TestBuildEngineRegistersAllRoutes(t *testing.T) {
 		"GET /api/v1/attachments/:id":                 {},
 		"DELETE /api/v1/attachments/:id":              {},
 		"GET /api/v1/comments":                        {},
-		"POST /api/v1/users/me/comments":              {},
+		"POST /api/v1/posts/:id/comments":             {},
 		"GET /api/v1/users/me/comments":               {},
 		"GET /api/v1/users/me/comments/:id":           {},
 		"PATCH /api/v1/users/me/comments/:id":         {},
@@ -109,6 +109,15 @@ func TestBuildEngineAppliesMiddlewareGroups(t *testing.T) {
 		r.ServeHTTP(w, req)
 		if w.Code != http.StatusUnauthorized {
 			t.Fatalf("expected 401 for me comments route, got %d", w.Code)
+		}
+	}
+
+	{
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/posts/1/comments", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("expected 401 for create post comment route, got %d", w.Code)
 		}
 	}
 

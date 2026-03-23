@@ -29,13 +29,14 @@ func NewCommentHandler(commentService service.CommentService) *CommentHandler {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @Param id path int true "说说ID"
 // @Param input body dto.CommentCreateInput true "评论创建参数"
 // @Success 201 {object} dto.CommentDTO
 // @Failure 400 {object} dto.ErrorResponse "参数校验失败"
 // @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
 // @Failure 404 {object} dto.ErrorResponse "说说或用户不存在"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
-// @Router /users/me/comments [post]
+// @Router /posts/{id}/comments [post]
 func (h *CommentHandler) Create(c *gin.Context) {
 	if h.commentService == nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
@@ -48,12 +49,19 @@ func (h *CommentHandler) Create(c *gin.Context) {
 		return
 	}
 
+	var uriReq dto.PostIDURIInput
+	if err := c.ShouldBindUri(&uriReq); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "路径参数不合法"})
+		return
+	}
+
 	var input dto.CommentCreateInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "请求参数格式错误"})
 		return
 	}
 	input.UserID = userID
+	input.PostID = uriReq.ID
 
 	result, err := h.commentService.Create(c.Request.Context(), input)
 	if err != nil {
@@ -100,7 +108,7 @@ func (h *CommentHandler) Get(c *gin.Context) {
 		c.JSON(mapCommentErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
 		return
 	}
-	if result.UserID != userID {
+	if result.Author.ID != userID {
 		c.JSON(http.StatusNotFound, dto.ErrorResponse{Message: service.ErrCommentNotFound.Error()})
 		return
 	}
@@ -146,7 +154,7 @@ func (h *CommentHandler) Update(c *gin.Context) {
 		c.JSON(mapCommentErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
 		return
 	}
-	if comment.UserID != userID {
+	if comment.Author.ID != userID {
 		c.JSON(http.StatusNotFound, dto.ErrorResponse{Message: service.ErrCommentNotFound.Error()})
 		return
 	}
@@ -203,7 +211,7 @@ func (h *CommentHandler) Delete(c *gin.Context) {
 		c.JSON(mapCommentErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
 		return
 	}
-	if comment.UserID != userID {
+	if comment.Author.ID != userID {
 		c.JSON(http.StatusNotFound, dto.ErrorResponse{Message: service.ErrCommentNotFound.Error()})
 		return
 	}
