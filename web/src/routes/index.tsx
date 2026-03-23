@@ -1,9 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import {
   AlertCircleIcon,
-  BellIcon,
   CornerRightUpIcon,
-  ExternalLinkIcon,
   HashIcon,
   MessageSquareTextIcon,
   RefreshCwIcon,
@@ -63,9 +61,8 @@ function HomePage() {
     error: settingsError,
     loading: settingsLoading,
     siteAnnouncement,
-    siteDescription,
-    siteName,
-    siteUrl,
+    siteOwner,
+    siteOwnerDescription,
   } = useSiteSettings()
   const [feedState, setFeedState] = useState<FeedState>({
     items: [],
@@ -181,7 +178,6 @@ function HomePage() {
   }, [])
 
   const canLoadMorePosts = feedState.items.length < feedState.total
-  const normalizedSiteUrl = siteUrl.trim() || '/'
   const normalizedAnnouncement = siteAnnouncement.trim() || '暂无公告'
   const siteStats = useMemo(
     () => [
@@ -347,8 +343,8 @@ function HomePage() {
         <aside className="flex min-w-0 flex-col gap-4">
           <Card className="border border-border/70 bg-card/90 shadow-sm">
             <CardHeader>
-              <CardTitle>站点信息</CardTitle>
-              <CardDescription>{siteDescription}</CardDescription>
+              <CardTitle>{siteOwner}</CardTitle>
+              <CardDescription>{siteOwnerDescription}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
               {settingsError ? (

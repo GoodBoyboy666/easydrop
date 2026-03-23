@@ -191,6 +191,20 @@ func initDefaultSettings(db *gorm.DB) error {
 			Public:   true,
 		},
 		{
+			Key:      "site.owner",
+			Value:    "Your Name",
+			Desc:     "站长名称",
+			Category: "site",
+			Public:   true,
+		},
+		{
+			Key:      "site.owner.description",
+			Value:    "Do what you want to do.",
+			Desc:     "站长简介",
+			Category: "site",
+			Public:   true,
+		},
+		{
 			Key:      "site.url",
 			Value:    "http://localhost:8080",
 			Desc:     "站点访问地址",

@@ -8,6 +8,8 @@ interface SiteSettingsContextValue {
   allowRegister: boolean
   error: string | null
   loading: boolean
+  siteOwner: string
+  siteOwnerDescription: string
   settingsMap: PublicSettingsMap
   siteAnnouncement: string
   siteBackground: string
@@ -19,6 +21,8 @@ interface SiteSettingsContextValue {
 
 const DEFAULT_SITE_NAME = 'EasyDrop'
 const DEFAULT_SITE_DESCRIPTION = '一个轻量级日志说说平台'
+const DEFAULT_SITE_OWNER = 'Your Name'
+const DEFAULT_SITE_OWNER_DESCRIPTION = 'Do what you want to do.'
 
 const SiteSettingsContext = createContext<SiteSettingsContextValue | null>(null)
 
@@ -92,6 +96,12 @@ export function SiteSettingsProvider({
       'site.description',
       DEFAULT_SITE_DESCRIPTION
     )
+    const siteOwner = getSetting(settingsMap, 'site.owner', siteName || DEFAULT_SITE_OWNER)
+    const siteOwnerDescription = getSetting(
+      settingsMap,
+      'site.owner.description',
+      siteDescription || DEFAULT_SITE_OWNER_DESCRIPTION
+    )
     const siteUrl = getSetting(settingsMap, 'site.url', '')
     const siteAnnouncement = getSetting(settingsMap, 'site.announcement', '')
     const siteBackground = getSetting(settingsMap, 'site.background', '')
@@ -100,6 +110,8 @@ export function SiteSettingsProvider({
       allowRegister: parseBooleanSetting(settingsMap['site.allow_register'], true),
       error,
       loading,
+      siteOwner,
+      siteOwnerDescription,
       settingsMap,
       siteAnnouncement,
       siteBackground,
