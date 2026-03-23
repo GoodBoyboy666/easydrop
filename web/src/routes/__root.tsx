@@ -2,6 +2,7 @@ import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { AuthProvider } from '#/lib/auth'
+import { SiteSettingsProvider, useSiteSettings } from '#/lib/site-settings'
 import { SiteFooter } from '#/components/site/site-footer'
 import { SiteHeader } from '#/components/site/site-header'
 
@@ -43,27 +44,49 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body className="font-sans antialiased [overflow-wrap:anywhere]">
         <AuthProvider>
-          <div className="relative min-h-screen bg-background text-foreground">
-            <div className="relative flex min-h-screen flex-col">
-              <SiteHeader />
-              <main className="flex-1">{children}</main>
-              <SiteFooter />
-            </div>
-          </div>
-          <TanStackDevtools
-            config={{
-              position: 'bottom-right',
-            }}
-            plugins={[
-              {
-                name: 'Tanstack Router',
-                render: <TanStackRouterDevtoolsPanel />,
-              },
-            ]}
-          />
-          <Scripts />
+          <SiteSettingsProvider>
+            <AppShell>{children}</AppShell>
+            <TanStackDevtools
+              config={{
+                position: 'bottom-right',
+              }}
+              plugins={[
+                {
+                  name: 'Tanstack Router',
+                  render: <TanStackRouterDevtoolsPanel />,
+                },
+              ]}
+            />
+            <Scripts />
+          </SiteSettingsProvider>
         </AuthProvider>
       </body>
     </html>
+  )
+}
+
+function AppShell({ children }: { children: React.ReactNode }) {
+  const { siteBackgroundImageUrl } = useSiteSettings()
+
+  return (
+    <div
+      className="relative min-h-screen bg-background text-foreground"
+      style={
+        siteBackgroundImageUrl
+          ? {
+              backgroundImage: `url("${siteBackgroundImageUrl}")`,
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+              backgroundSize: 'cover',
+            }
+          : undefined
+      }
+    >
+      <div className="relative flex min-h-screen flex-col">
+        <SiteHeader />
+        <main className="flex-1">{children}</main>
+        <SiteFooter />
+      </div>
+    </div>
   )
 }
