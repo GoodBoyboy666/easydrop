@@ -4,13 +4,16 @@ import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 import {
   FileTextIcon,
   LogOutIcon,
+  MenuIcon,
   MessageSquareIcon,
   SettingsIcon,
   UserCircleIcon,
 } from 'lucide-react'
+import { useState } from 'react'
 import { useAuth } from '#/lib/auth'
 import { getInitials } from '#/lib/format'
 import { useSiteSettings } from '#/lib/site-settings'
+import { cn } from '#/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar'
 import { Button } from '#/components/ui/button'
 import {
@@ -21,6 +24,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '#/components/ui/dropdown-menu'
+import {
+  NavigationMenu,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+} from '#/components/ui/navigation-menu'
+import { Separator } from '#/components/ui/separator'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '#/components/ui/sheet'
 
 const navItems = [
   { label: '日志流', to: '/' as const },
@@ -32,7 +50,12 @@ export function SiteHeader() {
   const location = useLocation()
   const navigate = useNavigate()
   const { allowRegister, siteDescription, siteName } = useSiteSettings()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const user = auth.user
+
+  function closeMobileMenu() {
+    setMobileMenuOpen(false)
+  }
 
   return (
     <header className="sticky top-0 z-30 border-b border-border/80 bg-background/90 backdrop-blur">
@@ -55,21 +78,31 @@ export function SiteHeader() {
             </div>
           </Link>
 
-          <nav className="hidden items-center gap-1 rounded-full border border-border/70 bg-card/80 p-1 md:flex">
-            {navItems.map((item) => {
-              const active = location.pathname === item.to
-              return (
-                <Button
-                  key={item.to}
-                  asChild
-                  variant={active ? 'secondary' : 'ghost'}
-                  size="sm"
-                >
-                  <Link to={item.to}>{item.label}</Link>
-                </Button>
-              )
-            })}
-          </nav>
+          <NavigationMenu
+            viewport={false}
+            className="hidden flex-none md:flex"
+          >
+            <NavigationMenuList className="rounded-xl p-1 gap-3 bg-transparent">
+              {navItems.map((item) => {
+                const active = location.pathname === item.to
+                return (
+                  <NavigationMenuItem key={item.to}>
+                    <NavigationMenuLink
+                      asChild
+                      className={cn(
+                        'rounded-lg px-3 py-2 font-medium shadow-none ring-0',
+                        active
+                          ? 'bg-primary text-primary-foreground hover:bg-primary/90 focus:bg-primary/90'
+                          : 'hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground'
+                      )}
+                    >
+                      <Link to={item.to}>{item.label}</Link>
+                    </NavigationMenuLink>
+                  </NavigationMenuItem>
+                )
+              })}
+            </NavigationMenuList>
+          </NavigationMenu>
         </div>
 
         <div className="flex items-center gap-2">
@@ -79,13 +112,13 @@ export function SiteHeader() {
 
           {auth.status !== 'authenticated' ? (
             <>
-              <Button asChild variant="ghost" size="sm">
+              <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex">
                 <Link search={{ redirect: '/' }} to="/login">
                   登录
                 </Link>
               </Button>
               {allowRegister ? (
-                <Button asChild size="sm">
+                <Button asChild size="sm" className="hidden md:inline-flex">
                   <Link search={{ redirect: '/' }} to="/register">
                     注册
                   </Link>
@@ -96,7 +129,7 @@ export function SiteHeader() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="hidden rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring md:inline-flex"
                   type="button"
                 >
                   <Avatar size="lg">
@@ -147,6 +180,148 @@ export function SiteHeader() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : null}
+
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="md:hidden"
+                aria-label="打开导航菜单"
+              >
+                <MenuIcon />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[min(22rem,calc(100vw-1rem))] p-0 md:hidden">
+              <SheetHeader className="pr-12">
+                <SheetTitle>{siteName}</SheetTitle>
+                <SheetDescription>{siteDescription}</SheetDescription>
+              </SheetHeader>
+
+              <div className="flex flex-1 flex-col gap-4 px-4 pb-4">
+                <div className="flex flex-col gap-2">
+                  {navItems.map((item) => {
+                    const active = location.pathname === item.to
+                    return (
+                      <Button
+                        key={item.to}
+                        asChild
+                        variant={active ? 'default' : 'ghost'}
+                        className="w-full justify-start"
+                      >
+                        <Link
+                          to={item.to}
+                          onClick={closeMobileMenu}
+                        >
+                          {item.label}
+                        </Link>
+                      </Button>
+                    )
+                  })}
+                </div>
+
+                <Separator />
+
+                {auth.status === 'loading' ? (
+                  <div className="text-sm text-muted-foreground">正在加载登录状态…</div>
+                ) : null}
+
+                {auth.status !== 'authenticated' ? (
+                  <div className="flex flex-col gap-2">
+                    <Button asChild className="w-full justify-start">
+                      <Link search={{ redirect: '/' }} to="/login" onClick={closeMobileMenu}>
+                        登录
+                      </Link>
+                    </Button>
+                    {allowRegister ? (
+                      <Button
+                        asChild
+                        variant="secondary"
+                        className="w-full justify-start"
+                      >
+                        <Link
+                          search={{ redirect: '/' }}
+                          to="/register"
+                          onClick={closeMobileMenu}
+                        >
+                          注册
+                        </Link>
+                      </Button>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">
+                        当前站点未开放注册
+                      </div>
+                    )}
+                  </div>
+                ) : user ? (
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card/70 px-3 py-3">
+                      <Avatar size="lg">
+                        <AvatarImage alt={user.nickname} src={user.avatar} />
+                        <AvatarFallback>{getInitials(user.nickname)}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <div className="truncate font-medium">{user.nickname}</div>
+                        <div className="truncate text-xs text-muted-foreground">
+                          @{user.username}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        asChild
+                        variant="ghost"
+                        className="w-full justify-start"
+                      >
+                        <Link to="/me" onClick={closeMobileMenu}>
+                          <UserCircleIcon data-icon="inline-start" />
+                          个人信息
+                        </Link>
+                      </Button>
+                      <Button
+                        asChild
+                        variant="ghost"
+                        className="w-full justify-start"
+                      >
+                        <Link to="/me/comments" onClick={closeMobileMenu}>
+                          <MessageSquareIcon data-icon="inline-start" />
+                          我的评论
+                        </Link>
+                      </Button>
+                      {auth.isAdmin ? (
+                        <Button
+                          asChild
+                          variant="ghost"
+                          className="w-full justify-start"
+                        >
+                          <Link to="/admin" onClick={closeMobileMenu}>
+                            <SettingsIcon data-icon="inline-start" />
+                            后台管理
+                          </Link>
+                        </Button>
+                      ) : null}
+                    </div>
+
+                    <Separator />
+
+                    <Button
+                      variant="destructive"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        closeMobileMenu()
+                        auth.logout()
+                        void navigate({ to: '/' })
+                      }}
+                    >
+                      <LogOutIcon data-icon="inline-start" />
+                      退出登录
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
     </header>

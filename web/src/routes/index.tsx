@@ -317,7 +317,7 @@ function HomePage() {
                   </EmptyMedia>
                   <EmptyTitle>还没有任何日志</EmptyTitle>
                   <EmptyDescription>
-                    管理员发布第一条日志后，这里会成为站点的主时间线。
+                    发布第一条日志后，这里会成为站点的主时间线。
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>
@@ -358,29 +358,11 @@ function HomePage() {
                 </Alert>
               ) : null}
 
-              <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/30 p-3">
-                <div className="flex size-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                  <BellIcon />
-                </div>
-                <div className="min-w-0">
-                  <div className="font-medium">{siteName}</div>
-                  <a
-                    className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-                    href={normalizedSiteUrl}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    {normalizedSiteUrl}
-                    <ExternalLinkIcon />
-                  </a>
-                </div>
-              </div>
-
               <div className="grid grid-cols-3 gap-2">
                 {siteStats.map((item) => (
                   <div
                     key={item.label}
-                    className="rounded-xl border border-border/70 bg-background/80 px-3 py-2 text-center"
+                    className="rounded-xl px-3 py-2 text-center"
                   >
                     <div className="text-lg font-semibold">{item.value}</div>
                     <div className="text-xs text-muted-foreground">{item.label}</div>
