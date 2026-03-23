@@ -223,15 +223,11 @@ function HomePage() {
             <Card className="border border-primary/20 bg-primary/5 shadow-sm">
               <CardHeader>
                 <CardTitle>快捷发布</CardTitle>
-                <CardDescription>
-                  管理员可直接发布新日志，内容会出现在下方日志流顶部。
-                </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handlePublish}>
                   <FieldGroup>
                     <Field data-invalid={!!publishError}>
-                      <FieldLabel htmlFor="quick-publish">日志内容</FieldLabel>
                       <Textarea
                         aria-invalid={!!publishError}
                         id="quick-publish"

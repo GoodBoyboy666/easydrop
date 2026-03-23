@@ -6,6 +6,7 @@ import { SiteSettingsProvider, useSiteSettings } from '#/lib/site-settings'
 import { ThemeProvider } from '#/lib/theme'
 import { SiteFooter } from '#/components/site/site-footer'
 import { SiteHeader } from '#/components/site/site-header'
+import { Toaster } from '#/components/ui/sonner'
 
 import appCss from '../styles.css?url'
 
@@ -121,6 +122,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
         <SiteHeader />
         <main className="flex-1">{children}</main>
         <SiteFooter />
+        <Toaster closeButton richColors position="top-right" />
       </div>
     </div>
   )

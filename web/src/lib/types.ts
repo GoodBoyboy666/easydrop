@@ -91,6 +91,21 @@ export interface RegisterInput {
   captcha?: Record<string, string>
 }
 
+export interface InitInput {
+  allow_register: boolean
+  email: string
+  nickname: string
+  password: string
+  site_announcement: string
+  site_name: string
+  site_url: string
+  username: string
+}
+
+export interface InitStatusResult {
+  initialized: boolean
+}
+
 export interface CreatePostInput {
   content: string
   hide?: boolean

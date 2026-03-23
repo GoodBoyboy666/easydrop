@@ -4,6 +4,8 @@ import type {
   CommentDTO,
   CreateCommentInput,
   CreatePostInput,
+  InitInput,
+  InitStatusResult,
   LoginInput,
   PagedResult,
   PostDTO,
@@ -110,6 +112,15 @@ async function request<T>(
 export const api = {
   login(input: LoginInput) {
     return request<AuthResult>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+  },
+  getInitStatus() {
+    return request<InitStatusResult>('/init/status')
+  },
+  initializeSystem(input: InitInput) {
+    return request<{ message?: string }>('/init', {
       method: 'POST',
       body: JSON.stringify(input),
     })

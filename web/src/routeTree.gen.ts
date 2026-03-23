@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as InitRouteImport } from './routes/init'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MeCommentsRouteImport } from './routes/me.comments'
@@ -29,6 +30,11 @@ const MeRoute = MeRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InitRoute = InitRouteImport.update({
+  id: '/init',
+  path: '/init',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -50,6 +56,7 @@ const MeCommentsRoute = MeCommentsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/init': typeof InitRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRouteWithChildren
   '/register': typeof RegisterRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/init': typeof InitRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRouteWithChildren
   '/register': typeof RegisterRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/init': typeof InitRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRouteWithChildren
   '/register': typeof RegisterRoute
@@ -74,13 +83,21 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/login' | '/me' | '/register' | '/me/comments'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/init'
+    | '/login'
+    | '/me'
+    | '/register'
+    | '/me/comments'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/login' | '/me' | '/register' | '/me/comments'
+  to: '/' | '/admin' | '/init' | '/login' | '/me' | '/register' | '/me/comments'
   id:
     | '__root__'
     | '/'
     | '/admin'
+    | '/init'
     | '/login'
     | '/me'
     | '/register'
@@ -90,6 +107,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  InitRoute: typeof InitRoute
   LoginRoute: typeof LoginRoute
   MeRoute: typeof MeRouteWithChildren
   RegisterRoute: typeof RegisterRoute
@@ -116,6 +134,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/init': {
+      id: '/init'
+      path: '/init'
+      fullPath: '/init'
+      preLoaderRoute: typeof InitRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -155,6 +180,7 @@ const MeRouteWithChildren = MeRoute._addFileChildren(MeRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  InitRoute: InitRoute,
   LoginRoute: LoginRoute,
   MeRoute: MeRouteWithChildren,
   RegisterRoute: RegisterRoute,
