@@ -44,7 +44,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body className="font-sans antialiased [overflow-wrap:anywhere]">
         <AuthProvider>
           <div className="relative min-h-screen bg-background text-foreground">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_top,oklch(0.94_0.06_82_/_0.8),transparent_60%)]" />
             <div className="relative flex min-h-screen flex-col">
               <SiteHeader />
               <main className="flex-1">{children}</main>

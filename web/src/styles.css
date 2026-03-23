@@ -50,7 +50,7 @@
 }
 
 :root {
-    --background: oklch(1 0 0);
+    --background: oklch(0.978 0.014 95.2);
     --foreground: oklch(0.153 0.006 107.1);
     --card: oklch(1 0 0);
     --card-foreground: oklch(0.153 0.006 107.1);
@@ -129,9 +129,6 @@
 
   body {
     @apply bg-background text-foreground;
-    background-image:
-      radial-gradient(circle at top, color-mix(in oklab, var(--color-primary) 10%, transparent) 0%, transparent 45%),
-      linear-gradient(180deg, color-mix(in oklab, var(--color-muted) 55%, transparent), transparent 30%);
     min-height: 100vh;
   }
 
