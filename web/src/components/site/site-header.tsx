@@ -3,16 +3,20 @@
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 import {
   FileTextIcon,
+  LaptopMinimalIcon,
   LogOutIcon,
   MenuIcon,
   MessageSquareIcon,
+  MoonStarIcon,
   SettingsIcon,
+  SunIcon,
   UserCircleIcon,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '#/lib/auth'
 import { getInitials } from '#/lib/format'
 import { useSiteSettings } from '#/lib/site-settings'
+import { useTheme } from '#/lib/theme'
 import { cn } from '#/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar'
 import { Button } from '#/components/ui/button'
@@ -21,6 +25,9 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '#/components/ui/dropdown-menu'
@@ -50,12 +57,27 @@ export function SiteHeader() {
   const location = useLocation()
   const navigate = useNavigate()
   const { allowRegister, siteDescription, siteName } = useSiteSettings()
+  const { resolvedTheme, setTheme, theme } = useTheme()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const user = auth.user
 
   function closeMobileMenu() {
     setMobileMenuOpen(false)
   }
+
+  const themeLabel =
+    theme === 'system'
+      ? '跟随系统'
+      : resolvedTheme === 'dark'
+        ? '暗色模式'
+        : '亮色模式'
+
+  const ThemeIcon =
+    theme === 'system'
+      ? LaptopMinimalIcon
+      : resolvedTheme === 'dark'
+        ? MoonStarIcon
+        : SunIcon
 
   return (
     <header className="sticky top-0 z-30 border-b border-border/80 bg-background/90 backdrop-blur">
@@ -322,6 +344,42 @@ export function SiteHeader() {
               </div>
             </SheetContent>
           </Sheet>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                type="button"
+                aria-label={`切换主题，当前为${themeLabel}`}
+                title={`切换主题，当前为${themeLabel}`}
+                className="shrink-0"
+              >
+                <ThemeIcon />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuLabel>主题模式</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuRadioGroup
+                value={theme}
+                onValueChange={(value) => setTheme(value as 'light' | 'dark' | 'system')}
+              >
+                <DropdownMenuRadioItem value="light">
+                  <SunIcon data-icon="inline-start" />
+                  亮色模式
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="dark">
+                  <MoonStarIcon data-icon="inline-start" />
+                  暗色模式
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="system">
+                  <LaptopMinimalIcon data-icon="inline-start" />
+                  跟随系统
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>
