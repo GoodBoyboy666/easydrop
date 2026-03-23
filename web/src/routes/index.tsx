@@ -1,0 +1,558 @@
+import { createFileRoute } from '@tanstack/react-router'
+import {
+  AlertCircleIcon,
+  BellIcon,
+  CornerRightUpIcon,
+  ExternalLinkIcon,
+  HashIcon,
+  MessageSquareTextIcon,
+  RefreshCwIcon,
+} from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { api, toPublicSettingsMap } from '#/lib/api'
+import { useAuth } from '#/lib/auth'
+import { formatRelativeTime, getInitials } from '#/lib/format'
+import type {
+  CommentDTO,
+  PagedResult,
+  PostDTO,
+  PublicSettingsMap,
+  TagDTO,
+} from '#/lib/types'
+import { PostCard } from '#/components/home/post-card'
+import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
+import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar'
+import { Badge } from '#/components/ui/badge'
+import { Button } from '#/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '#/components/ui/card'
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '#/components/ui/empty'
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from '#/components/ui/field'
+import { Skeleton } from '#/components/ui/skeleton'
+import { Textarea } from '#/components/ui/textarea'
+
+export const Route = createFileRoute('/')({
+  component: HomePage,
+})
+
+const FEED_PAGE_SIZE = 8
+
+interface FeedState {
+  items: PostDTO[]
+  loading: boolean
+  loadingMore: boolean
+  error: string | null
+  total: number
+}
+
+interface AsyncState<T> {
+  data: T
+  error: string | null
+  loading: boolean
+}
+
+function HomePage() {
+  const auth = useAuth()
+  const [feedState, setFeedState] = useState<FeedState>({
+    items: [],
+    loading: true,
+    loadingMore: false,
+    error: null,
+    total: 0,
+  })
+  const [settingsState, setSettingsState] = useState<AsyncState<PublicSettingsMap>>({
+    data: {},
+    error: null,
+    loading: true,
+  })
+  const [latestCommentsState, setLatestCommentsState] = useState<
+    AsyncState<PagedResult<CommentDTO>>
+  >({
+    data: {
+      items: [],
+      total: 0,
+    },
+    error: null,
+    loading: true,
+  })
+  const [tagsState, setTagsState] = useState<AsyncState<PagedResult<TagDTO>>>({
+    data: {
+      items: [],
+      total: 0,
+    },
+    error: null,
+    loading: true,
+  })
+  const [publishDraft, setPublishDraft] = useState('')
+  const [publishError, setPublishError] = useState<string | null>(null)
+  const [publishing, setPublishing] = useState(false)
+
+  async function loadFeed(mode: 'initial' | 'more' = 'initial') {
+    const offset = mode === 'more' ? feedState.items.length : 0
+
+    setFeedState((current) => ({
+      ...current,
+      error: null,
+      loading: mode === 'initial',
+      loadingMore: mode === 'more',
+    }))
+
+    try {
+      const result = await api.getPosts({
+        limit: FEED_PAGE_SIZE,
+        offset,
+        order: 'created_at_desc',
+      })
+
+      setFeedState((current) => ({
+        items: mode === 'more' ? [...current.items, ...result.items] : result.items,
+        loading: false,
+        loadingMore: false,
+        error: null,
+        total: result.total,
+      }))
+    } catch (error) {
+      setFeedState((current) => ({
+        ...current,
+        loading: false,
+        loadingMore: false,
+        error: error instanceof Error ? error.message : '加载日志流失败',
+      }))
+    }
+  }
+
+  useEffect(() => {
+    void loadFeed()
+
+    void (async () => {
+      try {
+        const result = await api.getPublicSettings()
+        setSettingsState({
+          data: toPublicSettingsMap(result),
+          error: null,
+          loading: false,
+        })
+      } catch (error) {
+        setSettingsState({
+          data: {},
+          error: error instanceof Error ? error.message : '加载站点信息失败',
+          loading: false,
+        })
+      }
+    })()
+
+    void (async () => {
+      try {
+        const result = await api.getLatestComments({
+          limit: 6,
+          offset: 0,
+          order: 'created_at_desc',
+        })
+        setLatestCommentsState({
+          data: result,
+          error: null,
+          loading: false,
+        })
+      } catch (error) {
+        setLatestCommentsState({
+          data: { items: [], total: 0 },
+          error: error instanceof Error ? error.message : '加载最新评论失败',
+          loading: false,
+        })
+      }
+    })()
+
+    void (async () => {
+      try {
+        const result = await api.getTags({
+          limit: 16,
+          offset: 0,
+          order: 'hot_desc',
+        })
+        setTagsState({
+          data: result,
+          error: null,
+          loading: false,
+        })
+      } catch {
+        try {
+          const fallback = await api.getTags({
+            limit: 16,
+            offset: 0,
+            order: 'created_at_desc',
+          })
+          setTagsState({
+            data: fallback,
+            error: null,
+            loading: false,
+          })
+        } catch (error) {
+          setTagsState({
+            data: { items: [], total: 0 },
+            error: error instanceof Error ? error.message : '加载标签失败',
+            loading: false,
+          })
+        }
+      }
+    })()
+  }, [])
+
+  const siteName = settingsState.data.site_name || 'EasyDrop'
+  const siteUrl = settingsState.data.site_url || 'https://easydrop.furwolf.com'
+  const siteAnnouncement =
+    settingsState.data.site_announcement ||
+    '暂无公告'
+  const canLoadMorePosts = feedState.items.length < feedState.total
+  const siteStats = useMemo(
+    () => [
+      { label: '日志', value: feedState.total },
+      { label: '评论', value: latestCommentsState.data.total },
+      { label: '标签', value: tagsState.data.total },
+    ],
+    [feedState.total, latestCommentsState.data.total, tagsState.data.total]
+  )
+
+  async function handlePublish(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!publishDraft.trim()) {
+      setPublishError('发布内容不能为空')
+      return
+    }
+
+    if (!auth.token || !auth.isAdmin) {
+      setPublishError('只有管理员可以发布日志')
+      return
+    }
+
+    setPublishing(true)
+    setPublishError(null)
+
+    try {
+      await api.createAdminPost({ content: publishDraft.trim() }, auth.token)
+      setPublishDraft('')
+      await loadFeed()
+    } catch (error) {
+      setPublishError(error instanceof Error ? error.message : '发布失败')
+    } finally {
+      setPublishing(false)
+    }
+  }
+
+  return (
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="flex min-w-0 flex-col gap-6">
+          {auth.status === 'authenticated' && auth.isAdmin ? (
+            <Card className="border border-primary/20 bg-primary/5 shadow-sm">
+              <CardHeader>
+                <CardTitle>快捷发布</CardTitle>
+                <CardDescription>
+                  管理员可直接发布新日志，内容会出现在下方日志流顶部。
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handlePublish}>
+                  <FieldGroup>
+                    <Field data-invalid={!!publishError}>
+                      <FieldLabel htmlFor="quick-publish">日志内容</FieldLabel>
+                      <Textarea
+                        aria-invalid={!!publishError}
+                        id="quick-publish"
+                        onChange={(event) => setPublishDraft(event.target.value)}
+                        placeholder="写下一条新的日志、更新或公告摘要。"
+                        rows={5}
+                        value={publishDraft}
+                      />
+                      <FieldDescription>
+                        首版仅支持纯文本发布，附件和标签编辑后续再补。
+                      </FieldDescription>
+                      <FieldError>{publishError}</FieldError>
+                    </Field>
+                  </FieldGroup>
+
+                  <div className="mt-3 flex justify-end">
+                    <Button disabled={publishing} type="submit">
+                      <CornerRightUpIcon data-icon="inline-start" />
+                      {publishing ? '正在发布…' : '立即发布'}
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          <section className="flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="font-heading text-lg font-semibold">日志流</h2>
+              </div>
+              <Button
+                onClick={() => void loadFeed()}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <RefreshCwIcon data-icon="inline-start" />
+                刷新
+              </Button>
+            </div>
+
+            {feedState.loading ? (
+              <div className="flex flex-col gap-4">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <Card key={index} className="border border-border/70 bg-card/90">
+                    <CardHeader>
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="size-10 rounded-full" />
+                        <div className="flex flex-1 flex-col gap-2">
+                          <Skeleton className="h-4 w-36" />
+                          <Skeleton className="h-4 w-28" />
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="flex flex-col gap-3 pt-2">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-10/12" />
+                      <Skeleton className="h-4 w-8/12" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : null}
+
+            {!feedState.loading && feedState.error ? (
+              <Alert variant="destructive">
+                <AlertCircleIcon />
+                <AlertTitle>日志流加载失败</AlertTitle>
+                <AlertDescription>{feedState.error}</AlertDescription>
+              </Alert>
+            ) : null}
+
+            {!feedState.loading && !feedState.error && feedState.items.length === 0 ? (
+              <Empty className="border border-dashed border-border/80 bg-card/60">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <AlertCircleIcon />
+                  </EmptyMedia>
+                  <EmptyTitle>还没有任何日志</EmptyTitle>
+                  <EmptyDescription>
+                    管理员发布第一条日志后，这里会成为站点的主时间线。
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : null}
+
+            {!feedState.loading && !feedState.error ? (
+              <div className="flex flex-col gap-4">
+                {feedState.items.map((post) => (
+                  <PostCard key={post.id} onPostRefreshed={loadFeed} post={post} />
+                ))}
+              </div>
+            ) : null}
+
+            {canLoadMorePosts ? (
+              <Button
+                disabled={feedState.loadingMore}
+                onClick={() => void loadFeed('more')}
+                type="button"
+                variant="outline"
+              >
+                {feedState.loadingMore ? '正在加载…' : '加载更多日志'}
+              </Button>
+            ) : null}
+          </section>
+        </div>
+
+        <aside className="flex min-w-0 flex-col gap-4">
+          <Card className="border border-border/70 bg-card/90 shadow-sm">
+            <CardHeader>
+              <CardTitle>站点信息</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              {settingsState.error ? (
+                <Alert variant="destructive">
+                  <AlertTitle>站点信息读取失败</AlertTitle>
+                  <AlertDescription>{settingsState.error}</AlertDescription>
+                </Alert>
+              ) : null}
+
+              <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-muted/30 p-3">
+                <div className="flex size-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                  <BellIcon />
+                </div>
+                <div className="min-w-0">
+                  <div className="font-medium">{siteName}</div>
+                  <a
+                    className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+                    href={siteUrl}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    {siteUrl}
+                    <ExternalLinkIcon />
+                  </a>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                {siteStats.map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-xl border border-border/70 bg-background/80 px-3 py-2 text-center"
+                  >
+                    <div className="text-lg font-semibold">{item.value}</div>
+                    <div className="text-xs text-muted-foreground">{item.label}</div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border border-border/70 bg-card/90 shadow-sm">
+            <CardHeader>
+              <CardTitle>网站公告</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm leading-7 text-muted-foreground">
+              {siteAnnouncement}
+            </CardContent>
+          </Card>
+
+          <Card className="border border-border/70 bg-card/90 shadow-sm">
+            <CardHeader>
+              <CardTitle>最新评论</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              {latestCommentsState.loading
+                ? Array.from({ length: 3 }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="rounded-xl border border-border/60 bg-muted/30 p-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="size-8 rounded-full" />
+                        <div className="flex flex-1 flex-col gap-2">
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-4 w-full" />
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                : null}
+
+              {latestCommentsState.error ? (
+                <Alert variant="destructive">
+                  <AlertTitle>最新评论读取失败</AlertTitle>
+                  <AlertDescription>{latestCommentsState.error}</AlertDescription>
+                </Alert>
+              ) : null}
+
+              {!latestCommentsState.loading &&
+              !latestCommentsState.error &&
+              latestCommentsState.data.items.length === 0 ? (
+                <Empty className="border border-dashed border-border/80 bg-muted/20">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <MessageSquareTextIcon />
+                    </EmptyMedia>
+                    <EmptyTitle>暂无最新评论</EmptyTitle>
+                  </EmptyHeader>
+                </Empty>
+              ) : null}
+
+              {!latestCommentsState.loading && !latestCommentsState.error
+                ? latestCommentsState.data.items.map((comment) => (
+                    <article
+                      key={comment.id}
+                      className="rounded-xl border border-border/60 bg-muted/30 p-3"
+                    >
+                      <div className="flex items-start gap-3">
+                        <Avatar size="sm">
+                          <AvatarImage
+                            alt={comment.author.nickname}
+                            src={comment.author.avatar}
+                          />
+                          <AvatarFallback>
+                            {getInitials(comment.author.nickname)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2 text-sm">
+                            <span className="font-medium">{comment.author.nickname}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {formatRelativeTime(comment.created_at)}
+                            </span>
+                          </div>
+                          <div className="mt-1 text-sm leading-6 text-foreground/85">
+                            {comment.content}
+                          </div>
+                          <div className="mt-2 text-xs text-muted-foreground">
+                            来自日志 #{comment.post_id}
+                          </div>
+                        </div>
+                      </div>
+                    </article>
+                  ))
+                : null}
+            </CardContent>
+          </Card>
+
+          <Card className="border border-border/70 bg-card/90 shadow-sm">
+            <CardHeader>
+              <CardTitle>全站 Tag</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              {tagsState.error ? (
+                <Alert variant="destructive">
+                  <AlertTitle>标签读取失败</AlertTitle>
+                  <AlertDescription>{tagsState.error}</AlertDescription>
+                </Alert>
+              ) : null}
+
+              <div className="flex flex-wrap gap-2">
+                {tagsState.loading
+                  ? Array.from({ length: 8 }).map((_, index) => (
+                      <Skeleton key={index} className="h-7 w-20 rounded-full" />
+                    ))
+                  : tagsState.data.items.map((tag) => (
+                      <Badge key={tag.id} variant="secondary">
+                        <HashIcon data-icon="inline-start" />
+                        {tag.name}
+                      </Badge>
+                    ))}
+              </div>
+
+              {!tagsState.loading && !tagsState.error && tagsState.data.items.length === 0 ? (
+                <Empty className="border border-dashed border-border/80 bg-muted/20">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <HashIcon />
+                    </EmptyMedia>
+                    <EmptyTitle>暂无标签</EmptyTitle>
+                  </EmptyHeader>
+                </Empty>
+              ) : null}
+            </CardContent>
+          </Card>
+        </aside>
+      </section>
+    </div>
+  )
+}

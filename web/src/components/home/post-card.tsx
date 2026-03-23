@@ -1,0 +1,406 @@
+"use client"
+
+import { useEffect, useState } from 'react'
+import { Link } from '@tanstack/react-router'
+import {
+  ChevronDownIcon,
+  MessageSquareMoreIcon,
+  SendHorizontalIcon,
+} from 'lucide-react'
+import { api, ApiError } from '#/lib/api'
+import { useAuth } from '#/lib/auth'
+import { formatDateTime, formatRelativeTime, getInitials } from '#/lib/format'
+import type { CommentDTO, PostDTO } from '#/lib/types'
+import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
+import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar'
+import { Badge } from '#/components/ui/badge'
+import { Button } from '#/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '#/components/ui/card'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '#/components/ui/collapsible'
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '#/components/ui/empty'
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from '#/components/ui/field'
+import { Separator } from '#/components/ui/separator'
+import { Skeleton } from '#/components/ui/skeleton'
+import { Textarea } from '#/components/ui/textarea'
+
+interface PostCardProps {
+  onPostRefreshed?: () => Promise<void> | void
+  post: PostDTO
+}
+
+interface CommentState {
+  items: CommentDTO[]
+  loading: boolean
+  loadingMore: boolean
+  total: number
+}
+
+export function PostCard({ onPostRefreshed, post }: PostCardProps) {
+  const auth = useAuth()
+  const [commentState, setCommentState] = useState<CommentState>({
+    items: [],
+    loading: true,
+    loadingMore: false,
+    total: 0,
+  })
+  const [commentError, setCommentError] = useState<string | null>(null)
+  const [composerOpen, setComposerOpen] = useState(false)
+  const [commentDraft, setCommentDraft] = useState('')
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadComments() {
+      setCommentError(null)
+      setCommentState((current) => ({ ...current, loading: true }))
+
+      try {
+        const result = await api.getPostComments(post.id, {
+          limit: 5,
+          offset: 0,
+          order: 'created_at_desc',
+        })
+
+        if (cancelled) {
+          return
+        }
+
+        setCommentState({
+          items: result.items,
+          loading: false,
+          loadingMore: false,
+          total: result.total,
+        })
+      } catch (error) {
+        if (cancelled) {
+          return
+        }
+
+        setCommentError(
+          error instanceof Error ? error.message : '加载评论时出现未知错误'
+        )
+        setCommentState({
+          items: [],
+          loading: false,
+          loadingMore: false,
+          total: 0,
+        })
+      }
+    }
+
+    void loadComments()
+
+    return () => {
+      cancelled = true
+    }
+  }, [post.id])
+
+  async function loadMoreComments() {
+    setCommentError(null)
+    setCommentState((current) => ({ ...current, loadingMore: true }))
+
+    try {
+      const result = await api.getPostComments(post.id, {
+        limit: 5,
+        offset: commentState.items.length,
+        order: 'created_at_desc',
+      })
+
+      setCommentState((current) => ({
+        items: [...current.items, ...result.items],
+        loading: false,
+        loadingMore: false,
+        total: result.total,
+      }))
+    } catch (error) {
+      setCommentState((current) => ({
+        ...current,
+        loadingMore: false,
+      }))
+      setCommentError(error instanceof Error ? error.message : '加载更多评论失败')
+    }
+  }
+
+  function redirectToLogin() {
+    window.location.assign('/login?redirect=/')
+  }
+
+  async function handleCommentSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!commentDraft.trim()) {
+      setSubmitError('评论内容不能为空')
+      return
+    }
+
+    if (!auth.token) {
+      redirectToLogin()
+      return
+    }
+
+    setSubmitting(true)
+    setSubmitError(null)
+
+    try {
+      await api.createPostComment(
+        post.id,
+        {
+          content: commentDraft.trim(),
+        },
+        auth.token
+      )
+
+      setCommentDraft('')
+      setComposerOpen(true)
+
+      const result = await api.getPostComments(post.id, {
+        limit: Math.max(5, commentState.items.length || 5),
+        offset: 0,
+        order: 'created_at_desc',
+      })
+
+      setCommentState({
+        items: result.items,
+        loading: false,
+        loadingMore: false,
+        total: result.total,
+      })
+
+      await onPostRefreshed?.()
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        auth.logout()
+        redirectToLogin()
+        return
+      }
+
+      setSubmitError(error instanceof Error ? error.message : '发表评论失败')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const hasMoreComments = commentState.items.length < commentState.total
+
+  return (
+    <Card className="border border-border/70 bg-card/90 shadow-sm">
+      <CardHeader className="gap-4 border-b border-border/60">
+        <div className="flex items-start gap-3">
+          <Avatar size="lg">
+            <AvatarImage alt={post.author.nickname} src={post.author.avatar} />
+            <AvatarFallback>{getInitials(post.author.nickname)}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1">
+            <CardTitle className="truncate">{post.author.nickname}</CardTitle>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span>{formatRelativeTime(post.created_at)}</span>
+              <span>发布于 {formatDateTime(post.created_at)}</span>
+            </div>
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardContent className="flex flex-col gap-4 pt-4">
+        <div className="flex flex-col gap-3">
+          <p className="whitespace-pre-wrap text-sm leading-7 text-foreground/90">
+            {post.content}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {post.tags?.length ? (
+              post.tags.map((tag) => (
+                <Badge key={tag.id} variant="secondary">
+                  #{tag.name}
+                </Badge>
+              ))
+            ) : (
+              <Badge variant="outline">未分类</Badge>
+            )}
+          </div>
+        </div>
+
+        <Separator />
+
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-sm font-medium">
+              评论 {commentState.total ? `(${commentState.total})` : ''}
+            </div>
+            <Collapsible open={composerOpen} onOpenChange={setComposerOpen}>
+              <CollapsibleTrigger asChild>
+                <Button
+                  size="sm"
+                  variant={composerOpen ? 'secondary' : 'outline'}
+                  type="button"
+                  onClick={() => {
+                    if (auth.status !== 'authenticated') {
+                      redirectToLogin()
+                    }
+                  }}
+                >
+                  <MessageSquareMoreIcon data-icon="inline-start" />
+                  发评论
+                </Button>
+              </CollapsibleTrigger>
+
+              <CollapsibleContent className="mt-3">
+                <form className="rounded-xl border border-border/70 bg-muted/40 p-3" onSubmit={handleCommentSubmit}>
+                  <FieldGroup>
+                    <Field data-invalid={!!submitError}>
+                      <FieldLabel htmlFor={`comment-${post.id}`}>写下你的评论</FieldLabel>
+                      <Textarea
+                        aria-invalid={!!submitError}
+                        id={`comment-${post.id}`}
+                        onChange={(event) => setCommentDraft(event.target.value)}
+                        placeholder="说点什么，支持简短日志式评论。"
+                        rows={4}
+                        value={commentDraft}
+                      />
+                      <FieldDescription>
+                        当前仅支持发布顶层评论，后续可扩展回复链路。
+                      </FieldDescription>
+                      <FieldError>{submitError}</FieldError>
+                    </Field>
+                  </FieldGroup>
+
+                  <div className="mt-3 flex items-center justify-end">
+                    <Button disabled={submitting} type="submit">
+                      <SendHorizontalIcon data-icon="inline-start" />
+                      {submitting ? '正在提交…' : '发布评论'}
+                    </Button>
+                  </div>
+                </form>
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+
+          {commentState.loading ? (
+            <div className="flex flex-col gap-3">
+              {Array.from({ length: 2 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="rounded-xl border border-border/60 bg-muted/30 p-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="size-8 rounded-full" />
+                    <div className="flex flex-1 flex-col gap-2">
+                      <Skeleton className="h-4 w-28" />
+                      <Skeleton className="h-4 w-full" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {!commentState.loading && commentError ? (
+            <Alert variant="destructive">
+              <AlertTitle>评论加载失败</AlertTitle>
+              <AlertDescription>{commentError}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          {!commentState.loading &&
+          !commentError &&
+          commentState.items.length === 0 ? (
+            <Empty className="border border-dashed border-border/80 bg-muted/20">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <MessageSquareMoreIcon />
+                </EmptyMedia>
+                <EmptyTitle>还没有评论</EmptyTitle>
+                <EmptyDescription>
+                  当前日志下还没有评论，点击右上角的“发评论”试试。
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : null}
+
+          {!commentState.loading && commentState.items.length > 0 ? (
+            <div className="flex flex-col gap-3">
+              {commentState.items.map((comment) => (
+                <article
+                  key={comment.id}
+                  className="rounded-xl border border-border/60 bg-muted/30 p-3"
+                >
+                  <div className="flex items-start gap-3">
+                    <Avatar size="sm">
+                      <AvatarImage
+                        alt={comment.author.nickname}
+                        src={comment.author.avatar}
+                      />
+                      <AvatarFallback>
+                        {getInitials(comment.author.nickname)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2 text-sm">
+                        <span className="font-medium">{comment.author.nickname}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatRelativeTime(comment.created_at)}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-sm leading-6 text-foreground/85">
+                        {comment.reply_to_user ? (
+                          <span className="mr-1 text-muted-foreground">
+                            回复 {comment.reply_to_user.nickname}：
+                          </span>
+                        ) : null}
+                        {comment.content}
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              ))}
+
+              {hasMoreComments ? (
+                <Button
+                  disabled={commentState.loadingMore}
+                  onClick={() => void loadMoreComments()}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  <ChevronDownIcon data-icon="inline-start" />
+                  {commentState.loadingMore ? '正在加载…' : '更多评论'}
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </CardContent>
+
+      <CardFooter className="justify-between gap-3">
+        <div className="text-xs text-muted-foreground">
+          日志 #{post.id} · 评论 {commentState.total}
+        </div>
+        <Button asChild size="sm" variant="ghost">
+          <Link to="/me/comments">查看我的评论</Link>
+        </Button>
+      </CardFooter>
+    </Card>
+  )
+}
