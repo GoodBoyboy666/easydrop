@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { api } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
 import { safeRedirectPath } from '#/lib/format'
+import { useSiteSettings } from '#/lib/site-settings'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import { Button } from '#/components/ui/button'
 import {
@@ -31,6 +32,7 @@ export const Route = createFileRoute('/register')({
 
 function RegisterPage() {
   const auth = useAuth()
+  const { allowRegister, siteName } = useSiteSettings()
   const { redirect } = Route.useSearch()
   const [form, setForm] = useState({
     email: '',
@@ -68,6 +70,11 @@ function RegisterPage() {
     event.preventDefault()
     setError(null)
 
+    if (!allowRegister) {
+      setError('当前站点未开放注册')
+      return
+    }
+
     if (
       !form.username.trim() ||
       !form.nickname.trim() ||
@@ -97,11 +104,11 @@ function RegisterPage() {
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-9rem)] w-full max-w-7xl items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-2xl border border-border/70 bg-card/95 shadow-sm">
+      <Card className="w-full max-w-2xl border border-border/70 bg-card/95 shadow-sm px-4 py-8">
         <CardHeader>
           <CardTitle className="text-2xl">注册</CardTitle>
           <CardDescription>
-            注册完成后会自动登录并返回首页，你就可以开始参与评论。
+            Sign up
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -111,6 +118,7 @@ function RegisterPage() {
                 <FieldLabel htmlFor="username">用户名</FieldLabel>
                 <Input
                   aria-invalid={!!error}
+                  disabled={!allowRegister}
                   id="username"
                   onChange={(event) =>
                     setForm((current) => ({ ...current, username: event.target.value }))
@@ -124,6 +132,7 @@ function RegisterPage() {
                 <FieldLabel htmlFor="nickname">昵称</FieldLabel>
                 <Input
                   aria-invalid={!!error}
+                  disabled={!allowRegister}
                   id="nickname"
                   onChange={(event) =>
                     setForm((current) => ({ ...current, nickname: event.target.value }))
@@ -137,6 +146,7 @@ function RegisterPage() {
                 <FieldLabel htmlFor="email">邮箱</FieldLabel>
                 <Input
                   aria-invalid={!!error}
+                  disabled={!allowRegister}
                   id="email"
                   onChange={(event) =>
                     setForm((current) => ({ ...current, email: event.target.value }))
@@ -151,17 +161,15 @@ function RegisterPage() {
                 <FieldLabel htmlFor="register-password">密码</FieldLabel>
                 <Input
                   aria-invalid={!!error}
+                  disabled={!allowRegister}
                   id="register-password"
                   onChange={(event) =>
                     setForm((current) => ({ ...current, password: event.target.value }))
                   }
-                  placeholder="至少准备一个安全密码"
+                  placeholder="一个安全的密码"
                   type="password"
                   value={form.password}
                 />
-                <FieldDescription>
-                  注册接口会直接返回登录态，提交成功后会自动进入已登录状态。
-                </FieldDescription>
                 <FieldError>{error}</FieldError>
               </Field>
             </FieldGroup>
@@ -173,8 +181,17 @@ function RegisterPage() {
               </Alert>
             ) : null}
 
+            {!allowRegister ? (
+              <Alert className="mt-4">
+                <AlertTitle>当前未开放注册</AlertTitle>
+                <AlertDescription>
+                  {siteName} 当前关闭了公开注册，请联系管理员开通账号。
+                </AlertDescription>
+              </Alert>
+            ) : null}
+
             <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <Button disabled={submitting} type="submit">
+              <Button disabled={!allowRegister || submitting} type="submit">
                 <UserPlusIcon data-icon="inline-start" />
                 {submitting ? '正在注册…' : '创建账号'}
               </Button>

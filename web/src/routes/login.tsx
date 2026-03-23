@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { api } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
 import { safeRedirectPath } from '#/lib/format'
+import { useSiteSettings } from '#/lib/site-settings'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import { Button } from '#/components/ui/button'
 import {
@@ -31,6 +32,7 @@ export const Route = createFileRoute('/login')({
 
 function LoginPage() {
   const auth = useAuth()
+  const { allowRegister } = useSiteSettings()
   const { redirect } = Route.useSearch()
   const [account, setAccount] = useState('')
   const [password, setPassword] = useState('')
@@ -86,11 +88,11 @@ function LoginPage() {
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-9rem)] w-full max-w-7xl items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-xl border border-border/70 bg-card/95 shadow-sm">
+      <Card className="w-full max-w-xl border border-border/70 bg-card/95 shadow-sm px-4 py-8">
         <CardHeader>
-          <CardTitle className="text-2xl">登录</CardTitle>
+          <CardTitle className="text-2xl">欢迎回来</CardTitle>
           <CardDescription>
-            登录后可以发表评论；管理员登录后首页会显示快捷发布框。
+            Welcome back
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -117,9 +119,6 @@ function LoginPage() {
                   type="password"
                   value={password}
                 />
-                <FieldDescription>
-                  验证成功后会自动恢复到你之前要访问的页面。
-                </FieldDescription>
                 <FieldError>{error}</FieldError>
               </Field>
             </FieldGroup>
@@ -136,12 +135,16 @@ function LoginPage() {
                 <LogInIcon data-icon="inline-start" />
                 {submitting ? '正在登录…' : '立即登录'}
               </Button>
-              <Button asChild size="sm" variant="ghost">
-                <Link to="/register" search={{ redirect }}>
-                  没有账号？去注册
-                  <ArrowRightIcon data-icon="inline-end" />
-                </Link>
-              </Button>
+              {allowRegister ? (
+                <Button asChild size="sm" variant="ghost">
+                  <Link to="/register" search={{ redirect }}>
+                    没有账号？去注册
+                    <ArrowRightIcon data-icon="inline-end" />
+                  </Link>
+                </Button>
+              ) : (
+                <div className="text-sm text-muted-foreground">当前站点未开放注册</div>
+              )}
             </div>
           </form>
         </CardContent>

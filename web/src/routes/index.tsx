@@ -9,16 +9,11 @@ import {
   RefreshCwIcon,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { api, toPublicSettingsMap } from '#/lib/api'
+import { api } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
 import { formatRelativeTime, getInitials } from '#/lib/format'
-import type {
-  CommentDTO,
-  PagedResult,
-  PostDTO,
-  PublicSettingsMap,
-  TagDTO,
-} from '#/lib/types'
+import { useSiteSettings } from '#/lib/site-settings'
+import type { CommentDTO, PagedResult, PostDTO, TagDTO } from '#/lib/types'
 import { PostCard } from '#/components/home/post-card'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar'
@@ -62,14 +57,16 @@ interface FeedState {
   total: number
 }
 
-interface AsyncState<T> {
-  data: T
-  error: string | null
-  loading: boolean
-}
-
 function HomePage() {
   const auth = useAuth()
+  const {
+    error: settingsError,
+    loading: settingsLoading,
+    siteAnnouncement,
+    siteDescription,
+    siteName,
+    siteUrl,
+  } = useSiteSettings()
   const [feedState, setFeedState] = useState<FeedState>({
     items: [],
     loading: true,
@@ -77,29 +74,18 @@ function HomePage() {
     error: null,
     total: 0,
   })
-  const [settingsState, setSettingsState] = useState<AsyncState<PublicSettingsMap>>({
-    data: {},
-    error: null,
-    loading: true,
+  const [latestComments, setLatestComments] = useState<PagedResult<CommentDTO>>({
+    items: [],
+    total: 0,
   })
-  const [latestCommentsState, setLatestCommentsState] = useState<
-    AsyncState<PagedResult<CommentDTO>>
-  >({
-    data: {
-      items: [],
-      total: 0,
-    },
-    error: null,
-    loading: true,
+  const [latestCommentsLoading, setLatestCommentsLoading] = useState(true)
+  const [latestCommentsError, setLatestCommentsError] = useState<string | null>(null)
+  const [tags, setTags] = useState<PagedResult<TagDTO>>({
+    items: [],
+    total: 0,
   })
-  const [tagsState, setTagsState] = useState<AsyncState<PagedResult<TagDTO>>>({
-    data: {
-      items: [],
-      total: 0,
-    },
-    error: null,
-    loading: true,
-  })
+  const [tagsLoading, setTagsLoading] = useState(true)
+  const [tagsError, setTagsError] = useState<string | null>(null)
   const [publishDraft, setPublishDraft] = useState('')
   const [publishError, setPublishError] = useState<string | null>(null)
   const [publishing, setPublishing] = useState(false)
@@ -143,39 +129,23 @@ function HomePage() {
 
     void (async () => {
       try {
-        const result = await api.getPublicSettings()
-        setSettingsState({
-          data: toPublicSettingsMap(result),
-          error: null,
-          loading: false,
-        })
-      } catch (error) {
-        setSettingsState({
-          data: {},
-          error: error instanceof Error ? error.message : '加载站点信息失败',
-          loading: false,
-        })
-      }
-    })()
-
-    void (async () => {
-      try {
         const result = await api.getLatestComments({
           limit: 6,
           offset: 0,
           order: 'created_at_desc',
         })
-        setLatestCommentsState({
-          data: result,
-          error: null,
-          loading: false,
-        })
+        setLatestComments(result)
+        setLatestCommentsError(null)
       } catch (error) {
-        setLatestCommentsState({
-          data: { items: [], total: 0 },
-          error: error instanceof Error ? error.message : '加载最新评论失败',
-          loading: false,
+        setLatestComments({
+          items: [],
+          total: 0,
         })
+        setLatestCommentsError(
+          error instanceof Error ? error.message : '加载最新评论失败'
+        )
+      } finally {
+        setLatestCommentsLoading(false)
       }
     })()
 
@@ -186,11 +156,8 @@ function HomePage() {
           offset: 0,
           order: 'hot_desc',
         })
-        setTagsState({
-          data: result,
-          error: null,
-          loading: false,
-        })
+        setTags(result)
+        setTagsError(null)
       } catch {
         try {
           const fallback = await api.getTags({
@@ -198,35 +165,31 @@ function HomePage() {
             offset: 0,
             order: 'created_at_desc',
           })
-          setTagsState({
-            data: fallback,
-            error: null,
-            loading: false,
-          })
+          setTags(fallback)
+          setTagsError(null)
         } catch (error) {
-          setTagsState({
-            data: { items: [], total: 0 },
-            error: error instanceof Error ? error.message : '加载标签失败',
-            loading: false,
+          setTags({
+            items: [],
+            total: 0,
           })
+          setTagsError(error instanceof Error ? error.message : '加载标签失败')
         }
+      } finally {
+        setTagsLoading(false)
       }
     })()
   }, [])
 
-  const siteName = settingsState.data.site_name || 'EasyDrop'
-  const siteUrl = settingsState.data.site_url || 'https://easydrop.furwolf.com'
-  const siteAnnouncement =
-    settingsState.data.site_announcement ||
-    '暂无公告'
   const canLoadMorePosts = feedState.items.length < feedState.total
+  const normalizedSiteUrl = siteUrl.trim() || '/'
+  const normalizedAnnouncement = siteAnnouncement.trim() || '暂无公告'
   const siteStats = useMemo(
     () => [
       { label: '日志', value: feedState.total },
-      { label: '评论', value: latestCommentsState.data.total },
-      { label: '标签', value: tagsState.data.total },
+      { label: '评论', value: latestComments.total },
+      { label: '标签', value: tags.total },
     ],
-    [feedState.total, latestCommentsState.data.total, tagsState.data.total]
+    [feedState.total, latestComments.total, tags.total]
   )
 
   async function handlePublish(event: React.FormEvent<HTMLFormElement>) {
@@ -385,12 +348,13 @@ function HomePage() {
           <Card className="border border-border/70 bg-card/90 shadow-sm">
             <CardHeader>
               <CardTitle>站点信息</CardTitle>
+              <CardDescription>{siteDescription}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
-              {settingsState.error ? (
+              {settingsError ? (
                 <Alert variant="destructive">
                   <AlertTitle>站点信息读取失败</AlertTitle>
-                  <AlertDescription>{settingsState.error}</AlertDescription>
+                  <AlertDescription>{settingsError}</AlertDescription>
                 </Alert>
               ) : null}
 
@@ -402,11 +366,11 @@ function HomePage() {
                   <div className="font-medium">{siteName}</div>
                   <a
                     className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-                    href={siteUrl}
+                    href={normalizedSiteUrl}
                     rel="noreferrer"
                     target="_blank"
                   >
-                    {siteUrl}
+                    {normalizedSiteUrl}
                     <ExternalLinkIcon />
                   </a>
                 </div>
@@ -423,6 +387,10 @@ function HomePage() {
                   </div>
                 ))}
               </div>
+
+              {settingsLoading ? (
+                <div className="text-xs text-muted-foreground">正在同步站点配置…</div>
+              ) : null}
             </CardContent>
           </Card>
 
@@ -431,7 +399,7 @@ function HomePage() {
               <CardTitle>网站公告</CardTitle>
             </CardHeader>
             <CardContent className="text-sm leading-7 text-muted-foreground">
-              {siteAnnouncement}
+              {normalizedAnnouncement}
             </CardContent>
           </Card>
 
@@ -440,7 +408,7 @@ function HomePage() {
               <CardTitle>最新评论</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
-              {latestCommentsState.loading
+              {latestCommentsLoading
                 ? Array.from({ length: 3 }).map((_, index) => (
                     <div
                       key={index}
@@ -457,16 +425,16 @@ function HomePage() {
                   ))
                 : null}
 
-              {latestCommentsState.error ? (
+              {latestCommentsError ? (
                 <Alert variant="destructive">
                   <AlertTitle>最新评论读取失败</AlertTitle>
-                  <AlertDescription>{latestCommentsState.error}</AlertDescription>
+                  <AlertDescription>{latestCommentsError}</AlertDescription>
                 </Alert>
               ) : null}
 
-              {!latestCommentsState.loading &&
-              !latestCommentsState.error &&
-              latestCommentsState.data.items.length === 0 ? (
+              {!latestCommentsLoading &&
+              !latestCommentsError &&
+              latestComments.items.length === 0 ? (
                 <Empty className="border border-dashed border-border/80 bg-muted/20">
                   <EmptyHeader>
                     <EmptyMedia variant="icon">
@@ -477,8 +445,8 @@ function HomePage() {
                 </Empty>
               ) : null}
 
-              {!latestCommentsState.loading && !latestCommentsState.error
-                ? latestCommentsState.data.items.map((comment) => (
+              {!latestCommentsLoading && !latestCommentsError
+                ? latestComments.items.map((comment) => (
                     <article
                       key={comment.id}
                       className="rounded-xl border border-border/60 bg-muted/30 p-3"
@@ -519,19 +487,19 @@ function HomePage() {
               <CardTitle>全站 Tag</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
-              {tagsState.error ? (
+              {tagsError ? (
                 <Alert variant="destructive">
                   <AlertTitle>标签读取失败</AlertTitle>
-                  <AlertDescription>{tagsState.error}</AlertDescription>
+                  <AlertDescription>{tagsError}</AlertDescription>
                 </Alert>
               ) : null}
 
               <div className="flex flex-wrap gap-2">
-                {tagsState.loading
+                {tagsLoading
                   ? Array.from({ length: 8 }).map((_, index) => (
                       <Skeleton key={index} className="h-7 w-20 rounded-full" />
                     ))
-                  : tagsState.data.items.map((tag) => (
+                  : tags.items.map((tag) => (
                       <Badge key={tag.id} variant="secondary">
                         <HashIcon data-icon="inline-start" />
                         {tag.name}
@@ -539,7 +507,7 @@ function HomePage() {
                     ))}
               </div>
 
-              {!tagsState.loading && !tagsState.error && tagsState.data.items.length === 0 ? (
+              {!tagsLoading && !tagsError && tags.items.length === 0 ? (
                 <Empty className="border border-dashed border-border/80 bg-muted/20">
                   <EmptyHeader>
                     <EmptyMedia variant="icon">

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '#/lib/auth'
 import { getInitials } from '#/lib/format'
+import { useSiteSettings } from '#/lib/site-settings'
 import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar'
 import { Button } from '#/components/ui/button'
 import {
@@ -30,6 +31,7 @@ export function SiteHeader() {
   const auth = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
+  const { allowRegister, siteDescription, siteName } = useSiteSettings()
   const user = auth.user
 
   return (
@@ -45,10 +47,10 @@ export function SiteHeader() {
             </div>
             <div className="min-w-0">
               <div className="font-heading text-base font-semibold tracking-tight">
-                EasyDrop
+                {siteName}
               </div>
               <div className="truncate text-xs text-muted-foreground">
-                站点公告、日志流与评论都在这里汇总
+                {siteDescription}
               </div>
             </div>
           </Link>
@@ -72,7 +74,7 @@ export function SiteHeader() {
 
         <div className="flex items-center gap-2">
           {auth.status === 'loading' ? (
-            <div className="text-sm text-muted-foreground">正在加载登录态…</div>
+            <div className="text-sm text-muted-foreground">正在加载登录状态…</div>
           ) : null}
 
           {auth.status !== 'authenticated' ? (
@@ -82,11 +84,13 @@ export function SiteHeader() {
                   登录
                 </Link>
               </Button>
-              <Button asChild size="sm">
-                <Link search={{ redirect: '/' }} to="/register">
-                  注册
-                </Link>
-              </Button>
+              {allowRegister ? (
+                <Button asChild size="sm">
+                  <Link search={{ redirect: '/' }} to="/register">
+                    注册
+                  </Link>
+                </Button>
+              ) : null}
             </>
           ) : user ? (
             <DropdownMenu>
