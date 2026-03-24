@@ -68,6 +68,7 @@ func (s *postService) Create(ctx context.Context, input dto.PostCreateInput) (*d
 	post := &model.Post{
 		Content: content,
 		Hide:    input.Hide,
+		Pin:     input.Pin,
 		UserID:  input.UserID,
 		Tags:    tags,
 	}
@@ -300,6 +301,7 @@ func toPostDTO(post *model.Post) *dto.PostDTO {
 		ID:      post.ID,
 		Content: post.Content,
 		Hide:    post.Hide,
+		Pin:     post.Pin,
 		Author: dto.PostAuthorDTO{
 			ID:       post.User.ID,
 			Nickname: post.User.Nickname,

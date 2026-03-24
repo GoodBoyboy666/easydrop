@@ -2,10 +2,12 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 
 	"easydrop/internal/dto"
+	"easydrop/internal/middleware"
 	"easydrop/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -58,6 +60,8 @@ func TestPostHandlerListSuccess(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	called := false
+	pinHigh := uint(99)
+	pinLow := uint(10)
 	h := NewPostHandler(&mockPostServiceForPublicHandler{
 		listFn: func(_ context.Context, input dto.PostListInput) (*dto.PostListResult, error) {
 			called = true
@@ -73,7 +77,11 @@ func TestPostHandlerListSuccess(t *testing.T) {
 			if input.Limit != 5 || input.Offset != 10 || input.Order != "created_at_desc" {
 				t.Fatalf("unexpected list input: %+v", input)
 			}
-			return &dto.PostListResult{Items: []dto.PostDTO{}, Total: 0}, nil
+			return &dto.PostListResult{Items: []dto.PostDTO{
+				{ID: 1, Content: "pinned high", Pin: &pinHigh},
+				{ID: 2, Content: "pinned low", Pin: &pinLow},
+				{ID: 3, Content: "normal"},
+			}, Total: 3}, nil
 		},
 	})
 
@@ -85,6 +93,26 @@ func TestPostHandlerListSuccess(t *testing.T) {
 	}
 	if !called {
 		t.Fatal("expected List to be called")
+	}
+
+	var body dto.PostPublicListResult
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("unmarshal response failed: %v", err)
+	}
+	if body.Total != 3 {
+		t.Fatalf("expected total 3, got %d", body.Total)
+	}
+	if len(body.PinnedItems) != 2 {
+		t.Fatalf("expected 2 pinned items, got %d", len(body.PinnedItems))
+	}
+	if len(body.Items) != 1 {
+		t.Fatalf("expected 1 normal item, got %d", len(body.Items))
+	}
+	if body.PinnedItems[0].ID != 1 || body.PinnedItems[1].ID != 2 {
+		t.Fatalf("unexpected pinned items order: %#v", body.PinnedItems)
+	}
+	if body.Items[0].ID != 3 {
+		t.Fatalf("unexpected normal item: %#v", body.Items[0])
 	}
 }
 
@@ -126,5 +154,32 @@ func TestPostHandlerListServiceError(t *testing.T) {
 
 	if w.Code != http.StatusInternalServerError {
 		t.Fatalf("expected status 500, got %d", w.Code)
+	}
+}
+
+func TestPostHandlerListAdminViewerCanSeeHidePosts(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	called := false
+	h := NewPostHandler(&mockPostServiceForPublicHandler{
+		listFn: func(_ context.Context, input dto.PostListInput) (*dto.PostListResult, error) {
+			called = true
+			if input.Hide != nil {
+				t.Fatalf("expected hide filter to be nil for admin viewer, got %#v", input.Hide)
+			}
+			return &dto.PostListResult{Items: []dto.PostDTO{}, Total: 0}, nil
+		},
+	})
+
+	c, w := newTestContext(http.MethodGet, "/api/v1/posts")
+	c.Set(middleware.ContextUserIDKey, uint(1))
+	c.Set(middleware.ContextUserAdminKey, true)
+	h.List(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+	if !called {
+		t.Fatal("expected List to be called")
 	}
 }

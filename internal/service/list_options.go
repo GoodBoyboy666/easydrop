@@ -30,11 +30,11 @@ func normalizeServiceListOffset(offset int) int {
 func normalizePostListOrder(order string) string {
 	switch strings.ToLower(strings.TrimSpace(order)) {
 	case "created_at_asc":
-		return "created_at asc"
+		return "pin desc, created_at asc"
 	case "created_at_desc", "":
-		return "created_at desc"
+		return "pin desc, created_at desc"
 	default:
-		return "created_at desc"
+		return "pin desc, created_at desc"
 	}
 }
 

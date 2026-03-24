@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"easydrop/internal/dto"
+	"easydrop/internal/middleware"
 	"easydrop/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -133,11 +134,15 @@ func TestPostAdminHandlerCreateSuccess(t *testing.T) {
 			if !input.Hide {
 				t.Fatal("expected hide=true")
 			}
+			if input.Pin == nil || *input.Pin != 7 {
+				t.Fatalf("expected pin=7, got %#v", input.Pin)
+			}
 			return &dto.PostDTO{ID: 11, Author: dto.PostAuthorDTO{ID: input.UserID}, Content: input.Content, Hide: input.Hide}, nil
 		},
 	})
 
-	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/admin/posts", `{"user_id":5,"content":"post content","hide":true}`)
+	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/admin/posts", `{"user_id":5,"content":"post content","hide":true,"pin":7}`)
+	c.Set(middleware.ContextUserIDKey, uint(5))
 	h.Create(c)
 
 	if w.Code != http.StatusCreated {

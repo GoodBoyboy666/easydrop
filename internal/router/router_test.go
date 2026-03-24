@@ -15,6 +15,10 @@ import (
 
 type fakeAuthMiddleware struct{}
 
+func (fakeAuthMiddleware) OptionalLogin(c *gin.Context) {
+	c.Next()
+}
+
 func (fakeAuthMiddleware) RequireLogin(c *gin.Context) {
 	c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "login required"})
 }

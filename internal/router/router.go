@@ -63,12 +63,15 @@ func BuildEngine(app *di.App) *gin.Engine {
 
 	requireLogin := fallbackMiddleware(http.StatusInternalServerError, "认证中间件未正确初始化")
 	requireAdmin := fallbackMiddleware(http.StatusInternalServerError, "认证中间件未正确初始化")
+	optionalLogin := passthroughMiddleware()
 	if app.Middleware != nil {
 		requireLogin = app.Middleware.RequireLogin
 		requireAdmin = app.Middleware.RequireAdmin
+		optionalLogin = app.Middleware.OptionalLogin
 	}
 
 	v1 := r.Group("/api/v1")
+	v1.Use(optionalLogin)
 	{
 		authGroup := v1.Group("/auth")
 		{
@@ -195,5 +198,11 @@ func BuildEngine(app *di.App) *gin.Engine {
 func fallbackMiddleware(status int, message string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.AbortWithStatusJSON(status, gin.H{"message": message})
+	}
+}
+
+func passthroughMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Next()
 	}
 }

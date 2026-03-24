@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"easydrop/internal/dto"
+	"easydrop/internal/middleware"
 	"easydrop/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -30,7 +31,7 @@ func NewPostHandler(postService service.PostService) *PostHandler {
 // @Param limit query int false "分页大小"
 // @Param offset query int false "偏移量"
 // @Param order query string false "排序，如 created_at_desc"
-// @Success 200 {object} dto.PostListResult
+// @Success 200 {object} dto.PostPublicListResult
 // @Failure 400 {object} dto.ErrorResponse "参数校验失败"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /posts [get]
@@ -46,8 +47,18 @@ func (h *PostHandler) List(c *gin.Context) {
 		return
 	}
 	req.Order = strings.TrimSpace(req.Order)
-	publicOnly := false
-	req.Hide = &publicOnly
+	canViewHide := false
+	if _, ok := middleware.GetUserID(c); ok {
+		if isAdmin, ok := middleware.GetUserAdmin(c); ok && isAdmin {
+			canViewHide = true
+		}
+	}
+	if !canViewHide {
+		publicOnly := false
+		req.Hide = &publicOnly
+	} else {
+		req.Hide = nil
+	}
 
 	result, err := h.postService.List(c.Request.Context(), req)
 	if err != nil {
@@ -55,5 +66,19 @@ func (h *PostHandler) List(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, result)
+	pinnedItems := make([]dto.PostDTO, 0, len(result.Items))
+	normalItems := make([]dto.PostDTO, 0, len(result.Items))
+	for _, item := range result.Items {
+		if item.Pin != nil {
+			pinnedItems = append(pinnedItems, item)
+			continue
+		}
+		normalItems = append(normalItems, item)
+	}
+
+	c.JSON(http.StatusOK, dto.PostPublicListResult{
+		PinnedItems: pinnedItems,
+		Items:       normalItems,
+		Total:       result.Total,
+	})
 }

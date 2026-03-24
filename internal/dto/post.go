@@ -6,6 +6,7 @@ type PostCreateInput struct {
 	UserID  uint   `json:"-"`
 	Content string `json:"content"`
 	Hide    bool   `json:"hide"`
+	Pin     *uint  `json:"pin"`
 }
 
 type PostIDURIInput struct {
@@ -31,6 +32,7 @@ type PostDTO struct {
 	ID        uint          `json:"id"`
 	Content   string        `json:"content"`
 	Hide      bool          `json:"hide"`
+	Pin       *uint         `json:"pin"`
 	Author    PostAuthorDTO `json:"author"`
 	Tags      []TagDTO      `json:"tags"`
 	CreatedAt time.Time     `json:"created_at"`
@@ -47,4 +49,10 @@ type PostAuthorDTO struct {
 type PostListResult struct {
 	Items []PostDTO `json:"items"`
 	Total int64     `json:"total"`
+}
+
+type PostPublicListResult struct {
+	PinnedItems []PostDTO `json:"pinned_items"`
+	Items       []PostDTO `json:"items"`
+	Total       int64     `json:"total"`
 }
