@@ -78,7 +78,7 @@ func buildGravatarURL(email string) *string {
 	}
 
 	hash := md5.Sum([]byte(normalized))
-	url := "https://www.gravatar.com/avatar/" + hex.EncodeToString(hash[:])
+	url := "https://gravatar.furwolf.com/avatar/" + hex.EncodeToString(hash[:])
 	return &url
 }
 

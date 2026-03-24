@@ -212,7 +212,8 @@ func (s *commentService) Delete(ctx context.Context, id uint) error {
 		return ErrCommentNotFound
 	}
 
-	if _, err := s.commentRepo.GetByID(ctx, id); err != nil {
+	comment, err := s.commentRepo.GetByID(ctx, id)
+	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrCommentNotFound
 		}
@@ -220,7 +221,12 @@ func (s *commentService) Delete(ctx context.Context, id uint) error {
 		return ErrInternal
 	}
 
-	if err := s.commentRepo.Delete(ctx, id); err != nil {
+	if comment.ParentID == nil {
+		err = s.commentRepo.DeleteRootWithChildren(ctx, id)
+	} else {
+		err = s.commentRepo.Delete(ctx, id)
+	}
+	if err != nil {
 		log.Printf("删除评论失败: %v", err)
 		return ErrInternal
 	}

@@ -97,7 +97,7 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	commentHandler := handler.NewCommentHandler(commentService)
 	commentAdminHandler := handler.NewCommentAdminHandler(commentService)
 	tagRepo := repo.NewTagRepo(db)
-	postService := service.NewPostService(postRepo, tagRepo, storageManager)
+	postService := service.NewPostService(postRepo, commentRepo, tagRepo, storageManager)
 	postAdminHandler := handler.NewPostAdminHandler(postService)
 	postHandler := handler.NewPostHandler(postService)
 	settingAdminHandler := handler.NewSettingAdminHandler(settingService)

@@ -40,14 +40,16 @@ type PostService interface {
 
 type postService struct {
 	postRepo       repo.PostRepo
+	commentRepo    repo.CommentRepo
 	tagRepo        repo.TagRepo
 	storageManager storage.Manager
 }
 
 // NewPostService 创建说说服务实例。
-func NewPostService(postRepo repo.PostRepo, tagRepo repo.TagRepo, storageManager storage.Manager) PostService {
+func NewPostService(postRepo repo.PostRepo, commentRepo repo.CommentRepo, tagRepo repo.TagRepo, storageManager storage.Manager) PostService {
 	return &postService{
 		postRepo:       postRepo,
+		commentRepo:    commentRepo,
 		tagRepo:        tagRepo,
 		storageManager: storageManager,
 	}
@@ -184,6 +186,10 @@ func (s *postService) Delete(ctx context.Context, id uint) error {
 		return ErrInternal
 	}
 	tagIDs := collectTagIDs(post.Tags)
+	if err := s.commentRepo.DeleteByPostID(ctx, id); err != nil {
+		log.Printf("删除说说评论失败: %v", err)
+		return ErrInternal
+	}
 	if err := s.postRepo.Delete(ctx, id); err != nil {
 		log.Printf("删除说说失败: %v", err)
 		return ErrInternal

@@ -14,6 +14,8 @@ type CommentRepo interface {
 	GetByID(ctx context.Context, id uint) (*model.Comment, error)
 	Update(ctx context.Context, comment *model.Comment) error
 	Delete(ctx context.Context, id uint) error
+	DeleteByPostID(ctx context.Context, postID uint) error
+	DeleteRootWithChildren(ctx context.Context, rootID uint) error
 	List(ctx context.Context, filter CommentFilter, opts ListOptions) ([]model.Comment, int64, error)
 }
 
@@ -54,6 +56,16 @@ func (r *GormCommentRepo) Update(ctx context.Context, comment *model.Comment) er
 
 func (r *GormCommentRepo) Delete(ctx context.Context, id uint) error {
 	return r.db.WithContext(withContext(ctx)).Delete(&model.Comment{}, id).Error
+}
+
+func (r *GormCommentRepo) DeleteByPostID(ctx context.Context, postID uint) error {
+	return r.db.WithContext(withContext(ctx)).Where("post_id = ?", postID).Delete(&model.Comment{}).Error
+}
+
+func (r *GormCommentRepo) DeleteRootWithChildren(ctx context.Context, rootID uint) error {
+	return r.db.WithContext(withContext(ctx)).
+		Where("id = ? OR root_id = ?", rootID, rootID).
+		Delete(&model.Comment{}).Error
 }
 
 func (r *GormCommentRepo) List(ctx context.Context, filter CommentFilter, opts ListOptions) ([]model.Comment, int64, error) {
