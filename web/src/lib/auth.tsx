@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError } from '#/lib/api'
+import { FullScreenLoading } from '#/components/ui/full-screen-loading'
 import { currentUserQueryOptions, queryKeys } from '#/lib/query-options'
 import type { AuthState, UserDTO } from '#/lib/types'
 
@@ -138,7 +139,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [authState, authenticateWithToken, logout, refreshUser],
   )
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={value}>
+      {authState.status === 'loading' ? <FullScreenLoading /> : children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {
