@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"strings"
 
 	"easydrop/internal/dto"
@@ -11,7 +13,7 @@ import (
 
 // toUserDTO 将用户模型转换为对外返回的 DTO。
 func toUserDTO(ctx context.Context, user *model.User, storageManager storage.Manager) (dto.UserDTO, error) {
-	avatar, err := resolveUserAvatar(ctx, user.Avatar, storageManager)
+	avatar, err := resolveUserAvatar(ctx, user.Avatar, user.Email, storageManager)
 	if err != nil {
 		return dto.UserDTO{}, err
 	}
@@ -49,9 +51,9 @@ func toUserDTOs(ctx context.Context, users []model.User, storageManager storage.
 	return items, nil
 }
 
-func resolveUserAvatar(ctx context.Context, avatar *string, storageManager storage.Manager) (*string, error) {
+func resolveUserAvatar(ctx context.Context, avatar *string, email string, storageManager storage.Manager) (*string, error) {
 	if avatar == nil {
-		return nil, nil
+		return buildGravatarURL(email), nil
 	}
 
 	trimmed := strings.TrimSpace(*avatar)
@@ -67,6 +69,17 @@ func resolveUserAvatar(ctx context.Context, avatar *string, storageManager stora
 		return nil, err
 	}
 	return &url, nil
+}
+
+func buildGravatarURL(email string) *string {
+	normalized := strings.ToLower(strings.TrimSpace(email))
+	if normalized == "" {
+		return nil
+	}
+
+	hash := md5.Sum([]byte(normalized))
+	url := "https://www.gravatar.com/avatar/" + hex.EncodeToString(hash[:])
+	return &url
 }
 
 func isManagedAvatarKey(value string) bool {

@@ -8,6 +8,7 @@ import (
 
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
+	"easydrop/internal/pkg/storage"
 	"easydrop/internal/repo"
 
 	"gorm.io/gorm"
@@ -41,17 +42,19 @@ type CommentService interface {
 }
 
 type commentService struct {
-	commentRepo repo.CommentRepo
-	postRepo    repo.PostRepo
-	userRepo    repo.UserRepo
+	commentRepo    repo.CommentRepo
+	postRepo       repo.PostRepo
+	userRepo       repo.UserRepo
+	storageManager storage.Manager
 }
 
 // NewCommentService 创建评论服务实例。
-func NewCommentService(commentRepo repo.CommentRepo, postRepo repo.PostRepo, userRepo repo.UserRepo) CommentService {
+func NewCommentService(commentRepo repo.CommentRepo, postRepo repo.PostRepo, userRepo repo.UserRepo, storageManager storage.Manager) CommentService {
 	return &commentService{
-		commentRepo: commentRepo,
-		postRepo:    postRepo,
-		userRepo:    userRepo,
+		commentRepo:    commentRepo,
+		postRepo:       postRepo,
+		userRepo:       userRepo,
+		storageManager: storageManager,
 	}
 }
 
@@ -136,7 +139,11 @@ func (s *commentService) Create(ctx context.Context, input dto.CommentCreateInpu
 		return nil, ErrInternal
 	}
 
-	d := toCommentDTO(createdComment)
+	d, err := toCommentDTO(ctx, createdComment, s.storageManager)
+	if err != nil {
+		log.Printf("解析评论头像失败: %v", err)
+		return nil, ErrInternal
+	}
 	return &d, nil
 }
 
@@ -155,7 +162,11 @@ func (s *commentService) Get(ctx context.Context, id uint) (*dto.CommentDTO, err
 		return nil, ErrInternal
 	}
 
-	d := toCommentDTO(comment)
+	d, err := toCommentDTO(ctx, comment, s.storageManager)
+	if err != nil {
+		log.Printf("解析评论头像失败: %v", err)
+		return nil, ErrInternal
+	}
 	return &d, nil
 }
 
@@ -187,7 +198,11 @@ func (s *commentService) Update(ctx context.Context, input dto.CommentUpdateInpu
 		return nil, ErrInternal
 	}
 
-	d := toCommentDTO(comment)
+	d, err := toCommentDTO(ctx, comment, s.storageManager)
+	if err != nil {
+		log.Printf("解析评论头像失败: %v", err)
+		return nil, ErrInternal
+	}
 	return &d, nil
 }
 
@@ -276,8 +291,14 @@ func (s *commentService) list(ctx context.Context, filter repo.CommentFilter, li
 		return nil, ErrInternal
 	}
 
+	items, err := toCommentDTOs(ctx, comments, s.storageManager)
+	if err != nil {
+		log.Printf("解析评论列表头像失败: %v", err)
+		return nil, ErrInternal
+	}
+
 	return &dto.CommentListResult{
-		Items: toCommentDTOs(comments),
+		Items: items,
 		Total: total,
 	}, nil
 }
@@ -307,13 +328,23 @@ func (s *commentService) ensureUserExists(ctx context.Context, userID uint) erro
 }
 
 // toCommentDTO 将评论模型转换为 DTO。
-func toCommentDTO(comment *model.Comment) dto.CommentDTO {
+func toCommentDTO(ctx context.Context, comment *model.Comment, storageManager storage.Manager) (dto.CommentDTO, error) {
+	authorAvatar, err := resolveUserAvatar(ctx, comment.User.Avatar, comment.User.Email, storageManager)
+	if err != nil {
+		return dto.CommentDTO{}, err
+	}
+
 	var replyToUser *dto.CommentAuthorDTO
 	if comment.ReplyToUser != nil {
+		replyAvatar, err := resolveUserAvatar(ctx, comment.ReplyToUser.Avatar, comment.ReplyToUser.Email, storageManager)
+		if err != nil {
+			return dto.CommentDTO{}, err
+		}
+
 		replyToUser = &dto.CommentAuthorDTO{
 			ID:       comment.ReplyToUser.ID,
 			Nickname: comment.ReplyToUser.Nickname,
-			Avatar:   comment.ReplyToUser.Avatar,
+			Avatar:   replyAvatar,
 			Admin:    comment.ReplyToUser.Admin,
 		}
 	}
@@ -324,7 +355,7 @@ func toCommentDTO(comment *model.Comment) dto.CommentDTO {
 		Author: dto.CommentAuthorDTO{
 			ID:       comment.User.ID,
 			Nickname: comment.User.Nickname,
-			Avatar:   comment.User.Avatar,
+			Avatar:   authorAvatar,
 			Admin:    comment.User.Admin,
 		},
 		Content:     comment.Content,
@@ -333,17 +364,21 @@ func toCommentDTO(comment *model.Comment) dto.CommentDTO {
 		ReplyToUser: replyToUser,
 		CreatedAt:   comment.CreatedAt,
 		UpdatedAt:   comment.UpdatedAt,
-	}
+	}, nil
 }
 
 // toCommentDTOs 将评论模型切片转换为 DTO 列表。
-func toCommentDTOs(comments []model.Comment) []dto.CommentDTO {
+func toCommentDTOs(ctx context.Context, comments []model.Comment, storageManager storage.Manager) ([]dto.CommentDTO, error) {
 	if len(comments) == 0 {
-		return nil
+		return nil, nil
 	}
 	items := make([]dto.CommentDTO, 0, len(comments))
 	for i := range comments {
-		items = append(items, toCommentDTO(&comments[i]))
+		commentDTO, err := toCommentDTO(ctx, &comments[i], storageManager)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, commentDTO)
 	}
-	return items
+	return items, nil
 }

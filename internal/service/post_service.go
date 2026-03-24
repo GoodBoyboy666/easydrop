@@ -10,6 +10,7 @@ import (
 
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
+	"easydrop/internal/pkg/storage"
 	"easydrop/internal/repo"
 
 	"gorm.io/gorm"
@@ -38,15 +39,17 @@ type PostService interface {
 }
 
 type postService struct {
-	postRepo repo.PostRepo
-	tagRepo  repo.TagRepo
+	postRepo       repo.PostRepo
+	tagRepo        repo.TagRepo
+	storageManager storage.Manager
 }
 
 // NewPostService 创建说说服务实例。
-func NewPostService(postRepo repo.PostRepo, tagRepo repo.TagRepo) PostService {
+func NewPostService(postRepo repo.PostRepo, tagRepo repo.TagRepo, storageManager storage.Manager) PostService {
 	return &postService{
-		postRepo: postRepo,
-		tagRepo:  tagRepo,
+		postRepo:       postRepo,
+		tagRepo:        tagRepo,
+		storageManager: storageManager,
 	}
 }
 
@@ -83,7 +86,12 @@ func (s *postService) Create(ctx context.Context, input dto.PostCreateInput) (*d
 		log.Printf("查询已创建说说失败: %v", err)
 		return nil, ErrInternal
 	}
-	return toPostDTO(createdPost), nil
+	postDTO, err := toPostDTO(ctx, createdPost, s.storageManager)
+	if err != nil {
+		log.Printf("解析说说头像失败: %v", err)
+		return nil, ErrInternal
+	}
+	return postDTO, nil
 }
 
 // Get 根据说说 ID 查询详情。
@@ -99,7 +107,12 @@ func (s *postService) Get(ctx context.Context, id uint) (*dto.PostDTO, error) {
 		log.Printf("获取说说失败: %v", err)
 		return nil, ErrInternal
 	}
-	return toPostDTO(post), nil
+	postDTO, err := toPostDTO(ctx, post, s.storageManager)
+	if err != nil {
+		log.Printf("解析说说头像失败: %v", err)
+		return nil, ErrInternal
+	}
+	return postDTO, nil
 }
 
 // Update 更新说说内容，并在内容变化时重建标签关系。
@@ -147,7 +160,12 @@ func (s *postService) Update(ctx context.Context, input dto.PostUpdateInput) (*d
 	if len(oldTagIDs) > 0 {
 		s.asyncCleanupOrphanTags(oldTagIDs)
 	}
-	return toPostDTO(post), nil
+	postDTO, err := toPostDTO(ctx, post, s.storageManager)
+	if err != nil {
+		log.Printf("解析说说头像失败: %v", err)
+		return nil, ErrInternal
+	}
+	return postDTO, nil
 }
 
 // Delete 删除说说并在后台尝试清理孤儿标签。
@@ -190,8 +208,14 @@ func (s *postService) List(ctx context.Context, input dto.PostListInput) (*dto.P
 		return nil, ErrInternal
 	}
 
+	items, err := toPostDTOs(ctx, posts, s.storageManager)
+	if err != nil {
+		log.Printf("解析说说列表头像失败: %v", err)
+		return nil, ErrInternal
+	}
+
 	return &dto.PostListResult{
-		Items: toPostDTOs(posts),
+		Items: items,
 		Total: total,
 	}, nil
 }
@@ -300,10 +324,16 @@ func collectTagIDs(tags []model.Tag) []uint {
 }
 
 // toPostDTO 将说说模型转换为单个 DTO。
-func toPostDTO(post *model.Post) *dto.PostDTO {
+func toPostDTO(ctx context.Context, post *model.Post, storageManager storage.Manager) (*dto.PostDTO, error) {
 	if post == nil {
-		return nil
+		return nil, nil
 	}
+
+	avatar, err := resolveUserAvatar(ctx, post.User.Avatar, post.User.Email, storageManager)
+	if err != nil {
+		return nil, err
+	}
+
 	return &dto.PostDTO{
 		ID:             post.ID,
 		Content:        post.Content,
@@ -313,29 +343,32 @@ func toPostDTO(post *model.Post) *dto.PostDTO {
 		Author: dto.PostAuthorDTO{
 			ID:       post.User.ID,
 			Nickname: post.User.Nickname,
-			Avatar:   post.User.Avatar,
+			Avatar:   avatar,
 			Admin:    post.User.Admin,
 		},
 		Tags:      toTagDTOs(post.Tags),
 		CreatedAt: post.CreatedAt,
 		UpdatedAt: post.UpdatedAt,
-	}
+	}, nil
 }
 
 // toPostDTOs 将说说模型切片转换为 DTO 列表。
-func toPostDTOs(posts []model.Post) []dto.PostDTO {
+func toPostDTOs(ctx context.Context, posts []model.Post, storageManager storage.Manager) ([]dto.PostDTO, error) {
 	if len(posts) == 0 {
-		return nil
+		return nil, nil
 	}
 	items := make([]dto.PostDTO, 0, len(posts))
 	for i := range posts {
-		postDTO := toPostDTO(&posts[i])
+		postDTO, err := toPostDTO(ctx, &posts[i], storageManager)
+		if err != nil {
+			return nil, err
+		}
 		if postDTO == nil {
 			continue
 		}
 		items = append(items, *postDTO)
 	}
-	return items
+	return items, nil
 }
 
 // toTagDTOs 将标签模型切片转换为 DTO 列表。
