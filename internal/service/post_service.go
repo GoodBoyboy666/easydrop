@@ -22,7 +22,7 @@ var (
 	ErrTagNameTooLong   = errors.New("标签名称长度不能超过 50")
 )
 
-var tagPattern = regexp.MustCompile(`#([^\s]+)`)
+var tagPattern = regexp.MustCompile(`#([^#]+)#`)
 
 type PostService interface {
 	// Create 创建说说并自动关联正文中解析出的标签。
