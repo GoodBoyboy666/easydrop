@@ -36,7 +36,6 @@ import {
 } from '#/components/ui/empty'
 import {
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
 } from '#/components/ui/field'
@@ -246,12 +245,9 @@ function HomePage() {
                       <MarkdownEditor
                         height={200}
                         onChange={setPublishDraft}
-                        placeholder="写下一条新的日志、更新或公告摘要。支持 Markdown。"
+                        placeholder="快写下你的想法吧，支持 Markdown。"
                         value={publishDraft}
                       />
-                      <FieldDescription>
-                        支持 Markdown 语法，当前默认禁用原始 HTML，附件和标签编辑后续再补。
-                      </FieldDescription>
                       <FieldError>{publishError}</FieldError>
                     </Field>
                   </FieldGroup>
@@ -270,7 +266,7 @@ function HomePage() {
           <section className="flex flex-col gap-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="font-heading text-lg font-semibold">日志流</h2>
+                <h2 className="font-heading text-lg font-semibold">日志</h2>
               </div>
               <Button
                 onClick={() => void loadFeed()}
@@ -331,7 +327,21 @@ function HomePage() {
             {!feedState.loading && !feedState.error ? (
               <div className="flex flex-col gap-4">
                 {feedState.items.map((post) => (
-                  <PostCard key={post.id} onPostRefreshed={loadFeed} post={post} />
+                  <PostCard
+                    key={post.id}
+                    onPostDeleted={(postId) => {
+                      setFeedState((current) => ({
+                        ...current,
+                        items: current.items.filter((item) => item.id !== postId),
+                        total: Math.max(0, current.total - 1),
+                      }))
+                      setLatestComments((current) => ({
+                        ...current,
+                        items: current.items.filter((comment) => comment.post_id !== postId),
+                      }))
+                    }}
+                    post={post}
+                  />
                 ))}
               </div>
             ) : null}

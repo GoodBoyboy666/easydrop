@@ -175,6 +175,18 @@ export const api = {
       token,
     })
   },
+  deleteAdminPost(postId: number, token: string) {
+    return request<{ message?: string }>(`/admin/posts/${postId}`, {
+      method: 'DELETE',
+      token,
+    })
+  },
+  deleteAdminComment(commentId: number, token: string) {
+    return request<{ message?: string }>(`/admin/comments/${commentId}`, {
+      method: 'DELETE',
+      token,
+    })
+  },
   getMyComments(token: string, query?: Record<string, string | number | undefined>) {
     return request<PagedResult<CommentDTO>>('/users/me/comments', {
       query,

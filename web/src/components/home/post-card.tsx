@@ -5,6 +5,7 @@ import {
   ChevronDownIcon,
   MessageSquareMoreIcon,
   SendHorizontalIcon,
+  Trash2Icon,
   XIcon,
 } from 'lucide-react'
 import { api, ApiError } from '#/lib/api'
@@ -39,6 +40,7 @@ import { Separator } from '#/components/ui/separator'
 import { Skeleton } from '#/components/ui/skeleton'
 
 interface PostCardProps {
+  onPostDeleted?: (postId: number) => void
   post: PostDTO
 }
 
@@ -52,7 +54,7 @@ interface CommentState {
 const INITIAL_COMMENT_PAGE_SIZE = 3
 const LOAD_MORE_COMMENT_PAGE_SIZE = 5
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ onPostDeleted, post }: PostCardProps) {
   const auth = useAuth()
   const [commentState, setCommentState] = useState<CommentState>({
     items: [],
@@ -67,14 +69,47 @@ export function PostCard({ post }: PostCardProps) {
   const [replyTarget, setReplyTarget] = useState<CommentDTO | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [deletingCommentId, setDeletingCommentId] = useState<number | null>(null)
+  const [deletingPost, setDeletingPost] = useState(false)
+
+  async function refreshComments(limit = INITIAL_COMMENT_PAGE_SIZE) {
+    setCommentError(null)
+    setCommentState((current) => ({
+      ...current,
+      loading: true,
+      loadingMore: false,
+    }))
+
+    try {
+      const result = await api.getPostComments(post.id, {
+        limit,
+        offset: 0,
+        order: 'created_at_desc',
+      })
+
+      setCommentState({
+        items: result.items,
+        loading: false,
+        loadingMore: false,
+        total: result.total,
+      })
+    } catch (error) {
+      setCommentError(
+        error instanceof Error ? error.message : '加载评论时出现未知错误'
+      )
+      setCommentState({
+        items: [],
+        loading: false,
+        loadingMore: false,
+        total: 0,
+      })
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
 
     async function loadComments() {
-      setCommentError(null)
-      setCommentState((current) => ({ ...current, loading: true }))
-
       try {
         const result = await api.getPostComments(post.id, {
           limit: INITIAL_COMMENT_PAGE_SIZE,
@@ -171,6 +206,65 @@ export function PostCard({ post }: PostCardProps) {
     setSubmitError(null)
   }
 
+  async function handleDeletePost() {
+    if (!auth.token || !auth.isAdmin || deletingPost) {
+      return
+    }
+    if (!window.confirm('确认删除这条日志吗？')) {
+      return
+    }
+
+    setDeletingPost(true)
+    setCommentError(null)
+
+    try {
+      await api.deleteAdminPost(post.id, auth.token)
+      onPostDeleted?.(post.id)
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        auth.logout()
+        redirectToLogin()
+        return
+      }
+
+      setCommentError(error instanceof Error ? error.message : '删除日志失败')
+    } finally {
+      setDeletingPost(false)
+    }
+  }
+
+  async function handleDeleteComment(comment: CommentDTO) {
+    if (!auth.token || !auth.isAdmin || deletingCommentId) {
+      return
+    }
+    if (!window.confirm('确认删除这条评论吗？')) {
+      return
+    }
+
+    setDeletingCommentId(comment.id)
+    setCommentError(null)
+
+    try {
+      await api.deleteAdminComment(comment.id, auth.token)
+      if (replyTarget?.id === comment.id) {
+        setReplyTarget(null)
+      }
+      await refreshComments(
+        Math.max(INITIAL_COMMENT_PAGE_SIZE, commentState.items.length)
+      )
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        auth.logout()
+        redirectToLogin()
+        return
+      }
+
+      setCommentError(error instanceof Error ? error.message : '删除评论失败')
+    } finally {
+      setDeletingCommentId(null)
+    }
+  }
+
   async function handleCommentSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
@@ -202,21 +296,12 @@ export function PostCard({ post }: PostCardProps) {
       setComposerOpen(true)
       setReplyTarget(null)
 
-      const result = await api.getPostComments(post.id, {
-        limit: Math.max(
+      await refreshComments(
+        Math.max(
           LOAD_MORE_COMMENT_PAGE_SIZE,
           commentState.items.length || INITIAL_COMMENT_PAGE_SIZE
-        ),
-        offset: 0,
-        order: 'created_at_desc',
-      })
-
-      setCommentState({
-        items: result.items,
-        loading: false,
-        loadingMore: false,
-        total: result.total,
-      })
+        )
+      )
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         auth.logout()
@@ -238,18 +323,32 @@ export function PostCard({ post }: PostCardProps) {
   return (
     <Card className="border border-border/70 bg-card/90 shadow-sm">
       <CardHeader className="gap-4 border-b border-border/60">
-        <div className="flex items-start gap-3">
-          <Avatar size="lg">
-            <AvatarImage alt={post.author.nickname} src={post.author.avatar} />
-            <AvatarFallback>{getInitials(post.author.nickname)}</AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 flex-1">
-            <CardTitle className="truncate">{post.author.nickname}</CardTitle>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <span>{formatRelativeTime(post.created_at)}</span>
-              <span>发布于 {formatDateTime(post.created_at)}</span>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-3">
+            <Avatar size="lg">
+              <AvatarImage alt={post.author.nickname} src={post.author.avatar} />
+              <AvatarFallback>{getInitials(post.author.nickname)}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <CardTitle className="truncate">{post.author.nickname}</CardTitle>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span>{formatRelativeTime(post.created_at)}</span>
+                <span>发布于 {formatDateTime(post.created_at)}</span>
+              </div>
             </div>
           </div>
+          {auth.isAdmin ? (
+            <Button
+              aria-label="删除日志"
+              disabled={deletingPost}
+              onClick={() => void handleDeletePost()}
+              size="icon-sm"
+              type="button"
+              variant="ghost"
+            >
+              <Trash2Icon />
+            </Button>
+          ) : null}
         </div>
       </CardHeader>
 
@@ -446,6 +545,18 @@ export function PostCard({ post }: PostCardProps) {
                           >
                             回复
                           </Button>
+                          {auth.isAdmin ? (
+                            <Button
+                              className="h-auto px-0 py-0 text-[0.7rem] text-destructive"
+                              disabled={deletingCommentId === comment.id}
+                              onClick={() => void handleDeleteComment(comment)}
+                              size="sm"
+                              type="button"
+                              variant="link"
+                            >
+                              删除
+                            </Button>
+                          ) : null}
                         </div>
                         {comment.reply_to_user ? (
                           <div className="mt-1 text-[0.7rem] text-muted-foreground">
