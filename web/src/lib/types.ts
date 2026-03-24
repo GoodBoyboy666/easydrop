@@ -124,6 +124,7 @@ export interface CreatePostInput {
 }
 
 export interface UpdatePostInput {
+  clear_pin?: boolean
   content?: string
   disable_comment?: boolean
   hide?: boolean

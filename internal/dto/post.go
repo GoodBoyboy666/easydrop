@@ -20,6 +20,7 @@ type PostUpdateInput struct {
 	Hide           *bool   `json:"hide"`
 	DisableComment *bool   `json:"disable_comment"`
 	Pin            *uint   `json:"pin"`
+	ClearPin       *bool   `json:"clear_pin"`
 }
 
 type PostListInput struct {

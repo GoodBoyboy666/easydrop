@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import {
   ChevronDownIcon,
   MessageSquareMoreIcon,
+  SquarePenIcon,
   SendHorizontalIcon,
   Trash2Icon,
   XIcon,
@@ -44,11 +45,16 @@ import {
 } from '#/components/ui/collapsible'
 import {
   Field,
+  FieldContent,
   FieldError,
   FieldGroup,
+  FieldLabel,
+  FieldTitle,
 } from '#/components/ui/field'
+import { Input } from '#/components/ui/input'
 import { Separator } from '#/components/ui/separator'
 import { Skeleton } from '#/components/ui/skeleton'
+import { Switch } from '#/components/ui/switch'
 
 interface PostCardProps {
   onPostDeleted?: (postId: number) => void
@@ -89,6 +95,13 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
   const [updatingCommentSetting, setUpdatingCommentSetting] = useState(false)
   const [deletingCommentId, setDeletingCommentId] = useState<number | null>(null)
   const [deletingPost, setDeletingPost] = useState(false)
+  const [editingPost, setEditingPost] = useState(false)
+  const [editDraft, setEditDraft] = useState(post.content)
+  const [editHidden, setEditHidden] = useState(!!post.hide)
+  const [editPinned, setEditPinned] = useState(post.pin != null)
+  const [editPin, setEditPin] = useState(post.pin != null ? String(post.pin) : '')
+  const [editError, setEditError] = useState<string | null>(null)
+  const [savingPostEdit, setSavingPostEdit] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<PendingDelete>(null)
 
   async function refreshComments(limit = INITIAL_COMMENT_PAGE_SIZE) {
@@ -127,6 +140,12 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
 
   useEffect(() => {
     setPostState(post)
+    setEditDraft(post.content)
+    setEditHidden(!!post.hide)
+    setEditPinned(post.pin != null)
+    setEditPin(post.pin != null ? String(post.pin) : '')
+    setEditError(null)
+    setEditingPost(false)
   }, [post])
 
   useEffect(() => {
@@ -192,6 +211,32 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
     setSubmitError(null)
     setComposerOpen(false)
   }, [postState.disable_comment])
+
+  function startEditPost() {
+    if (!auth.token || !auth.isAdmin || savingPostEdit) {
+      return
+    }
+
+    setEditDraft(postState.content)
+    setEditHidden(!!postState.hide)
+    setEditPinned(postState.pin != null)
+    setEditPin(postState.pin != null ? String(postState.pin) : '')
+    setEditError(null)
+    setEditingPost(true)
+  }
+
+  function cancelEditPost() {
+    if (savingPostEdit) {
+      return
+    }
+
+    setEditDraft(postState.content)
+    setEditHidden(!!postState.hide)
+    setEditPinned(postState.pin != null)
+    setEditPin(postState.pin != null ? String(postState.pin) : '')
+    setEditError(null)
+    setEditingPost(false)
+  }
 
   async function loadMoreComments() {
     setCommentError(null)
@@ -381,6 +426,71 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
     await handleDeleteComment(pendingDelete.comment)
   }
 
+  async function handleEditPostSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!auth.token || !auth.isAdmin || savingPostEdit) {
+      return
+    }
+
+    if (!hasMarkdownContent(editDraft)) {
+      setEditError('日志内容不能为空')
+      return
+    }
+
+    const normalizedPin = editPin.trim()
+    let pin: number | undefined
+    let clearPin = false
+
+    if (editPinned) {
+      if (!normalizedPin) {
+        setEditError('启用置顶后请填写 Pin 值')
+        return
+      }
+
+      const parsedPin = Number(normalizedPin)
+
+      if (!Number.isInteger(parsedPin) || parsedPin <= 0) {
+        setEditError('Pin 必须是大于 0 的整数')
+        return
+      }
+
+      pin = parsedPin
+    } else if (postState.pin != null) {
+      clearPin = true
+    }
+
+    setSavingPostEdit(true)
+    setEditError(null)
+
+    try {
+      const updatedPost = await api.updateAdminPost(
+        postState.id,
+        {
+          clear_pin: clearPin || undefined,
+          content: normalizeMarkdownContent(editDraft),
+          hide: editHidden,
+          pin,
+        },
+        auth.token
+      )
+
+      setPostState(updatedPost)
+      setEditDraft(updatedPost.content)
+      setEditingPost(false)
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        auth.logout()
+        redirectToLogin()
+        return
+      }
+
+      setEditError(error instanceof Error ? error.message : '更新日志失败')
+    } finally {
+      setSavingPostEdit(false)
+    }
+  }
+
   async function handleCommentSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
@@ -527,23 +637,116 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
             </div>
           </div>
           {auth.isAdmin ? (
-            <Button
-              aria-label="删除日志"
-              disabled={deletingPost}
-              onClick={requestDeletePost}
-              size="icon-sm"
-              type="button"
-              variant="ghost"
-            >
-              <Trash2Icon />
-            </Button>
+            <div className="flex shrink-0 items-center gap-1">
+              <Button
+                aria-label="编辑日志"
+                disabled={savingPostEdit}
+                onClick={startEditPost}
+                size="icon-sm"
+                type="button"
+                variant={editingPost ? 'secondary' : 'ghost'}
+              >
+                <SquarePenIcon />
+              </Button>
+              <Button
+                aria-label="删除日志"
+                disabled={deletingPost || savingPostEdit}
+                onClick={requestDeletePost}
+                size="icon-sm"
+                type="button"
+                variant="ghost"
+              >
+                <Trash2Icon />
+              </Button>
+            </div>
           ) : null}
         </div>
       </CardHeader>
 
         <CardContent className="flex flex-col gap-4">
         <div className="flex flex-col gap-3">
-          <MarkdownContent content={postState.content} />
+          {editingPost ? (
+            <form
+              className="rounded-xl border border-border/70 bg-muted/40 p-3"
+              onSubmit={handleEditPostSubmit}
+            >
+                <FieldGroup>
+                  <Field data-invalid={!!editError}>
+                    <MarkdownEditor
+                    height={180}
+                    onChange={setEditDraft}
+                    placeholder="编辑当前日志内容，支持 Markdown。"
+                    value={editDraft}
+                    />
+                    <FieldError>{editError}</FieldError>
+                  </Field>
+
+                  <Field orientation="horizontal">
+                    <Switch
+                      checked={editPinned}
+                      id={`post-edit-pin-enabled-${postState.id}`}
+                      onCheckedChange={(checked) => {
+                        setEditPinned(checked)
+                        if (!checked) {
+                          setEditPin('')
+                        }
+                      }}
+                      size="sm"
+                    />
+                    <FieldContent>
+                      <FieldLabel htmlFor={`post-edit-pin-enabled-${postState.id}`}>
+                        <FieldTitle>置顶</FieldTitle>
+                      </FieldLabel>
+                      {editPinned ? (
+                        <div className="mt-2">
+                          <Input
+                            className="w-28"
+                            id={`post-edit-pin-${postState.id}`}
+                            inputMode="numeric"
+                            min={1}
+                            onChange={(event) => setEditPin(event.target.value)}
+                            placeholder="权重"
+                            step={1}
+                            type="number"
+                            value={editPin}
+                          />
+                        </div>
+                      ) : null}
+                    </FieldContent>
+                  </Field>
+
+                  <Field orientation="horizontal">
+                    <Switch
+                      checked={editHidden}
+                      id={`post-edit-hidden-${postState.id}`}
+                      onCheckedChange={setEditHidden}
+                      size="sm"
+                    />
+                    <FieldContent>
+                      <FieldLabel htmlFor={`post-edit-hidden-${postState.id}`}>
+                        <FieldTitle>私密发布</FieldTitle>
+                      </FieldLabel>
+                    </FieldContent>
+                  </Field>
+                </FieldGroup>
+
+              <div className="mt-3 flex items-center justify-end gap-2">
+                <Button
+                  disabled={savingPostEdit}
+                  onClick={cancelEditPost}
+                  type="button"
+                  variant="outline"
+                >
+                  取消
+                </Button>
+                <Button disabled={savingPostEdit} type="submit">
+                  {savingPostEdit ? '正在保存…' : '保存修改'}
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <MarkdownContent content={postState.content} />
+          )}
           {postState.tags?.length ? (
             <div className="flex flex-wrap gap-2">
               {postState.tags.map((tag) => (

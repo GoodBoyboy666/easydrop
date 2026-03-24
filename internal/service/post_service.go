@@ -149,7 +149,9 @@ func (s *postService) Update(ctx context.Context, input dto.PostUpdateInput) (*d
 	if input.DisableComment != nil {
 		post.DisableComment = *input.DisableComment
 	}
-	if input.Pin != nil {
+	if input.ClearPin != nil && *input.ClearPin {
+		post.Pin = nil
+	} else if input.Pin != nil {
 		post.Pin = input.Pin
 	}
 

@@ -185,12 +185,42 @@ func TestPostAdminHandlerUpdateBindsPathID(t *testing.T) {
 			if input.Pin == nil || *input.Pin != 123 {
 				t.Fatalf("unexpected pin: %#v", input.Pin)
 			}
+			if input.ClearPin == nil || *input.ClearPin {
+				t.Fatalf("unexpected clear_pin: %#v", input.ClearPin)
+			}
 			return &dto.PostDTO{ID: input.ID, Content: *input.Content, Author: dto.PostAuthorDTO{ID: 2}, Hide: *input.Hide, DisableComment: *input.DisableComment, Pin: input.Pin}, nil
 		},
 	})
 
-	c, w := newTestContextWithBody(http.MethodPatch, "/api/v1/admin/posts/9", `{"id":999,"content":"updated","hide":true,"disable_comment":true,"pin":123}`)
+	c, w := newTestContextWithBody(http.MethodPatch, "/api/v1/admin/posts/9", `{"id":999,"content":"updated","hide":true,"disable_comment":true,"pin":123,"clear_pin":false}`)
 	c.Params = gin.Params{{Key: "id", Value: "9"}}
+	h.Update(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+}
+
+func TestPostAdminHandlerUpdateSupportsClearPin(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	h := NewPostAdminHandler(&mockPostAdminService{
+		updateFn: func(_ context.Context, input dto.PostUpdateInput) (*dto.PostDTO, error) {
+			if input.ID != 12 {
+				t.Fatalf("expected id from path 12, got %d", input.ID)
+			}
+			if input.ClearPin == nil || !*input.ClearPin {
+				t.Fatalf("expected clear_pin=true, got %#v", input.ClearPin)
+			}
+			if input.Pin != nil {
+				t.Fatalf("expected pin=nil when clear_pin=true, got %#v", input.Pin)
+			}
+			return &dto.PostDTO{ID: input.ID, Content: "updated", Author: dto.PostAuthorDTO{ID: 2}}, nil
+		},
+	})
+
+	c, w := newTestContextWithBody(http.MethodPatch, "/api/v1/admin/posts/12", `{"content":"updated","clear_pin":true}`)
+	c.Params = gin.Params{{Key: "id", Value: "12"}}
 	h.Update(c)
 
 	if w.Code != http.StatusOK {
