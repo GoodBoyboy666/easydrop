@@ -196,7 +196,7 @@ function HomePage() {
     prefersReducedMotion
       ? { duration: 0 }
       : {
-          type: 'tween',
+          type: 'spring',
           duration: 0.32,
           ease: 'easeOut' as const,
           delay: delay + MOTION_DELAY_SECONDS,
