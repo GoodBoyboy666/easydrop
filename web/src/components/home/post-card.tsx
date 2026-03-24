@@ -63,6 +63,7 @@ export function PostCard({ onPostRefreshed, post }: PostCardProps) {
     total: 0,
   })
   const [commentError, setCommentError] = useState<string | null>(null)
+  const [commentSectionOpen, setCommentSectionOpen] = useState(false)
   const [composerOpen, setComposerOpen] = useState(false)
   const [commentDraft, setCommentDraft] = useState('')
   const [replyTarget, setReplyTarget] = useState<CommentDTO | null>(null)
@@ -121,6 +122,7 @@ export function PostCard({ onPostRefreshed, post }: PostCardProps) {
     setReplyTarget(null)
     setCommentDraft('')
     setSubmitError(null)
+    setCommentSectionOpen(false)
     setComposerOpen(false)
   }, [post.id])
 
@@ -160,6 +162,7 @@ export function PostCard({ onPostRefreshed, post }: PostCardProps) {
       return
     }
 
+    setCommentSectionOpen(true)
     setReplyTarget(comment)
     setComposerOpen(true)
     setSubmitError(null)
@@ -197,6 +200,7 @@ export function PostCard({ onPostRefreshed, post }: PostCardProps) {
       )
 
       setCommentDraft('')
+      setCommentSectionOpen(true)
       setComposerOpen(true)
       setReplyTarget(null)
 
@@ -272,178 +276,216 @@ export function PostCard({ onPostRefreshed, post }: PostCardProps) {
 
         <Separator />
 
-        <Collapsible
-          className="flex w-full flex-col gap-3"
-          open={composerOpen}
-          onOpenChange={setComposerOpen}
-        >
-          <div className="flex items-center justify-between gap-3">
-            <div className="text-sm font-medium">评论 ({commentState.total})</div>
-            <div className="flex shrink-0 items-center">
-              <CollapsibleTrigger asChild>
-                <Button
-                  size="sm"
-                  variant={composerOpen ? 'secondary' : 'outline'}
-                  type="button"
-                  onClick={() => {
-                    if (auth.status !== 'authenticated') {
-                      redirectToLogin()
-                      return
-                    }
-
-                    setReplyTarget(null)
-                    setSubmitError(null)
-                  }}
-                >
-                  <MessageSquareMoreIcon data-icon="inline-start" />
-                  发评论
-                </Button>
-              </CollapsibleTrigger>
-            </div>
-          </div>
-
-          <CollapsibleContent className="w-full">
-            <form
-              className="rounded-xl border border-border/70 bg-muted/40 p-3"
-              onSubmit={handleCommentSubmit}
-            >
-              {replyTarget ? (
-                <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-background/80 px-3 py-2 text-sm">
-                  <div className="min-w-0 text-muted-foreground">
-                    正在回复
-                    <span className="ml-1 font-medium text-foreground">
-                      {replyTarget.author.nickname}
-                    </span>
-                  </div>
-                  <Button
-                    onClick={cancelReply}
-                    size="sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <XIcon data-icon="inline-start" />
-                    取消回复
-                  </Button>
-                </div>
-              ) : null}
-
-              <FieldGroup>
-                <Field data-invalid={!!submitError}>
-                  <MarkdownEditor
-                    height={120}
-                    onChange={setCommentDraft}
-                    placeholder={commentPlaceholder}
-                    value={commentDraft}
-                  />
-                  <FieldDescription>{commentDescription}</FieldDescription>
-                  <FieldError>{submitError}</FieldError>
-                </Field>
-              </FieldGroup>
-
-              <div className="mt-3 flex items-center justify-end">
-                <Button disabled={submitting} type="submit">
-                  <SendHorizontalIcon data-icon="inline-start" />
-                  {submitting ? '正在提交…' : '发布评论'}
-                </Button>
-              </div>
-            </form>
-          </CollapsibleContent>
-        </Collapsible>
-
-        {commentState.loading ? (
-            <div className="flex flex-col gap-3">
-              {Array.from({ length: 2 }).map((_, index) => (
-                <div
-                  key={index}
-                  className="rounded-lg border border-border/60 bg-muted/25 p-2.5"
-                >
-                  <div className="flex items-center gap-3">
-                    <Skeleton className="size-6 rounded-full" />
-                    <div className="flex flex-1 flex-col gap-2">
-                      <Skeleton className="h-3.5 w-24" />
-                      <Skeleton className="h-3.5 w-full" />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-        ) : null}
-
-        {!commentState.loading && commentError ? (
-          <Alert variant="destructive">
-            <AlertTitle>评论加载失败</AlertTitle>
-            <AlertDescription>{commentError}</AlertDescription>
-          </Alert>
-        ) : null}
-
-        {!commentState.loading &&
-        !commentError &&
-        commentState.items.length > 0 ? (
-          <div className="flex flex-col gap-3">
-            {commentState.items.map((comment) => (
-              <article
-                key={comment.id}
-                className="rounded-lg border border-border/60 bg-muted/25 p-2.5"
-              >
-                <div className="flex items-start gap-3">
-                  <Avatar size="sm">
-                    <AvatarImage
-                      alt={comment.author.nickname}
-                      src={comment.author.avatar}
-                    />
-                    <AvatarFallback>
-                      {getInitials(comment.author.nickname)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2 text-[0.8rem]">
-                      <span className="font-medium leading-none">{comment.author.nickname}</span>
-                      {comment.author.admin ? (
-                        <Badge className="h-4 px-1.5 text-[10px] leading-none">
-                          管理员
-                        </Badge>
-                      ) : null}
-                      <span className="text-[0.7rem] text-muted-foreground">
-                        {formatRelativeTime(comment.created_at)}
-                      </span>
-                      <Button
-                        className="h-auto px-0 py-0 text-[0.7rem] text-muted-foreground"
-                        onClick={() => startReply(comment)}
-                        size="sm"
-                        type="button"
-                        variant="link"
-                      >
-                        回复
-                      </Button>
-                    </div>
-                    {comment.reply_to_user ? (
-                      <div className="mt-1 text-[0.7rem] text-muted-foreground">
-                        回复 {comment.reply_to_user.nickname}
-                      </div>
-                    ) : null}
-                    <MarkdownContent
-                      compact
-                      className="mt-1"
-                      content={comment.content}
-                    />
-                  </div>
-                </div>
-              </article>
-            ))}
-
-            {hasMoreComments ? (
+        <div className="flex items-center justify-between gap-3">
+          <Collapsible
+            open={commentSectionOpen}
+            onOpenChange={setCommentSectionOpen}
+          >
+            <CollapsibleTrigger asChild>
               <Button
-                disabled={commentState.loadingMore}
-                onClick={() => void loadMoreComments()}
+                className="h-auto px-0 py-0 text-sm font-medium text-foreground hover:bg-transparent"
                 size="sm"
                 type="button"
-                variant="outline"
+                variant="ghost"
               >
-                <ChevronDownIcon data-icon="inline-start" />
-                {commentState.loadingMore ? '正在加载…' : '更多评论'}
+                <ChevronDownIcon
+                  className={`transition-transform ${
+                    commentSectionOpen ? 'rotate-180' : ''
+                  }`}
+                  data-icon="inline-start"
+                />
+                评论 ({commentState.total})
               </Button>
-            ) : null}
+            </CollapsibleTrigger>
+          </Collapsible>
+
+          <div className="flex shrink-0 items-center">
+            <Button
+              size="sm"
+              variant={composerOpen ? 'secondary' : 'outline'}
+              type="button"
+              onClick={() => {
+                if (auth.status !== 'authenticated') {
+                  redirectToLogin()
+                  return
+                }
+
+                setSubmitError(null)
+
+                if (replyTarget) {
+                  setReplyTarget(null)
+                  setComposerOpen(true)
+                  return
+                }
+
+                setComposerOpen((open) => !open)
+              }}
+            >
+              <MessageSquareMoreIcon data-icon="inline-start" />
+              发评论
+            </Button>
           </div>
+        </div>
+
+        {composerOpen ? (
+          <Collapsible
+            className="flex w-full flex-col"
+            open={composerOpen}
+            onOpenChange={setComposerOpen}
+          >
+            <CollapsibleContent className="w-full">
+              <form
+                className="rounded-xl border border-border/70 bg-muted/40 p-3"
+                onSubmit={handleCommentSubmit}
+              >
+                {replyTarget ? (
+                  <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-background/80 px-3 py-2 text-sm">
+                    <div className="min-w-0 text-muted-foreground">
+                      正在回复
+                      <span className="ml-1 font-medium text-foreground">
+                        {replyTarget.author.nickname}
+                      </span>
+                    </div>
+                    <Button
+                      onClick={cancelReply}
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <XIcon data-icon="inline-start" />
+                      取消回复
+                    </Button>
+                  </div>
+                ) : null}
+
+                <FieldGroup>
+                  <Field data-invalid={!!submitError}>
+                    <MarkdownEditor
+                      height={120}
+                      onChange={setCommentDraft}
+                      placeholder={commentPlaceholder}
+                      value={commentDraft}
+                    />
+                    <FieldDescription>{commentDescription}</FieldDescription>
+                    <FieldError>{submitError}</FieldError>
+                  </Field>
+                </FieldGroup>
+
+                <div className="mt-3 flex items-center justify-end">
+                  <Button disabled={submitting} type="submit">
+                    <SendHorizontalIcon data-icon="inline-start" />
+                    {submitting ? '正在提交…' : '发布评论'}
+                  </Button>
+                </div>
+              </form>
+            </CollapsibleContent>
+          </Collapsible>
+        ) : null}
+
+        {commentSectionOpen ? (
+          <Collapsible
+            className="flex w-full flex-col"
+            open={commentSectionOpen}
+            onOpenChange={setCommentSectionOpen}
+          >
+            <CollapsibleContent className="w-full">
+            {commentState.loading ? (
+                <div className="flex flex-col gap-2">
+                  {Array.from({ length: 2 }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="px-2.5 pt-2.5 pb-1.5"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="size-6 rounded-full" />
+                        <div className="flex flex-1 flex-col gap-2">
+                          <Skeleton className="h-3.5 w-24" />
+                          <Skeleton className="h-3.5 w-full" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+            ) : null}
+
+            {!commentState.loading && commentError ? (
+              <Alert variant="destructive">
+                <AlertTitle>评论加载失败</AlertTitle>
+                <AlertDescription>{commentError}</AlertDescription>
+              </Alert>
+            ) : null}
+
+            {!commentState.loading &&
+            !commentError &&
+            commentState.items.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                {commentState.items.map((comment) => (
+                  <article
+                    key={comment.id}
+                    className="px-2.5 pt-2.5 pb-1.5"
+                  >
+                    <div className="flex items-start gap-3">
+                      <Avatar size="sm">
+                        <AvatarImage
+                          alt={comment.author.nickname}
+                          src={comment.author.avatar}
+                        />
+                        <AvatarFallback>
+                          {getInitials(comment.author.nickname)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2 text-[0.8rem]">
+                          <span className="font-medium leading-none">{comment.author.nickname}</span>
+                          {comment.author.admin ? (
+                            <Badge className="h-4 px-1.5 text-[10px] leading-none">
+                              管理员
+                            </Badge>
+                          ) : null}
+                          <span className="text-[0.7rem] text-muted-foreground">
+                            {formatRelativeTime(comment.created_at)}
+                          </span>
+                          <Button
+                            className="h-auto px-0 py-0 text-[0.7rem] text-muted-foreground"
+                            onClick={() => startReply(comment)}
+                            size="sm"
+                            type="button"
+                            variant="link"
+                          >
+                            回复
+                          </Button>
+                        </div>
+                        {comment.reply_to_user ? (
+                          <div className="mt-1 text-[0.7rem] text-muted-foreground">
+                            回复 {comment.reply_to_user.nickname}
+                          </div>
+                        ) : null}
+                        <MarkdownContent
+                          compact
+                          className="mt-1"
+                          content={comment.content}
+                        />
+                      </div>
+                    </div>
+                  </article>
+                ))}
+
+                {hasMoreComments ? (
+                  <Button
+                    disabled={commentState.loadingMore}
+                    onClick={() => void loadMoreComments()}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    <ChevronDownIcon data-icon="inline-start" />
+                    {commentState.loadingMore ? '正在加载…' : '更多评论'}
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
+            </CollapsibleContent>
+          </Collapsible>
         ) : null}
       </CardContent>
 

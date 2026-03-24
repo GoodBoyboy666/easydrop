@@ -47,6 +47,8 @@ export const Route = createFileRoute('/')({
 })
 
 const FEED_PAGE_SIZE = 8
+const LATEST_COMMENTS_PAGE_SIZE = 6
+const LATEST_COMMENTS_FETCH_SIZE = 24
 
 interface FeedState {
   items: PostDTO[]
@@ -54,6 +56,10 @@ interface FeedState {
   loadingMore: boolean
   error: string | null
   total: number
+}
+
+function isTopLevelComment(comment: CommentDTO) {
+  return comment.root_id == null && comment.parent_id == null
 }
 
 function HomePage() {
@@ -128,11 +134,16 @@ function HomePage() {
     void (async () => {
       try {
         const result = await api.getLatestComments({
-          limit: 6,
+          limit: LATEST_COMMENTS_FETCH_SIZE,
           offset: 0,
           order: 'created_at_desc',
         })
-        setLatestComments(result)
+        setLatestComments({
+          items: result.items
+            .filter(isTopLevelComment)
+            .slice(0, LATEST_COMMENTS_PAGE_SIZE),
+          total: result.total,
+        })
         setLatestCommentsError(null)
       } catch (error) {
         setLatestComments({
@@ -388,7 +399,9 @@ function HomePage() {
                 ? Array.from({ length: 3 }).map((_, index) => (
                     <div
                       key={index}
-                      className="rounded-lg border border-border/60 bg-muted/25 p-2.5"
+                      className={`px-2.5 pt-2.5 pb-1.5 ${
+                        index > 0 ? 'border-t border-dashed border-border/60' : ''
+                      }`}
                     >
                       <div className="flex items-center gap-3">
                         <Skeleton className="size-6 rounded-full" />
@@ -422,10 +435,12 @@ function HomePage() {
               ) : null}
 
               {!latestCommentsLoading && !latestCommentsError
-                ? latestComments.items.map((comment) => (
+                ? latestComments.items.map((comment, index) => (
                     <article
                       key={comment.id}
-                      className="rounded-lg border border-border/60 bg-muted/25 p-2.5"
+                      className={`px-2.5 pt-2.5 pb-1.5 ${
+                        index > 0 ? 'border-t border-dashed border-border/60' : ''
+                      }`}
                     >
                       <div className="flex items-start gap-3">
                         <Avatar size="sm">
