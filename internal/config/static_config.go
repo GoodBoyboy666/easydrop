@@ -87,7 +87,7 @@ func Load(configDir string, strict bool) (*StaticConfig, error) {
 	v.SetDefault("jwt.private_key_path", "data/jwt/private.pem")
 	v.SetDefault("jwt.public_key_path", "data/jwt/public.pem")
 	v.SetDefault("jwt.issuer", "easydrop")
-	v.SetDefault("jwt.expire", time.Hour)
+	v.SetDefault("jwt.expire", 24*time.Hour)
 	v.SetDefault("email.enable", false)
 	v.SetDefault("email.tls_mode", email.TLSModeStartTLS)
 	v.SetDefault("captcha.enabled", false)
