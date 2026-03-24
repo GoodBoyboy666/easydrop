@@ -84,6 +84,8 @@ definitions:
     type: object
   dto.CommentAuthorDTO:
     properties:
+      admin:
+        type: boolean
       avatar:
         type: string
       id:
@@ -173,6 +175,8 @@ definitions:
     type: object
   dto.PostAuthorDTO:
     properties:
+      admin:
+        type: boolean
       avatar:
         type: string
       id:
@@ -184,9 +188,11 @@ definitions:
     properties:
       content:
         type: string
+      disable_comment:
+        type: boolean
       hide:
         type: boolean
-      user_id:
+      pin:
         type: integer
     type: object
   dto.PostDTO:
@@ -197,9 +203,13 @@ definitions:
         type: string
       created_at:
         type: string
+      disable_comment:
+        type: boolean
       hide:
         type: boolean
       id:
+        type: integer
+      pin:
         type: integer
       tags:
         items:
@@ -217,12 +227,29 @@ definitions:
       total:
         type: integer
     type: object
+  dto.PostPublicListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/dto.PostDTO'
+        type: array
+      pinned_items:
+        items:
+          $ref: '#/definitions/dto.PostDTO'
+        type: array
+      total:
+        type: integer
+    type: object
   dto.PostUpdateInput:
     properties:
       content:
         type: string
+      disable_comment:
+        type: boolean
       hide:
         type: boolean
+      pin:
+        type: integer
     type: object
   dto.RegisterInput:
     properties:
@@ -1680,7 +1707,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dto.PostListResult'
+            $ref: '#/definitions/dto.PostPublicListResult'
         "400":
           description: 参数校验失败
           schema:

@@ -19,6 +19,7 @@ var (
 	ErrInvalidCommentPost   = errors.New("说说不能为空")
 	ErrInvalidCommentUser   = errors.New("用户不能为空")
 	ErrInvalidCommentParent = errors.New("回复目标评论不合法")
+	ErrPostCommentDisabled  = errors.New("该说说已关闭评论")
 )
 
 // CommentService 提供评论相关的 CRUD 能力。
@@ -68,9 +69,18 @@ func (s *commentService) Create(ctx context.Context, input dto.CommentCreateInpu
 		return nil, ErrEmptyCommentContent
 	}
 
-	if err := s.ensurePostExists(ctx, input.PostID); err != nil {
-		return nil, err
+	post, err := s.postRepo.GetByID(ctx, input.PostID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrPostNotFound
+		}
+		log.Printf("查询说说失败: %v", err)
+		return nil, ErrInternal
 	}
+	if post.DisableComment {
+		return nil, ErrPostCommentDisabled
+	}
+
 	if err := s.ensureUserExists(ctx, input.UserID); err != nil {
 		return nil, err
 	}

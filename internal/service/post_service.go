@@ -66,11 +66,12 @@ func (s *postService) Create(ctx context.Context, input dto.PostCreateInput) (*d
 	}
 
 	post := &model.Post{
-		Content: content,
-		Hide:    input.Hide,
-		Pin:     input.Pin,
-		UserID:  input.UserID,
-		Tags:    tags,
+		Content:        content,
+		Hide:           input.Hide,
+		DisableComment: input.DisableComment,
+		Pin:            input.Pin,
+		UserID:         input.UserID,
+		Tags:           tags,
 	}
 	if err := s.postRepo.Create(ctx, post); err != nil {
 		log.Printf("创建说说失败: %v", err)
@@ -131,6 +132,12 @@ func (s *postService) Update(ctx context.Context, input dto.PostUpdateInput) (*d
 	}
 	if input.Hide != nil {
 		post.Hide = *input.Hide
+	}
+	if input.DisableComment != nil {
+		post.DisableComment = *input.DisableComment
+	}
+	if input.Pin != nil {
+		post.Pin = input.Pin
 	}
 
 	if err := s.postRepo.Update(ctx, post); err != nil {
@@ -298,10 +305,11 @@ func toPostDTO(post *model.Post) *dto.PostDTO {
 		return nil
 	}
 	return &dto.PostDTO{
-		ID:      post.ID,
-		Content: post.Content,
-		Hide:    post.Hide,
-		Pin:     post.Pin,
+		ID:             post.ID,
+		Content:        post.Content,
+		Hide:           post.Hide,
+		DisableComment: post.DisableComment,
+		Pin:            post.Pin,
 		Author: dto.PostAuthorDTO{
 			ID:       post.User.ID,
 			Nickname: post.User.Nickname,

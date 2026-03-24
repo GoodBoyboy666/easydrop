@@ -38,10 +38,16 @@ import {
 } from '#/components/ui/empty'
 import {
   Field,
+  FieldContent,
+  FieldDescription,
   FieldError,
   FieldGroup,
+  FieldLabel,
+  FieldTitle,
 } from '#/components/ui/field'
+import { Input } from '#/components/ui/input'
 import { Skeleton } from '#/components/ui/skeleton'
+import { Switch } from '#/components/ui/switch'
 
 export const Route = createFileRoute('/')({
   component: HomePage,
@@ -53,10 +59,26 @@ const LATEST_COMMENTS_FETCH_SIZE = 24
 
 interface FeedState {
   items: PostDTO[]
+  pinnedItems: PostDTO[]
   loading: boolean
   loadingMore: boolean
   error: string | null
   total: number
+}
+
+function mergePostsById(current: PostDTO[], incoming: PostDTO[]) {
+  const seen = new Set<number>()
+  const merged: PostDTO[] = []
+
+  for (const post of [...current, ...incoming]) {
+    if (seen.has(post.id)) {
+      continue
+    }
+    seen.add(post.id)
+    merged.push(post)
+  }
+
+  return merged
 }
 
 function isTopLevelComment(comment: CommentDTO) {
@@ -74,6 +96,7 @@ function HomePage() {
   } = useSiteSettings()
   const [feedState, setFeedState] = useState<FeedState>({
     items: [],
+    pinnedItems: [],
     loading: true,
     loadingMore: false,
     error: null,
@@ -92,11 +115,17 @@ function HomePage() {
   const [tagsLoading, setTagsLoading] = useState(true)
   const [tagsError, setTagsError] = useState<string | null>(null)
   const [publishDraft, setPublishDraft] = useState('')
+  const [publishHidden, setPublishHidden] = useState(false)
+  const [publishPinned, setPublishPinned] = useState(false)
+  const [publishPin, setPublishPin] = useState('')
   const [publishError, setPublishError] = useState<string | null>(null)
   const [publishing, setPublishing] = useState(false)
 
   async function loadFeed(mode: 'initial' | 'more' = 'initial') {
-    const offset = mode === 'more' ? feedState.items.length : 0
+    const offset =
+      mode === 'more'
+        ? feedState.items.length + feedState.pinnedItems.length
+        : 0
 
     setFeedState((current) => ({
       ...current,
@@ -110,10 +139,17 @@ function HomePage() {
         limit: FEED_PAGE_SIZE,
         offset,
         order: 'created_at_desc',
-      })
+      }, auth.token)
 
       setFeedState((current) => ({
-        items: mode === 'more' ? [...current.items, ...result.items] : result.items,
+        items:
+          mode === 'more'
+            ? mergePostsById(current.items, result.items)
+            : result.items,
+        pinnedItems:
+          mode === 'more'
+            ? mergePostsById(current.pinnedItems, result.pinnedItems)
+            : result.pinnedItems,
         loading: false,
         loadingMore: false,
         error: null,
@@ -131,6 +167,11 @@ function HomePage() {
 
   useEffect(() => {
     void loadFeed()
+
+    // 登录态切换后重新拉取日志，确保已登录用户能看到私密内容。
+  }, [auth.token])
+
+  useEffect(() => {
 
     void (async () => {
       try {
@@ -190,7 +231,8 @@ function HomePage() {
     })()
   }, [])
 
-  const canLoadMorePosts = feedState.items.length < feedState.total
+  const loadedPostCount = feedState.items.length + feedState.pinnedItems.length
+  const canLoadMorePosts = loadedPostCount < feedState.total
   const normalizedAnnouncement = siteAnnouncement.trim() || '暂无公告'
   const siteStats = useMemo(
     () => [
@@ -214,15 +256,41 @@ function HomePage() {
       return
     }
 
+    const normalizedPin = publishPin.trim()
+    let pin: number | undefined
+
+    if (publishPinned) {
+      if (!normalizedPin) {
+        setPublishError('启用置顶后请填写 Pin 值')
+        return
+      }
+
+      const parsedPin = Number(normalizedPin)
+
+      if (!Number.isInteger(parsedPin) || parsedPin <= 0) {
+        setPublishError('Pin 必须是大于 0 的整数')
+        return
+      }
+
+      pin = parsedPin
+    }
+
     setPublishing(true)
     setPublishError(null)
 
     try {
       await api.createAdminPost(
-        { content: normalizeMarkdownContent(publishDraft) },
+        {
+          content: normalizeMarkdownContent(publishDraft),
+          hide: publishHidden,
+          pin,
+        },
         auth.token
       )
       setPublishDraft('')
+      setPublishHidden(false)
+      setPublishPinned(false)
+      setPublishPin('')
       await loadFeed()
     } catch (error) {
       setPublishError(error instanceof Error ? error.message : '发布失败')
@@ -251,6 +319,57 @@ function HomePage() {
                         value={publishDraft}
                       />
                       <FieldError>{publishError}</FieldError>
+                    </Field>
+
+                    <Field orientation="horizontal">
+                      <Switch
+                        checked={publishPinned}
+                        id="quick-publish-pin-enabled"
+                        onCheckedChange={(checked) => {
+                          setPublishPinned(checked)
+                          if (!checked) {
+                            setPublishPin('')
+                          }
+                        }}
+                        size="sm"
+                      />
+                      <FieldContent>
+                        <FieldLabel htmlFor="quick-publish-pin-enabled">
+                          <FieldTitle>置顶发布</FieldTitle>
+                        </FieldLabel>
+                        <FieldDescription>
+                          开启后可填写 Pin 值，数值越高越靠前。
+                        </FieldDescription>
+                        {publishPinned ? (
+                          <div className="mt-2">
+                            <Input
+                              className="w-28"
+                              id="quick-publish-pin"
+                              inputMode="numeric"
+                              min={1}
+                              onChange={(event) => setPublishPin(event.target.value)}
+                              placeholder="Pin 值"
+                              step={1}
+                              type="number"
+                              value={publishPin}
+                            />
+                          </div>
+                        ) : null}
+                      </FieldContent>
+                    </Field>
+
+                    <Field orientation="horizontal">
+                      <Switch
+                        checked={publishHidden}
+                        id="quick-publish-hidden"
+                        onCheckedChange={setPublishHidden}
+                        size="sm"
+                      />
+                      <FieldContent>
+                        <FieldLabel htmlFor="quick-publish-hidden">
+                          <FieldTitle>私密发布</FieldTitle>
+                        </FieldLabel>
+                      </FieldContent>
                     </Field>
                   </FieldGroup>
 
@@ -315,7 +434,10 @@ function HomePage() {
               </Alert>
             ) : null}
 
-            {!feedState.loading && !feedState.error && feedState.items.length === 0 ? (
+            {!feedState.loading &&
+            !feedState.error &&
+            feedState.pinnedItems.length === 0 &&
+            feedState.items.length === 0 ? (
               <Empty className="border border-dashed border-border/80 bg-card/60">
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
@@ -331,12 +453,15 @@ function HomePage() {
 
             {!feedState.loading && !feedState.error ? (
               <div className="flex flex-col gap-4">
-                {feedState.items.map((post) => (
+                {[...feedState.pinnedItems, ...feedState.items].map((post) => (
                   <PostCard
                     key={post.id}
                     onPostDeleted={(postId) => {
                       setFeedState((current) => ({
                         ...current,
+                        pinnedItems: current.pinnedItems.filter(
+                          (item) => item.id !== postId
+                        ),
                         items: current.items.filter((item) => item.id !== postId),
                         total: Math.max(0, current.total - 1),
                       }))

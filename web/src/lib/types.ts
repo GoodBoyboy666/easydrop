@@ -18,6 +18,7 @@ export interface UserDTO {
 }
 
 export interface PostAuthorDTO {
+  admin?: boolean
   avatar?: string
   id: number
   nickname: string
@@ -35,8 +36,15 @@ export interface PostDTO {
   created_at: string
   hide?: boolean
   id: number
+  pin?: number
   tags?: TagDTO[]
   updated_at?: string
+}
+
+export interface PublicPostListResult {
+  items: PostDTO[]
+  pinnedItems: PostDTO[]
+  total: number
 }
 
 export interface CommentAuthorDTO {
@@ -110,6 +118,7 @@ export interface InitStatusResult {
 export interface CreatePostInput {
   content: string
   hide?: boolean
+  pin?: number
 }
 
 export interface CreateCommentInput {

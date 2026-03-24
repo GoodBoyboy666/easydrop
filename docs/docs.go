@@ -1997,7 +1997,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.PostListResult"
+                            "$ref": "#/definitions/dto.PostPublicListResult"
                         }
                     },
                     "400": {
@@ -2931,6 +2931,9 @@ const docTemplate = `{
         "dto.CommentAuthorDTO": {
             "type": "object",
             "properties": {
+                "admin": {
+                    "type": "boolean"
+                },
                 "avatar": {
                     "type": "string"
                 },
@@ -3069,6 +3072,9 @@ const docTemplate = `{
         "dto.PostAuthorDTO": {
             "type": "object",
             "properties": {
+                "admin": {
+                    "type": "boolean"
+                },
                 "avatar": {
                     "type": "string"
                 },
@@ -3086,10 +3092,13 @@ const docTemplate = `{
                 "content": {
                     "type": "string"
                 },
+                "disable_comment": {
+                    "type": "boolean"
+                },
                 "hide": {
                     "type": "boolean"
                 },
-                "user_id": {
+                "pin": {
                     "type": "integer"
                 }
             }
@@ -3106,10 +3115,16 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
+                "disable_comment": {
+                    "type": "boolean"
+                },
                 "hide": {
                     "type": "boolean"
                 },
                 "id": {
+                    "type": "integer"
+                },
+                "pin": {
                     "type": "integer"
                 },
                 "tags": {
@@ -3137,14 +3152,40 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.PostPublicListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.PostDTO"
+                    }
+                },
+                "pinned_items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.PostDTO"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
         "dto.PostUpdateInput": {
             "type": "object",
             "properties": {
                 "content": {
                     "type": "string"
                 },
+                "disable_comment": {
+                    "type": "boolean"
+                },
                 "hide": {
                     "type": "boolean"
+                },
+                "pin": {
+                    "type": "integer"
                 }
             }
         },

@@ -137,11 +137,14 @@ func TestPostAdminHandlerCreateSuccess(t *testing.T) {
 			if input.Pin == nil || *input.Pin != 7 {
 				t.Fatalf("expected pin=7, got %#v", input.Pin)
 			}
-			return &dto.PostDTO{ID: 11, Author: dto.PostAuthorDTO{ID: input.UserID}, Content: input.Content, Hide: input.Hide}, nil
+			if !input.DisableComment {
+				t.Fatal("expected disable_comment=true")
+			}
+			return &dto.PostDTO{ID: 11, Author: dto.PostAuthorDTO{ID: input.UserID}, Content: input.Content, Hide: input.Hide, DisableComment: input.DisableComment}, nil
 		},
 	})
 
-	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/admin/posts", `{"user_id":5,"content":"post content","hide":true,"pin":7}`)
+	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/admin/posts", `{"user_id":5,"content":"post content","hide":true,"disable_comment":true,"pin":7}`)
 	c.Set(middleware.ContextUserIDKey, uint(5))
 	h.Create(c)
 
@@ -176,11 +179,17 @@ func TestPostAdminHandlerUpdateBindsPathID(t *testing.T) {
 			if input.Hide == nil || !*input.Hide {
 				t.Fatalf("unexpected hide: %#v", input.Hide)
 			}
-			return &dto.PostDTO{ID: input.ID, Content: *input.Content, Author: dto.PostAuthorDTO{ID: 2}, Hide: *input.Hide}, nil
+			if input.DisableComment == nil || !*input.DisableComment {
+				t.Fatalf("unexpected disable_comment: %#v", input.DisableComment)
+			}
+			if input.Pin == nil || *input.Pin != 123 {
+				t.Fatalf("unexpected pin: %#v", input.Pin)
+			}
+			return &dto.PostDTO{ID: input.ID, Content: *input.Content, Author: dto.PostAuthorDTO{ID: 2}, Hide: *input.Hide, DisableComment: *input.DisableComment, Pin: input.Pin}, nil
 		},
 	})
 
-	c, w := newTestContextWithBody(http.MethodPatch, "/api/v1/admin/posts/9", `{"id":999,"content":"updated","hide":true}`)
+	c, w := newTestContextWithBody(http.MethodPatch, "/api/v1/admin/posts/9", `{"id":999,"content":"updated","hide":true,"disable_comment":true,"pin":123}`)
 	c.Params = gin.Params{{Key: "id", Value: "9"}}
 	h.Update(c)
 

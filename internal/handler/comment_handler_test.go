@@ -122,6 +122,26 @@ func TestCommentHandlerCreateInvalidPathID(t *testing.T) {
 	}
 }
 
+func TestCommentHandlerCreateWhenPostCommentDisabled(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	h := NewCommentHandler(&mockCommentServiceForHandler{
+		createFn: func(_ context.Context, _ dto.CommentCreateInput) (*dto.CommentDTO, error) {
+			return nil, service.ErrPostCommentDisabled
+		},
+	})
+
+	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/posts/9/comments", `{"content":"hello"}`)
+	c.Params = gin.Params{{Key: "id", Value: "9"}}
+	c.Set(middleware.ContextUserIDKey, uint(101))
+
+	h.Create(c)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected status 403, got %d", w.Code)
+	}
+}
+
 func TestCommentHandlerGetNotOwner(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -375,6 +395,9 @@ func TestMapCommentErrorStatus(t *testing.T) {
 	}
 	if got := mapCommentErrorStatus(service.ErrCommentNotFound); got != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", got)
+	}
+	if got := mapCommentErrorStatus(service.ErrPostCommentDisabled); got != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", got)
 	}
 	if got := mapCommentErrorStatus(service.ErrInternal); got != http.StatusInternalServerError {
 		t.Fatalf("expected 500, got %d", got)

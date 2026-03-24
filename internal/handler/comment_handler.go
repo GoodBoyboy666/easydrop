@@ -364,6 +364,8 @@ func mapCommentErrorStatus(err error) int {
 		errors.Is(err, service.ErrPostNotFound),
 		errors.Is(err, service.ErrUserNotFound):
 		return http.StatusNotFound
+	case errors.Is(err, service.ErrPostCommentDisabled):
+		return http.StatusForbidden
 	case errors.Is(err, service.ErrInternal):
 		return http.StatusInternalServerError
 	default:

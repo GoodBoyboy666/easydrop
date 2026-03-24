@@ -411,7 +411,25 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
               <AvatarFallback>{getInitials(post.author.nickname)}</AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <CardTitle className="truncate">{post.author.nickname}</CardTitle>
+              <CardTitle className="flex flex-wrap items-center gap-2">
+                <span className="truncate">{post.author.nickname}</span>
+                {post.pin ? (
+                  <Badge
+                    className="h-4 px-1.5 text-[10px] leading-none"
+                    variant="default"
+                  >
+                    置顶
+                  </Badge>
+                ) : null}
+                {post.hide ? (
+                  <Badge
+                    className="h-4 px-1.5 text-[10px] leading-none"
+                    variant="secondary"
+                  >
+                    私密
+                  </Badge>
+                ) : null}
+              </CardTitle>
               <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 <span>{formatRelativeTime(post.created_at)}</span>
                 <span>发布于 {formatDateTime(post.created_at)}</span>

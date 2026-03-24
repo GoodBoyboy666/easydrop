@@ -3,10 +3,11 @@ package dto
 import "time"
 
 type PostCreateInput struct {
-	UserID  uint   `json:"-"`
-	Content string `json:"content"`
-	Hide    bool   `json:"hide"`
-	Pin     *uint  `json:"pin"`
+	UserID         uint   `json:"-"`
+	Content        string `json:"content"`
+	Hide           bool   `json:"hide"`
+	DisableComment bool   `json:"disable_comment"`
+	Pin            *uint  `json:"pin"`
 }
 
 type PostIDURIInput struct {
@@ -14,9 +15,11 @@ type PostIDURIInput struct {
 }
 
 type PostUpdateInput struct {
-	ID      uint    `json:"-"`
-	Content *string `json:"content"`
-	Hide    *bool   `json:"hide"`
+	ID             uint    `json:"-"`
+	Content        *string `json:"content"`
+	Hide           *bool   `json:"hide"`
+	DisableComment *bool   `json:"disable_comment"`
+	Pin            *uint   `json:"pin"`
 }
 
 type PostListInput struct {
@@ -29,14 +32,15 @@ type PostListInput struct {
 }
 
 type PostDTO struct {
-	ID        uint          `json:"id"`
-	Content   string        `json:"content"`
-	Hide      bool          `json:"hide"`
-	Pin       *uint         `json:"pin"`
-	Author    PostAuthorDTO `json:"author"`
-	Tags      []TagDTO      `json:"tags"`
-	CreatedAt time.Time     `json:"created_at"`
-	UpdatedAt time.Time     `json:"updated_at"`
+	ID             uint          `json:"id"`
+	Content        string        `json:"content"`
+	Hide           bool          `json:"hide"`
+	DisableComment bool          `json:"disable_comment"`
+	Pin            *uint         `json:"pin"`
+	Author         PostAuthorDTO `json:"author"`
+	Tags           []TagDTO      `json:"tags"`
+	CreatedAt      time.Time     `json:"created_at"`
+	UpdatedAt      time.Time     `json:"updated_at"`
 }
 
 type PostAuthorDTO struct {

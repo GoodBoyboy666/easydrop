@@ -9,6 +9,7 @@ import type {
   LoginInput,
   PagedResult,
   PostDTO,
+  PublicPostListResult,
   PublicSettingsMap,
   RegisterInput,
   SettingPublicResult,
@@ -42,6 +43,18 @@ function normalizePagedResult<T>(payload: {
 }) {
   return {
     items: asArray(payload.items),
+    total: typeof payload.total === 'number' ? payload.total : 0,
+  }
+}
+
+function normalizePublicPostListResult(payload: {
+  items?: PostDTO[] | null
+  pinned_items?: PostDTO[] | null
+  total?: number | null
+}) {
+  return {
+    items: asArray(payload.items),
+    pinnedItems: asArray(payload.pinned_items),
     total: typeof payload.total === 'number' ? payload.total : 0,
   }
 }
@@ -137,8 +150,14 @@ export const api = {
   getCurrentUser(token: string) {
     return request<UserDTO>('/users/me', { token })
   },
-  getPosts(query?: Record<string, string | number | undefined>) {
-    return request<PagedResult<PostDTO>>('/posts', { query }).then(normalizePagedResult)
+  getPosts(
+    query?: Record<string, string | number | undefined>,
+    token?: string | null
+  ) {
+    return request<PublicPostListResult & { pinned_items?: PostDTO[] | null }>('/posts', {
+      query,
+      token,
+    }).then(normalizePublicPostListResult)
   },
   getPublicSettings() {
     return request<SettingPublicResult>('/settings/public').then(
