@@ -1,10 +1,9 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
 import { MessageSquareTextIcon } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { api } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
 import { formatDateTime, formatRelativeTime } from '#/lib/format'
-import type { CommentDTO } from '#/lib/types'
+import { myCommentsQueryOptions } from '#/lib/query-options'
 import { MarkdownContent } from '#/components/markdown/markdown-content'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import { Button } from '#/components/ui/button'
@@ -30,42 +29,27 @@ export const Route = createFileRoute('/me/comments')({
 
 function MyCommentsPage() {
   const auth = useAuth()
-  const [comments, setComments] = useState<CommentDTO[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const token = auth.token
-
-    if (!token) {
-      setLoading(false)
-      return
-    }
-
-    void (async () => {
-      try {
-        const result = await api.getMyComments(token, {
-          limit: 20,
-          offset: 0,
-          order: 'created_at_desc',
-        })
-
-        setComments(result.items)
-        setError(null)
-      } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : '评论加载失败')
-      } finally {
-        setLoading(false)
-      }
-    })()
-  }, [auth.token])
+  const commentsQuery = useQuery({
+    ...myCommentsQueryOptions(auth.token ?? '', {
+      limit: 20,
+      offset: 0,
+      order: 'created_at_desc',
+    }),
+    enabled: !!auth.token,
+  })
+  const comments = commentsQuery.data?.items ?? []
+  const error =
+    commentsQuery.error instanceof Error ? commentsQuery.error.message : null
+  const loading = commentsQuery.isPending
 
   if (!auth.token) {
     return (
       <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
         <Alert>
           <AlertTitle>需要先登录</AlertTitle>
-          <AlertDescription>登录后才可以查看自己发表过的评论。</AlertDescription>
+          <AlertDescription>
+            登录后才可以查看自己发表过的评论。
+          </AlertDescription>
         </Alert>
       </div>
     )
@@ -118,11 +102,17 @@ function MyCommentsPage() {
       {!loading && !error ? (
         <div className="flex flex-col gap-4">
           {comments.map((comment) => (
-            <Card key={comment.id} className="border border-border/70 bg-card/90 shadow-sm">
+            <Card
+              key={comment.id}
+              className="border border-border/70 bg-card/90 shadow-sm"
+            >
               <CardHeader className="px-4 py-4">
-                <CardTitle className="text-sm">日志 #{comment.post_id}</CardTitle>
+                <CardTitle className="text-sm">
+                  日志 #{comment.post_id}
+                </CardTitle>
                 <CardDescription>
-                  {formatRelativeTime(comment.created_at)} · {formatDateTime(comment.created_at)}
+                  {formatRelativeTime(comment.created_at)} ·{' '}
+                  {formatDateTime(comment.created_at)}
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-3 px-4 pb-4">

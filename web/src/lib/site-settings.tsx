@@ -1,7 +1,8 @@
-"use client"
+'use client'
 
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { api, toPublicSettingsMap } from '#/lib/api'
+import { createContext, useContext, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { publicSettingsMapQueryOptions } from '#/lib/query-options'
 import type { PublicSettingsMap } from '#/lib/types'
 
 interface SiteSettingsContextValue {
@@ -26,7 +27,11 @@ const DEFAULT_SITE_OWNER_DESCRIPTION = 'Do what you want to do.'
 
 const SiteSettingsContext = createContext<SiteSettingsContextValue | null>(null)
 
-function getSetting(settingsMap: PublicSettingsMap, key: string, fallback = '') {
+function getSetting(
+  settingsMap: PublicSettingsMap,
+  key: string,
+  fallback = '',
+) {
   const value = settingsMap[key]
   return typeof value === 'string' ? value : fallback
 }
@@ -70,44 +75,38 @@ export function SiteSettingsProvider({
 }: {
   children: React.ReactNode
 }) {
-  const [settingsMap, setSettingsMap] = useState<PublicSettingsMap>({})
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const result = await api.getPublicSettings()
-
-        setSettingsMap(toPublicSettingsMap(result))
-        setError(null)
-      } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : '加载站点配置失败')
-      } finally {
-        setLoading(false)
-      }
-    })()
-  }, [])
+  const settingsQuery = useQuery(publicSettingsMapQueryOptions())
+  const settingsMap: PublicSettingsMap = settingsQuery.data ?? {}
+  const loading = settingsQuery.isPending
+  const error =
+    settingsQuery.error instanceof Error ? settingsQuery.error.message : null
 
   const value = useMemo<SiteSettingsContextValue>(() => {
     const siteName = getSetting(settingsMap, 'site.name', DEFAULT_SITE_NAME)
     const siteDescription = getSetting(
       settingsMap,
       'site.description',
-      DEFAULT_SITE_DESCRIPTION
+      DEFAULT_SITE_DESCRIPTION,
     )
-    const siteOwner = getSetting(settingsMap, 'site.owner', siteName || DEFAULT_SITE_OWNER)
+    const siteOwner = getSetting(
+      settingsMap,
+      'site.owner',
+      siteName || DEFAULT_SITE_OWNER,
+    )
     const siteOwnerDescription = getSetting(
       settingsMap,
       'site.owner.description',
-      siteDescription || DEFAULT_SITE_OWNER_DESCRIPTION
+      siteDescription || DEFAULT_SITE_OWNER_DESCRIPTION,
     )
     const siteUrl = getSetting(settingsMap, 'site.url', '')
     const siteAnnouncement = getSetting(settingsMap, 'site.announcement', '')
     const siteBackground = getSetting(settingsMap, 'site.background', '')
 
     return {
-      allowRegister: parseBooleanSetting(settingsMap['site.allow_register'], true),
+      allowRegister: parseBooleanSetting(
+        settingsMap['site.allow_register'],
+        true,
+      ),
       error,
       loading,
       siteOwner,

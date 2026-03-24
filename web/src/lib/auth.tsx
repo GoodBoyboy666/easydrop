@@ -1,29 +1,18 @@
-"use client"
+'use client'
 
-import {
-  createContext,
-  startTransition,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react'
-import { api, ApiError } from '#/lib/api'
-import type {
-  AuthState,
-  LoginInput,
-  RegisterInput,
-  UserDTO,
-} from '#/lib/types'
+import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { ApiError } from '#/lib/api'
+import { currentUserQueryOptions, queryKeys } from '#/lib/query-options'
+import type { AuthState, UserDTO } from '#/lib/types'
 
 const ACCESS_TOKEN_STORAGE_KEY = 'easydrop.access-token'
 
 interface AuthContextValue extends AuthState {
+  authenticateWithToken: (accessToken: string) => Promise<void>
   isAdmin: boolean
-  login: (input: LoginInput) => Promise<void>
   logout: () => void
   refreshUser: () => Promise<UserDTO | null>
-  register: (input: RegisterInput) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -50,135 +39,48 @@ function writeStoredToken(token: string | null) {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [authState, setAuthState] = useState<AuthState>({
-    status: 'loading',
-    token: null,
-    user: null,
+  const queryClient = useQueryClient()
+  const [token, setToken] = useState<string | null>(() => readStoredToken())
+  const currentUserQuery = useQuery({
+    ...currentUserQueryOptions(token ?? ''),
+    enabled: !!token,
+    retry: false,
   })
 
   useEffect(() => {
-    let cancelled = false
-
-    async function bootstrap() {
-      const storedToken = readStoredToken()
-
-      if (!storedToken) {
-        startTransition(() => {
-          setAuthState({
-            status: 'anonymous',
-            token: null,
-            user: null,
-          })
-        })
-        return
-      }
-
-      startTransition(() => {
-        setAuthState({
-          status: 'loading',
-          token: storedToken,
-          user: null,
-        })
-      })
-
-      try {
-        const user = await api.getCurrentUser(storedToken)
-
-        if (cancelled) {
-          return
-        }
-
-        startTransition(() => {
-          setAuthState({
-            status: 'authenticated',
-            token: storedToken,
-            user,
-          })
-        })
-      } catch (error) {
-        if (cancelled) {
-          return
-        }
-
-        if (error instanceof ApiError && error.status === 401) {
-          writeStoredToken(null)
-        }
-
-        startTransition(() => {
-          setAuthState({
-            status: 'anonymous',
-            token: null,
-            user: null,
-          })
-        })
-      }
+    if (!token || !currentUserQuery.error) {
+      return
     }
 
-    void bootstrap()
-
-    return () => {
-      cancelled = true
+    if (
+      currentUserQuery.error instanceof ApiError &&
+      currentUserQuery.error.status === 401
+    ) {
+      writeStoredToken(null)
+      setToken(null)
     }
-  }, [])
+  }, [currentUserQuery.error, token])
 
-  async function applyAccessToken(accessToken: string) {
+  async function authenticateWithToken(accessToken: string) {
     writeStoredToken(accessToken)
-
-    startTransition(() => {
-      setAuthState({
-        status: 'loading',
-        token: accessToken,
-        user: null,
-      })
-    })
+    setToken(accessToken)
 
     try {
-      const user = await api.getCurrentUser(accessToken)
-      startTransition(() => {
-        setAuthState({
-          status: 'authenticated',
-          token: accessToken,
-          user,
-        })
-      })
+      await queryClient.fetchQuery(currentUserQueryOptions(accessToken))
     } catch (error) {
       writeStoredToken(null)
-      startTransition(() => {
-        setAuthState({
-          status: 'anonymous',
-          token: null,
-          user: null,
-        })
-      })
+      setToken(null)
       throw error
     }
   }
 
-  async function login(input: LoginInput) {
-    const result = await api.login(input)
-    await applyAccessToken(result.access_token)
-  }
-
-  async function register(input: RegisterInput) {
-    const result = await api.register(input)
-    await applyAccessToken(result.access_token)
-  }
-
   async function refreshUser() {
-    if (!authState.token) {
+    if (!token) {
       return null
     }
 
     try {
-      const user = await api.getCurrentUser(authState.token)
-      startTransition(() => {
-        setAuthState((current) => ({
-          ...current,
-          status: 'authenticated',
-          user,
-        }))
-      })
-      return user
+      return await queryClient.fetchQuery(currentUserQueryOptions(token))
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         logout()
@@ -189,25 +91,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   function logout() {
     writeStoredToken(null)
-    startTransition(() => {
-      setAuthState({
+    setToken(null)
+    void queryClient.invalidateQueries({ queryKey: queryKeys.postsPrefix() })
+  }
+
+  const authState = useMemo<AuthState>(() => {
+    if (!token) {
+      return {
         status: 'anonymous',
         token: null,
         user: null,
-      })
-    })
-  }
+      }
+    }
+
+    if (currentUserQuery.isPending) {
+      return {
+        status: 'loading',
+        token,
+        user: null,
+      }
+    }
+
+    if (currentUserQuery.data) {
+      return {
+        status: 'authenticated',
+        token,
+        user: currentUserQuery.data,
+      }
+    }
+
+    return {
+      status: 'anonymous',
+      token: null,
+      user: null,
+    }
+  }, [currentUserQuery.data, currentUserQuery.isPending, token])
 
   const value = useMemo<AuthContextValue>(
     () => ({
       ...authState,
+      authenticateWithToken,
       isAdmin: !!authState.user?.admin,
-      login,
       logout,
       refreshUser,
-      register,
     }),
-    [authState]
+    [authState, authenticateWithToken, logout, refreshUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { ArrowRightIcon, UserPlusIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
 import { safeRedirectPath } from '#/lib/format'
+import { captchaConfigQueryOptions } from '#/lib/query-options'
 import { useSiteSettings } from '#/lib/site-settings'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import { Button } from '#/components/ui/button'
@@ -39,25 +41,14 @@ function RegisterPage() {
     password: '',
     username: '',
   })
-  const [captchaNotice, setCaptchaNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const config = await api.getCaptchaConfig()
-
-        if (config.enabled) {
-          setCaptchaNotice(
-            `当前站点启用了 ${config.provider || '验证码'}，骨架版暂未接入可视化验证控件。`
-          )
-        }
-      } catch {
-        setCaptchaNotice(null)
-      }
-    })()
-  }, [])
+  const captchaConfigQuery = useQuery(captchaConfigQueryOptions())
+  const registerMutation = useMutation({
+    mutationFn: api.register,
+  })
+  const captchaNotice = captchaConfigQuery.data?.enabled
+    ? `当前站点启用了 ${captchaConfigQuery.data.provider || '验证码'}，骨架版暂未接入可视化验证控件。`
+    : null
 
   useEffect(() => {
     if (auth.status === 'authenticated') {
@@ -84,20 +75,17 @@ function RegisterPage() {
       return
     }
 
-    setSubmitting(true)
-
     try {
-      await auth.register({
+      const result = await registerMutation.mutateAsync({
         email: form.email.trim(),
         nickname: form.nickname.trim(),
         password: form.password,
         username: form.username.trim(),
       })
+      await auth.authenticateWithToken(result.access_token)
       window.location.assign(safeRedirectPath(redirect))
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : '注册失败')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -106,9 +94,7 @@ function RegisterPage() {
       <Card className="w-full max-w-2xl border border-border/70 bg-card/95 shadow-sm px-4 py-8">
         <CardHeader>
           <CardTitle className="text-2xl">注册</CardTitle>
-          <CardDescription>
-            Sign up
-          </CardDescription>
+          <CardDescription>Sign up</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit}>
@@ -120,7 +106,10 @@ function RegisterPage() {
                   disabled={!allowRegister}
                   id="username"
                   onChange={(event) =>
-                    setForm((current) => ({ ...current, username: event.target.value }))
+                    setForm((current) => ({
+                      ...current,
+                      username: event.target.value,
+                    }))
                   }
                   placeholder="用于登录的用户名"
                   value={form.username}
@@ -134,7 +123,10 @@ function RegisterPage() {
                   disabled={!allowRegister}
                   id="nickname"
                   onChange={(event) =>
-                    setForm((current) => ({ ...current, nickname: event.target.value }))
+                    setForm((current) => ({
+                      ...current,
+                      nickname: event.target.value,
+                    }))
                   }
                   placeholder="站内展示昵称"
                   value={form.nickname}
@@ -148,7 +140,10 @@ function RegisterPage() {
                   disabled={!allowRegister}
                   id="email"
                   onChange={(event) =>
-                    setForm((current) => ({ ...current, email: event.target.value }))
+                    setForm((current) => ({
+                      ...current,
+                      email: event.target.value,
+                    }))
                   }
                   placeholder="用于接收通知的邮箱"
                   type="email"
@@ -163,7 +158,10 @@ function RegisterPage() {
                   disabled={!allowRegister}
                   id="register-password"
                   onChange={(event) =>
-                    setForm((current) => ({ ...current, password: event.target.value }))
+                    setForm((current) => ({
+                      ...current,
+                      password: event.target.value,
+                    }))
                   }
                   placeholder="一个安全的密码"
                   type="password"
@@ -190,9 +188,12 @@ function RegisterPage() {
             ) : null}
 
             <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <Button disabled={!allowRegister || submitting} type="submit">
+              <Button
+                disabled={!allowRegister || registerMutation.isPending}
+                type="submit"
+              >
                 <UserPlusIcon data-icon="inline-start" />
-                {submitting ? '正在注册…' : '创建账号'}
+                {registerMutation.isPending ? '正在注册…' : '创建账号'}
               </Button>
               <Button asChild size="sm" variant="ghost">
                 <Link to="/login" search={{ redirect }}>

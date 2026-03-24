@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { ArrowRightIcon, LogInIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
 import { safeRedirectPath } from '#/lib/format'
+import { captchaConfigQueryOptions } from '#/lib/query-options'
 import { useSiteSettings } from '#/lib/site-settings'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import { Button } from '#/components/ui/button'
@@ -35,25 +37,14 @@ function LoginPage() {
   const { redirect } = Route.useSearch()
   const [account, setAccount] = useState('')
   const [password, setPassword] = useState('')
-  const [captchaNotice, setCaptchaNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const config = await api.getCaptchaConfig()
-
-        if (config.enabled) {
-          setCaptchaNotice(
-            `当前站点启用了 ${config.provider || '验证码'}，骨架版暂未接入可视化验证控件。`
-          )
-        }
-      } catch {
-        setCaptchaNotice(null)
-      }
-    })()
-  }, [])
+  const captchaConfigQuery = useQuery(captchaConfigQueryOptions())
+  const loginMutation = useMutation({
+    mutationFn: api.login,
+  })
+  const captchaNotice = captchaConfigQuery.data?.enabled
+    ? `当前站点启用了 ${captchaConfigQuery.data.provider || '验证码'}，骨架版暂未接入可视化验证控件。`
+    : null
 
   useEffect(() => {
     if (auth.status === 'authenticated') {
@@ -70,18 +61,15 @@ function LoginPage() {
       return
     }
 
-    setSubmitting(true)
-
     try {
-      await auth.login({
+      const result = await loginMutation.mutateAsync({
         account: account.trim(),
         password,
       })
+      await auth.authenticateWithToken(result.access_token)
       window.location.assign(safeRedirectPath(redirect))
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : '登录失败')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -90,9 +78,7 @@ function LoginPage() {
       <Card className="w-full max-w-xl border border-border/70 bg-card/95 shadow-sm px-4 py-8">
         <CardHeader>
           <CardTitle className="text-2xl">欢迎回来</CardTitle>
-          <CardDescription>
-            Welcome back
-          </CardDescription>
+          <CardDescription>Welcome back</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit}>
@@ -130,9 +116,9 @@ function LoginPage() {
             ) : null}
 
             <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <Button disabled={submitting} type="submit">
+              <Button disabled={loginMutation.isPending} type="submit">
                 <LogInIcon data-icon="inline-start" />
-                {submitting ? '正在登录…' : '立即登录'}
+                {loginMutation.isPending ? '正在登录…' : '立即登录'}
               </Button>
               {allowRegister ? (
                 <Button asChild size="sm" variant="ghost">
@@ -142,7 +128,9 @@ function LoginPage() {
                   </Link>
                 </Button>
               ) : (
-                <div className="text-sm text-muted-foreground">当前站点未开放注册</div>
+                <div className="text-sm text-muted-foreground">
+                  当前站点未开放注册
+                </div>
               )}
             </div>
           </form>

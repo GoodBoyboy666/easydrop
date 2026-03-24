@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AlertCircleIcon,
   CheckCircle2Icon,
@@ -8,6 +9,7 @@ import {
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { ApiError, api } from '#/lib/api'
+import { initStatusQueryOptions } from '#/lib/query-options'
 import type { InitInput } from '#/lib/types'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import { Button } from '#/components/ui/button'
@@ -58,31 +60,15 @@ function createInitialFormState(): InitInput {
 }
 
 function InitPage() {
+  const queryClient = useQueryClient()
   const [form, setForm] = useState<InitInput>(createInitialFormState)
-  const [initialized, setInitialized] = useState<boolean | null>(null)
-  const [statusError, setStatusError] = useState<string | null>(null)
-  const [loadingStatus, setLoadingStatus] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-
-  async function loadStatus() {
-    setLoadingStatus(true)
-    setStatusError(null)
-
-    try {
-      const result = await api.getInitStatus()
-      setInitialized(result.initialized)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '初始化状态读取失败'
-      setStatusError(message)
-      toast.error(message)
-    } finally {
-      setLoadingStatus(false)
-    }
-  }
-
-  useEffect(() => {
-    void loadStatus()
-  }, [])
+  const initStatusQuery = useQuery(initStatusQueryOptions())
+  const initializeMutation = useMutation({
+    mutationFn: api.initializeSystem,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['init-status'] })
+    },
+  })
 
   useEffect(() => {
     setForm((current) =>
@@ -91,13 +77,23 @@ function InitPage() {
         : {
             ...current,
             site_url: getDefaultSiteUrl(),
-          }
+          },
     )
   }, [])
 
+  useEffect(() => {
+    if (initStatusQuery.error) {
+      const message =
+        initStatusQuery.error instanceof Error
+          ? initStatusQuery.error.message
+          : '初始化状态读取失败'
+      toast.error(message)
+    }
+  }, [initStatusQuery.error])
+
   function updateField<TKey extends keyof InitInput>(
     key: TKey,
-    value: InitInput[TKey]
+    value: InitInput[TKey],
   ) {
     setForm((current) => ({
       ...current,
@@ -120,10 +116,8 @@ function InitPage() {
       return
     }
 
-    setSubmitting(true)
-
     try {
-      await api.initializeSystem({
+      await initializeMutation.mutateAsync({
         ...form,
         email: form.email.trim(),
         nickname: form.nickname.trim(),
@@ -134,22 +128,26 @@ function InitPage() {
         username: form.username.trim(),
       })
 
-      setInitialized(true)
+      queryClient.setQueryData(initStatusQueryOptions().queryKey, {
+        initialized: true,
+      })
       window.location.assign('/login')
     } catch (error) {
       if (error instanceof ApiError && error.status === 409) {
-        setInitialized(true)
+        queryClient.setQueryData(initStatusQueryOptions().queryKey, {
+          initialized: true,
+        })
         toast.error('系统已经初始化，无需重复创建首个管理员')
         return
       }
 
-      toast.error(error instanceof Error ? error.message : '初始化失败，请稍后重试')
-    } finally {
-      setSubmitting(false)
+      toast.error(
+        error instanceof Error ? error.message : '初始化失败，请稍后重试',
+      )
     }
   }
 
-  if (loadingStatus) {
+  if (initStatusQuery.isPending) {
     return (
       <div className="mx-auto flex min-h-[calc(100vh-9rem)] w-full max-w-7xl items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
         <Card className="w-full max-w-xl border border-border/70 bg-card/95 shadow-sm">
@@ -167,7 +165,7 @@ function InitPage() {
     )
   }
 
-  if (statusError) {
+  if (initStatusQuery.error) {
     return (
       <div className="mx-auto flex min-h-[calc(100vh-9rem)] w-full max-w-7xl items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
         <Card className="w-full max-w-xl border border-border/70 bg-card/95 shadow-sm">
@@ -181,10 +179,18 @@ function InitPage() {
             <Alert variant="destructive">
               <AlertCircleIcon />
               <AlertTitle>读取失败</AlertTitle>
-              <AlertDescription>{statusError}</AlertDescription>
+              <AlertDescription>
+                {initStatusQuery.error instanceof Error
+                  ? initStatusQuery.error.message
+                  : '初始化状态读取失败'}
+              </AlertDescription>
             </Alert>
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-              <Button variant="outline" type="button" onClick={() => void loadStatus()}>
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => void initStatusQuery.refetch()}
+              >
                 重新检查
               </Button>
               <Button asChild>
@@ -197,7 +203,7 @@ function InitPage() {
     )
   }
 
-  if (initialized) {
+  if (initStatusQuery.data?.initialized) {
     return (
       <div className="mx-auto flex min-h-[calc(100vh-9rem)] w-full max-w-7xl items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
         <Card className="w-full max-w-2xl border border-border/70 bg-card/95 shadow-sm">
@@ -244,13 +250,17 @@ function InitPage() {
             <form onSubmit={handleSubmit}>
               <FieldGroup>
                 <FieldGroup>
-                  <div className="text-sm font-medium text-foreground">管理员信息</div>
+                  <div className="text-sm font-medium text-foreground">
+                    管理员信息
+                  </div>
 
                   <Field>
                     <FieldLabel htmlFor="init-username">用户名</FieldLabel>
                     <Input
                       id="init-username"
-                      onChange={(event) => updateField('username', event.target.value)}
+                      onChange={(event) =>
+                        updateField('username', event.target.value)
+                      }
                       placeholder="用于登录后台的管理员用户名"
                       value={form.username}
                     />
@@ -260,7 +270,9 @@ function InitPage() {
                     <FieldLabel htmlFor="init-nickname">昵称</FieldLabel>
                     <Input
                       id="init-nickname"
-                      onChange={(event) => updateField('nickname', event.target.value)}
+                      onChange={(event) =>
+                        updateField('nickname', event.target.value)
+                      }
                       placeholder="站内展示的管理员昵称"
                       value={form.nickname}
                     />
@@ -270,7 +282,9 @@ function InitPage() {
                     <FieldLabel htmlFor="init-email">邮箱</FieldLabel>
                     <Input
                       id="init-email"
-                      onChange={(event) => updateField('email', event.target.value)}
+                      onChange={(event) =>
+                        updateField('email', event.target.value)
+                      }
                       placeholder="用于接收通知和找回密码"
                       type="email"
                       value={form.email}
@@ -281,7 +295,9 @@ function InitPage() {
                     <FieldLabel htmlFor="init-password">密码</FieldLabel>
                     <Input
                       id="init-password"
-                      onChange={(event) => updateField('password', event.target.value)}
+                      onChange={(event) =>
+                        updateField('password', event.target.value)
+                      }
                       placeholder="请设置一个安全的管理员密码"
                       type="password"
                       value={form.password}
@@ -290,13 +306,17 @@ function InitPage() {
                 </FieldGroup>
 
                 <FieldGroup>
-                  <div className="text-sm font-medium text-foreground">站点配置</div>
+                  <div className="text-sm font-medium text-foreground">
+                    站点配置
+                  </div>
 
                   <Field>
                     <FieldLabel htmlFor="init-site-name">站点名称</FieldLabel>
                     <Input
                       id="init-site-name"
-                      onChange={(event) => updateField('site_name', event.target.value)}
+                      onChange={(event) =>
+                        updateField('site_name', event.target.value)
+                      }
                       placeholder="例如 EasyDrop"
                       value={form.site_name}
                     />
@@ -306,7 +326,9 @@ function InitPage() {
                     <FieldLabel htmlFor="init-site-url">站点地址</FieldLabel>
                     <Input
                       id="init-site-url"
-                      onChange={(event) => updateField('site_url', event.target.value)}
+                      onChange={(event) =>
+                        updateField('site_url', event.target.value)
+                      }
                       placeholder="例如 https://example.com"
                       value={form.site_url}
                     />
@@ -316,7 +338,9 @@ function InitPage() {
                   </Field>
 
                   <Field>
-                    <FieldLabel htmlFor="init-site-announcement">站点公告</FieldLabel>
+                    <FieldLabel htmlFor="init-site-announcement">
+                      站点公告
+                    </FieldLabel>
                     <Textarea
                       id="init-site-announcement"
                       onChange={(event) =>
@@ -346,15 +370,16 @@ function InitPage() {
                     </FieldContent>
                   </Field>
                 </FieldGroup>
-
               </FieldGroup>
 
               <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
                 <Button asChild type="button" variant="outline">
                   <Link to="/">返回首页</Link>
                 </Button>
-                <Button disabled={submitting} type="submit">
-                  {submitting ? '正在初始化…' : '创建管理员并完成初始化'}
+                <Button disabled={initializeMutation.isPending} type="submit">
+                  {initializeMutation.isPending
+                    ? '正在初始化…'
+                    : '创建管理员并完成初始化'}
                 </Button>
               </div>
             </form>

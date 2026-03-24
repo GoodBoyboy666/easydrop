@@ -1,8 +1,10 @@
+import { QueryClientProvider } from '@tanstack/react-query'
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { PhotoProvider } from 'react-photo-view'
 import { AuthProvider } from '#/lib/auth'
+import { getQueryClient } from '#/lib/query-client'
 import { SiteSettingsProvider, useSiteSettings } from '#/lib/site-settings'
 import { ThemeProvider } from '#/lib/theme'
 import { SiteFooter } from '#/components/site/site-footer'
@@ -71,6 +73,8 @@ export const Route = createRootRoute({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const queryClient = getQueryClient()
+
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <head>
@@ -78,27 +82,29 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="font-sans antialiased [overflow-wrap:anywhere]">
-        <PhotoProvider>
-          <ThemeProvider>
-            <AuthProvider>
-              <SiteSettingsProvider>
-                <AppShell>{children}</AppShell>
-                <TanStackDevtools
-                  config={{
-                    position: 'bottom-right',
-                  }}
-                  plugins={[
-                    {
-                      name: 'Tanstack Router',
-                      render: <TanStackRouterDevtoolsPanel />,
-                    },
-                  ]}
-                />
-                <Scripts />
-              </SiteSettingsProvider>
-            </AuthProvider>
-          </ThemeProvider>
-        </PhotoProvider>
+        <QueryClientProvider client={queryClient}>
+          <PhotoProvider>
+            <ThemeProvider>
+              <AuthProvider>
+                <SiteSettingsProvider>
+                  <AppShell>{children}</AppShell>
+                  <TanStackDevtools
+                    config={{
+                      position: 'bottom-right',
+                    }}
+                    plugins={[
+                      {
+                        name: 'Tanstack Router',
+                        render: <TanStackRouterDevtoolsPanel />,
+                      },
+                    ]}
+                  />
+                  <Scripts />
+                </SiteSettingsProvider>
+              </AuthProvider>
+            </ThemeProvider>
+          </PhotoProvider>
+        </QueryClientProvider>
       </body>
     </html>
   )

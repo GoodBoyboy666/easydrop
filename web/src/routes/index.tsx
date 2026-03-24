@@ -1,3 +1,4 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import {
   AlertCircleIcon,
@@ -9,13 +10,19 @@ import {
   RefreshCwIcon,
 } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { api } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
 import { formatRelativeTime, getInitials } from '#/lib/format'
 import { hasMarkdownContent, normalizeMarkdownContent } from '#/lib/markdown'
+import {
+  latestCommentsQueryOptions,
+  postsQueryOptions,
+  queryKeys,
+  tagsQueryOptions,
+} from '#/lib/query-options'
 import { useSiteSettings } from '#/lib/site-settings'
-import type { CommentDTO, PagedResult, PostDTO, TagDTO } from '#/lib/types'
+import type { CommentDTO } from '#/lib/types'
 import { MarkdownContent } from '#/components/markdown/markdown-content'
 import { MarkdownEditor } from '#/components/markdown/markdown-editor'
 import { PostCard } from '#/components/home/post-card'
@@ -57,36 +64,13 @@ const FEED_PAGE_SIZE = 8
 const LATEST_COMMENTS_PAGE_SIZE = 6
 const LATEST_COMMENTS_FETCH_SIZE = 24
 
-interface FeedState {
-  items: PostDTO[]
-  pinnedItems: PostDTO[]
-  loading: boolean
-  loadingMore: boolean
-  error: string | null
-  total: number
-}
-
-function mergePostsById(current: PostDTO[], incoming: PostDTO[]) {
-  const seen = new Set<number>()
-  const merged: PostDTO[] = []
-
-  for (const post of [...current, ...incoming]) {
-    if (seen.has(post.id)) {
-      continue
-    }
-    seen.add(post.id)
-    merged.push(post)
-  }
-
-  return merged
-}
-
 function isTopLevelComment(comment: CommentDTO) {
   return comment.root_id == null && comment.parent_id == null
 }
 
 function HomePage() {
   const auth = useAuth()
+  const queryClient = useQueryClient()
   const prefersReducedMotion = useReducedMotion()
   const {
     error: settingsError,
@@ -95,158 +79,93 @@ function HomePage() {
     siteOwner,
     siteOwnerDescription,
   } = useSiteSettings()
-  const [feedState, setFeedState] = useState<FeedState>({
-    items: [],
-    pinnedItems: [],
-    loading: true,
-    loadingMore: false,
-    error: null,
-    total: 0,
-  })
-  const [latestComments, setLatestComments] = useState<PagedResult<CommentDTO>>({
-    items: [],
-    total: 0,
-  })
-  const [latestCommentsLoading, setLatestCommentsLoading] = useState(true)
-  const [latestCommentsError, setLatestCommentsError] = useState<string | null>(null)
-  const [tags, setTags] = useState<PagedResult<TagDTO>>({
-    items: [],
-    total: 0,
-  })
-  const [tagsLoading, setTagsLoading] = useState(true)
-  const [tagsError, setTagsError] = useState<string | null>(null)
+  const [feedLimit, setFeedLimit] = useState(FEED_PAGE_SIZE)
   const [publishDraft, setPublishDraft] = useState('')
   const [publishHidden, setPublishHidden] = useState(false)
   const [publishPinned, setPublishPinned] = useState(false)
   const [publishPin, setPublishPin] = useState('')
   const [publishError, setPublishError] = useState<string | null>(null)
-  const [publishing, setPublishing] = useState(false)
 
-  async function loadFeed(mode: 'initial' | 'more' = 'initial') {
-    const offset =
-      mode === 'more'
-        ? feedState.items.length + feedState.pinnedItems.length
-        : 0
+  const feedQuery = useQuery({
+    ...postsQueryOptions(auth.token, {
+      limit: feedLimit,
+      offset: 0,
+      order: 'created_at_desc',
+    }),
+    placeholderData: (previousData) => previousData,
+  })
+  const latestCommentsQuery = useQuery({
+    ...latestCommentsQueryOptions({
+      limit: LATEST_COMMENTS_FETCH_SIZE,
+      offset: 0,
+      order: 'created_at_desc',
+    }),
+    select: (result) => ({
+      ...result,
+      items: result.items
+        .filter(isTopLevelComment)
+        .slice(0, LATEST_COMMENTS_PAGE_SIZE),
+    }),
+  })
+  const tagsQuery = useQuery(
+    tagsQueryOptions({
+      limit: 16,
+      offset: 0,
+      order: 'hot_desc',
+    }),
+  )
+  const publishMutation = useMutation({
+    mutationFn: (token: string) =>
+      api.createAdminPost(
+        {
+          content: normalizeMarkdownContent(publishDraft),
+          hide: publishHidden,
+          pin: publishPinned ? Number(publishPin.trim()) : undefined,
+        },
+        token,
+      ),
+  })
 
-    setFeedState((current) => ({
-      ...current,
-      error: null,
-      loading: mode === 'initial',
-      loadingMore: mode === 'more',
-    }))
-
-    try {
-      const result = await api.getPosts({
-        limit: FEED_PAGE_SIZE,
-        offset,
-        order: 'created_at_desc',
-      }, auth.token)
-
-      setFeedState((current) => ({
-        items:
-          mode === 'more'
-            ? mergePostsById(current.items, result.items)
-            : result.items,
-        pinnedItems:
-          mode === 'more'
-            ? mergePostsById(current.pinnedItems, result.pinnedItems)
-            : result.pinnedItems,
-        loading: false,
-        loadingMore: false,
-        error: null,
-        total: result.total,
-      }))
-    } catch (error) {
-      setFeedState((current) => ({
-        ...current,
-        loading: false,
-        loadingMore: false,
-        error: error instanceof Error ? error.message : '加载日志流失败',
-      }))
-    }
+  const feedData = feedQuery.data ?? {
+    items: [],
+    pinnedItems: [],
+    total: 0,
   }
-
-  useEffect(() => {
-    void loadFeed()
-
-    // 登录态切换后重新拉取日志，确保已登录用户能看到私密内容。
-  }, [auth.token])
-
-  useEffect(() => {
-
-    void (async () => {
-      try {
-        const result = await api.getLatestComments({
-          limit: LATEST_COMMENTS_FETCH_SIZE,
-          offset: 0,
-          order: 'created_at_desc',
-        })
-        setLatestComments({
-          items: result.items
-            .filter(isTopLevelComment)
-            .slice(0, LATEST_COMMENTS_PAGE_SIZE),
-          total: result.total,
-        })
-        setLatestCommentsError(null)
-      } catch (error) {
-        setLatestComments({
-          items: [],
-          total: 0,
-        })
-        setLatestCommentsError(
-          error instanceof Error ? error.message : '加载最新评论失败'
-        )
-      } finally {
-        setLatestCommentsLoading(false)
-      }
-    })()
-
-    void (async () => {
-      try {
-        const result = await api.getTags({
-          limit: 16,
-          offset: 0,
-          order: 'hot_desc',
-        })
-        setTags(result)
-        setTagsError(null)
-      } catch {
-        try {
-          const fallback = await api.getTags({
-            limit: 16,
-            offset: 0,
-            order: 'created_at_desc',
-          })
-          setTags(fallback)
-          setTagsError(null)
-        } catch (error) {
-          setTags({
-            items: [],
-            total: 0,
-          })
-          setTagsError(error instanceof Error ? error.message : '加载标签失败')
-        }
-      } finally {
-        setTagsLoading(false)
-      }
-    })()
-  }, [])
-
-  const loadedPostCount = feedState.items.length + feedState.pinnedItems.length
-  const canLoadMorePosts = loadedPostCount < feedState.total
+  const latestComments = latestCommentsQuery.data ?? {
+    items: [],
+    total: 0,
+  }
+  const tags = tagsQuery.data ?? {
+    items: [],
+    total: 0,
+  }
+  const feedError =
+    feedQuery.error instanceof Error ? feedQuery.error.message : null
+  const latestCommentsError =
+    latestCommentsQuery.error instanceof Error
+      ? latestCommentsQuery.error.message
+      : null
+  const tagsError =
+    tagsQuery.error instanceof Error ? tagsQuery.error.message : null
+  const loadedPostCount = feedData.items.length + feedData.pinnedItems.length
+  const canLoadMorePosts = loadedPostCount < feedData.total
   const normalizedAnnouncement = siteAnnouncement.trim() || '暂无公告'
   const siteStats = useMemo(
     () => [
-      { label: '日志', value: feedState.total },
+      { label: '日志', value: feedData.total },
       { label: '评论', value: latestComments.total },
       { label: '标签', value: tags.total },
     ],
-    [feedState.total, latestComments.total, tags.total]
+    [feedData.total, latestComments.total, tags.total],
   )
   const getEntranceTransition = (delay = 0) =>
     prefersReducedMotion
       ? { duration: 0 }
       : { duration: 0.32, ease: 'easeOut' as const, delay }
+
+  async function refreshFeed() {
+    await feedQuery.refetch()
+  }
 
   async function handlePublish(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -262,7 +181,6 @@ function HomePage() {
     }
 
     const normalizedPin = publishPin.trim()
-    let pin: number | undefined
 
     if (publishPinned) {
       if (!normalizedPin) {
@@ -276,31 +194,26 @@ function HomePage() {
         setPublishError('Pin 必须是大于 0 的整数')
         return
       }
-
-      pin = parsedPin
     }
 
-    setPublishing(true)
     setPublishError(null)
 
     try {
-      await api.createAdminPost(
-        {
-          content: normalizeMarkdownContent(publishDraft),
-          hide: publishHidden,
-          pin,
-        },
-        auth.token
-      )
+      await publishMutation.mutateAsync(auth.token)
       setPublishDraft('')
       setPublishHidden(false)
       setPublishPinned(false)
       setPublishPin('')
-      await loadFeed()
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.postsPrefix(auth.token),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.latestCommentsPrefix(),
+        }),
+      ])
     } catch (error) {
       setPublishError(error instanceof Error ? error.message : '发布失败')
-    } finally {
-      setPublishing(false)
     }
   }
 
@@ -325,72 +238,77 @@ function HomePage() {
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handlePublish}>
-                  <FieldGroup>
-                    <Field data-invalid={!!publishError}>
-                      <MarkdownEditor
-                        height={150}
-                        onChange={setPublishDraft}
-                        placeholder="快写下你的想法吧，支持 Markdown。"
-                        value={publishDraft}
-                      />
-                      <FieldError>{publishError}</FieldError>
-                    </Field>
+                    <FieldGroup>
+                      <Field data-invalid={!!publishError}>
+                        <MarkdownEditor
+                          height={150}
+                          onChange={setPublishDraft}
+                          placeholder="快写下你的想法吧，支持 Markdown。"
+                          value={publishDraft}
+                        />
+                        <FieldError>{publishError}</FieldError>
+                      </Field>
 
-                    <Field orientation="horizontal">
-                      <Switch
-                        checked={publishPinned}
-                        id="quick-publish-pin-enabled"
-                        onCheckedChange={(checked) => {
-                          setPublishPinned(checked)
-                          if (!checked) {
-                            setPublishPin('')
-                          }
-                        }}
-                        size="sm"
-                      />
-                      <FieldContent>
-                        <FieldLabel htmlFor="quick-publish-pin-enabled">
-                          <FieldTitle>置顶</FieldTitle>
-                        </FieldLabel>
-                        {publishPinned ? (
-                          <div className="mt-2">
-                            <Input
-                              className="w-28"
-                              id="quick-publish-pin"
-                              inputMode="numeric"
-                              min={1}
-                              onChange={(event) => setPublishPin(event.target.value)}
-                              placeholder="权重"
-                              step={1}
-                              type="number"
-                              value={publishPin}
-                            />
-                          </div>
-                        ) : null}
-                      </FieldContent>
-                    </Field>
+                      <Field orientation="horizontal">
+                        <Switch
+                          checked={publishPinned}
+                          id="quick-publish-pin-enabled"
+                          onCheckedChange={(checked) => {
+                            setPublishPinned(checked)
+                            if (!checked) {
+                              setPublishPin('')
+                            }
+                          }}
+                          size="sm"
+                        />
+                        <FieldContent>
+                          <FieldLabel htmlFor="quick-publish-pin-enabled">
+                            <FieldTitle>置顶</FieldTitle>
+                          </FieldLabel>
+                          {publishPinned ? (
+                            <div className="mt-2">
+                              <Input
+                                className="w-28"
+                                id="quick-publish-pin"
+                                inputMode="numeric"
+                                min={1}
+                                onChange={(event) =>
+                                  setPublishPin(event.target.value)
+                                }
+                                placeholder="权重"
+                                step={1}
+                                type="number"
+                                value={publishPin}
+                              />
+                            </div>
+                          ) : null}
+                        </FieldContent>
+                      </Field>
 
-                    <Field orientation="horizontal">
-                      <Switch
-                        checked={publishHidden}
-                        id="quick-publish-hidden"
-                        onCheckedChange={setPublishHidden}
-                        size="sm"
-                      />
-                      <FieldContent>
-                        <FieldLabel htmlFor="quick-publish-hidden">
-                          <FieldTitle>私密发布</FieldTitle>
-                        </FieldLabel>
-                      </FieldContent>
-                    </Field>
-                  </FieldGroup>
+                      <Field orientation="horizontal">
+                        <Switch
+                          checked={publishHidden}
+                          id="quick-publish-hidden"
+                          onCheckedChange={setPublishHidden}
+                          size="sm"
+                        />
+                        <FieldContent>
+                          <FieldLabel htmlFor="quick-publish-hidden">
+                            <FieldTitle>私密发布</FieldTitle>
+                          </FieldLabel>
+                        </FieldContent>
+                      </Field>
+                    </FieldGroup>
 
-                  <div className="mt-3 flex justify-end">
-                    <Button disabled={publishing} type="submit">
-                      <CornerRightUpIcon data-icon="inline-start" />
-                      {publishing ? '正在发布…' : '立即发布'}
-                    </Button>
-                  </div>
+                    <div className="mt-3 flex justify-end">
+                      <Button
+                        disabled={publishMutation.isPending}
+                        type="submit"
+                      >
+                        <CornerRightUpIcon data-icon="inline-start" />
+                        {publishMutation.isPending ? '正在发布…' : '立即发布'}
+                      </Button>
+                    </div>
                   </form>
                 </CardContent>
               </Card>
@@ -410,7 +328,7 @@ function HomePage() {
                 whileTap={prefersReducedMotion ? undefined : { scale: 0.98 }}
               >
                 <Button
-                  onClick={() => void loadFeed()}
+                  onClick={() => void refreshFeed()}
                   size="sm"
                   type="button"
                   variant="outline"
@@ -421,10 +339,13 @@ function HomePage() {
               </motion.div>
             </div>
 
-            {feedState.loading ? (
+            {feedQuery.isPending ? (
               <div className="flex flex-col gap-4">
                 {Array.from({ length: 3 }).map((_, index) => (
-                  <Card key={index} className="border border-border/70 bg-card/90">
+                  <Card
+                    key={index}
+                    className="border border-border/70 bg-card/90"
+                  >
                     <CardHeader>
                       <div className="flex items-center gap-3">
                         <Skeleton className="size-10 rounded-full" />
@@ -444,18 +365,18 @@ function HomePage() {
               </div>
             ) : null}
 
-            {!feedState.loading && feedState.error ? (
+            {!feedQuery.isPending && feedError ? (
               <Alert variant="destructive">
                 <AlertCircleIcon />
                 <AlertTitle>日志流加载失败</AlertTitle>
-                <AlertDescription>{feedState.error}</AlertDescription>
+                <AlertDescription>{feedError}</AlertDescription>
               </Alert>
             ) : null}
 
-            {!feedState.loading &&
-            !feedState.error &&
-            feedState.pinnedItems.length === 0 &&
-            feedState.items.length === 0 ? (
+            {!feedQuery.isPending &&
+            !feedError &&
+            feedData.pinnedItems.length === 0 &&
+            feedData.items.length === 0 ? (
               <Empty className="border border-dashed border-border/80 bg-card/60">
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
@@ -469,45 +390,45 @@ function HomePage() {
               </Empty>
             ) : null}
 
-            {!feedState.loading && !feedState.error ? (
+            {!feedQuery.isPending && !feedError ? (
               <div className="flex flex-col gap-4">
                 <AnimatePresence initial={false}>
-                  {[...feedState.pinnedItems, ...feedState.items].map((post, index) => (
-                    <motion.div
-                      key={post.id}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={
-                        prefersReducedMotion
-                          ? undefined
-                          : { opacity: 0, scale: 0.98, y: -8 }
-                      }
-                      initial={
-                        prefersReducedMotion
-                          ? false
-                          : { opacity: 0, scale: 0.98, y: 12 }
-                      }
-                      layout
-                      transition={getEntranceTransition(Math.min(index * 0.03, 0.18))}
-                    >
-                      <PostCard
-                        onPostDeleted={(postId) => {
-                          setFeedState((current) => ({
-                            ...current,
-                            pinnedItems: current.pinnedItems.filter(
-                              (item) => item.id !== postId
-                            ),
-                            items: current.items.filter((item) => item.id !== postId),
-                            total: Math.max(0, current.total - 1),
-                          }))
-                          setLatestComments((current) => ({
-                            ...current,
-                            items: current.items.filter((comment) => comment.post_id !== postId),
-                          }))
-                        }}
-                        post={post}
-                      />
-                    </motion.div>
-                  ))}
+                  {[...feedData.pinnedItems, ...feedData.items].map(
+                    (post, index) => (
+                      <motion.div
+                        key={post.id}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={
+                          prefersReducedMotion
+                            ? undefined
+                            : { opacity: 0, scale: 0.98, y: -8 }
+                        }
+                        initial={
+                          prefersReducedMotion
+                            ? false
+                            : { opacity: 0, scale: 0.98, y: 12 }
+                        }
+                        layout
+                        transition={getEntranceTransition(
+                          Math.min(index * 0.03, 0.18),
+                        )}
+                      >
+                        <PostCard
+                          onPostDeleted={() => {
+                            void Promise.all([
+                              queryClient.invalidateQueries({
+                                queryKey: queryKeys.postsPrefix(auth.token),
+                              }),
+                              queryClient.invalidateQueries({
+                                queryKey: queryKeys.latestCommentsPrefix(),
+                              }),
+                            ])
+                          }}
+                          post={post}
+                        />
+                      </motion.div>
+                    ),
+                  )}
                 </AnimatePresence>
               </div>
             ) : null}
@@ -518,12 +439,14 @@ function HomePage() {
                 whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
               >
                 <Button
-                  disabled={feedState.loadingMore}
-                  onClick={() => void loadFeed('more')}
+                  disabled={feedQuery.isFetching}
+                  onClick={() =>
+                    setFeedLimit((current) => current + FEED_PAGE_SIZE)
+                  }
                   type="button"
                   variant="outline"
                 >
-                  {feedState.loadingMore ? '正在加载…' : '加载更多日志'}
+                  {feedQuery.isFetching ? '正在加载…' : '加载更多日志'}
                 </Button>
               </motion.div>
             ) : null}
@@ -556,13 +479,17 @@ function HomePage() {
                     className="rounded-xl px-3 py-2 text-center"
                   >
                     <div className="text-lg font-semibold">{item.value}</div>
-                    <div className="text-xs text-muted-foreground">{item.label}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {item.label}
+                    </div>
                   </div>
                 ))}
               </div>
 
               {settingsLoading ? (
-                <div className="text-xs text-muted-foreground">正在同步站点配置…</div>
+                <div className="text-xs text-muted-foreground">
+                  正在同步站点配置…
+                </div>
               ) : null}
             </CardContent>
           </Card>
@@ -587,12 +514,14 @@ function HomePage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
-              {latestCommentsLoading
+              {latestCommentsQuery.isPending
                 ? Array.from({ length: 3 }).map((_, index) => (
                     <div
                       key={index}
                       className={`px-2.5 pt-2.5 pb-1.5 ${
-                        index > 0 ? 'border-t border-dashed border-border/60' : ''
+                        index > 0
+                          ? 'border-t border-dashed border-border/60'
+                          : ''
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -613,7 +542,7 @@ function HomePage() {
                 </Alert>
               ) : null}
 
-              {!latestCommentsLoading &&
+              {!latestCommentsQuery.isPending &&
               !latestCommentsError &&
               latestComments.items.length === 0 ? (
                 <Empty className="border border-dashed border-border/80 bg-muted/20">
@@ -626,18 +555,26 @@ function HomePage() {
                 </Empty>
               ) : null}
 
-              {!latestCommentsLoading && !latestCommentsError ? (
+              {!latestCommentsQuery.isPending && !latestCommentsError ? (
                 <AnimatePresence initial={false}>
                   {latestComments.items.map((comment, index) => (
                     <motion.article
                       key={comment.id}
                       animate={{ opacity: 1, x: 0 }}
                       className={`px-2.5 pt-2.5 pb-1.5 ${
-                        index > 0 ? 'border-t border-dashed border-border/60' : ''
+                        index > 0
+                          ? 'border-t border-dashed border-border/60'
+                          : ''
                       }`}
-                      exit={prefersReducedMotion ? undefined : { opacity: 0, x: -8 }}
-                      initial={prefersReducedMotion ? false : { opacity: 0, x: 8 }}
-                      transition={getEntranceTransition(Math.min(index * 0.03, 0.15))}
+                      exit={
+                        prefersReducedMotion ? undefined : { opacity: 0, x: -8 }
+                      }
+                      initial={
+                        prefersReducedMotion ? false : { opacity: 0, x: 8 }
+                      }
+                      transition={getEntranceTransition(
+                        Math.min(index * 0.03, 0.15),
+                      )}
                     >
                       <div className="flex items-start gap-3">
                         <Avatar size="sm">
@@ -651,13 +588,18 @@ function HomePage() {
                         </Avatar>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2 text-[0.8rem]">
-                            <span className="font-medium leading-none">{comment.author.nickname}</span>
+                            <span className="font-medium leading-none">
+                              {comment.author.nickname}
+                            </span>
                             <span className="text-[0.7rem] text-muted-foreground">
                               {formatRelativeTime(comment.created_at)}
                             </span>
                           </div>
                           <div className="mt-1 text-foreground/85">
-                            <MarkdownContent compact content={comment.content} />
+                            <MarkdownContent
+                              compact
+                              content={comment.content}
+                            />
                           </div>
                           <div className="mt-1.5 text-[0.7rem] text-muted-foreground">
                             来自日志 #{comment.post_id}
@@ -687,7 +629,7 @@ function HomePage() {
               ) : null}
 
               <div className="flex flex-wrap gap-2">
-                {tagsLoading
+                {tagsQuery.isPending
                   ? Array.from({ length: 8 }).map((_, index) => (
                       <Skeleton key={index} className="h-7 w-20 rounded-full" />
                     ))
@@ -699,7 +641,7 @@ function HomePage() {
                     ))}
               </div>
 
-              {!tagsLoading && !tagsError && tags.items.length === 0 ? (
+              {!tagsQuery.isPending && !tagsError && tags.items.length === 0 ? (
                 <Empty className="border border-dashed border-border/80 bg-muted/20">
                   <EmptyHeader>
                     <EmptyMedia variant="icon">
