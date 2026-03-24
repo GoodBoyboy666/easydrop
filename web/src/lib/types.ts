@@ -40,6 +40,7 @@ export interface PostDTO {
 }
 
 export interface CommentAuthorDTO {
+  admin?: boolean
   avatar?: string
   id: number
   nickname: string

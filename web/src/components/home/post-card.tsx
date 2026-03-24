@@ -5,6 +5,7 @@ import {
   ChevronDownIcon,
   MessageSquareMoreIcon,
   SendHorizontalIcon,
+  XIcon,
 } from 'lucide-react'
 import { api, ApiError } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
@@ -64,6 +65,7 @@ export function PostCard({ onPostRefreshed, post }: PostCardProps) {
   const [commentError, setCommentError] = useState<string | null>(null)
   const [composerOpen, setComposerOpen] = useState(false)
   const [commentDraft, setCommentDraft] = useState('')
+  const [replyTarget, setReplyTarget] = useState<CommentDTO | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -115,6 +117,13 @@ export function PostCard({ onPostRefreshed, post }: PostCardProps) {
     }
   }, [post.id])
 
+  useEffect(() => {
+    setReplyTarget(null)
+    setCommentDraft('')
+    setSubmitError(null)
+    setComposerOpen(false)
+  }, [post.id])
+
   async function loadMoreComments() {
     setCommentError(null)
     setCommentState((current) => ({ ...current, loadingMore: true }))
@@ -145,6 +154,22 @@ export function PostCard({ onPostRefreshed, post }: PostCardProps) {
     window.location.assign('/login?redirect=/')
   }
 
+  function startReply(comment: CommentDTO) {
+    if (auth.status !== 'authenticated' || !auth.token) {
+      redirectToLogin()
+      return
+    }
+
+    setReplyTarget(comment)
+    setComposerOpen(true)
+    setSubmitError(null)
+  }
+
+  function cancelReply() {
+    setReplyTarget(null)
+    setSubmitError(null)
+  }
+
   async function handleCommentSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
@@ -166,12 +191,14 @@ export function PostCard({ onPostRefreshed, post }: PostCardProps) {
         post.id,
         {
           content: normalizeMarkdownContent(commentDraft),
+          parent_id: replyTarget?.id,
         },
         auth.token
       )
 
       setCommentDraft('')
       setComposerOpen(true)
+      setReplyTarget(null)
 
       const result = await api.getPostComments(post.id, {
         limit: Math.max(
@@ -204,6 +231,12 @@ export function PostCard({ onPostRefreshed, post }: PostCardProps) {
   }
 
   const hasMoreComments = commentState.items.length < commentState.total
+  const commentPlaceholder = replyTarget
+    ? `回复 ${replyTarget.author.nickname}，支持 Markdown 评论。`
+    : '说点什么，支持 Markdown 评论。'
+  const commentDescription = replyTarget
+    ? `当前将回复 ${replyTarget.author.nickname}，发布后会以扁平评论形式展示。`
+    : '支持直接评论和回复评论，原始 HTML 默认禁用。'
 
   return (
     <Card className="border border-border/70 bg-card/90 shadow-sm">
@@ -223,20 +256,18 @@ export function PostCard({ onPostRefreshed, post }: PostCardProps) {
         </div>
       </CardHeader>
 
-      <CardContent className="flex flex-col gap-4 pt-4">
+      <CardContent className="flex flex-col gap-4">
         <div className="flex flex-col gap-3">
           <MarkdownContent content={post.content} />
-          <div className="flex flex-wrap gap-2">
-            {post.tags?.length ? (
-              post.tags.map((tag) => (
+          {post.tags?.length ? (
+            <div className="flex flex-wrap gap-2">
+              {post.tags.map((tag) => (
                 <Badge key={tag.id} variant="secondary">
                   #{tag.name}
                 </Badge>
-              ))
-            ) : (
-              <Badge variant="outline">未分类</Badge>
-            )}
-          </div>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <Separator />
@@ -257,7 +288,11 @@ export function PostCard({ onPostRefreshed, post }: PostCardProps) {
                   onClick={() => {
                     if (auth.status !== 'authenticated') {
                       redirectToLogin()
+                      return
                     }
+
+                    setReplyTarget(null)
+                    setSubmitError(null)
                   }}
                 >
                   <MessageSquareMoreIcon data-icon="inline-start" />
@@ -272,17 +307,35 @@ export function PostCard({ onPostRefreshed, post }: PostCardProps) {
               className="rounded-xl border border-border/70 bg-muted/40 p-3"
               onSubmit={handleCommentSubmit}
             >
+              {replyTarget ? (
+                <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-background/80 px-3 py-2 text-sm">
+                  <div className="min-w-0 text-muted-foreground">
+                    正在回复
+                    <span className="ml-1 font-medium text-foreground">
+                      {replyTarget.author.nickname}
+                    </span>
+                  </div>
+                  <Button
+                    onClick={cancelReply}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <XIcon data-icon="inline-start" />
+                    取消回复
+                  </Button>
+                </div>
+              ) : null}
+
               <FieldGroup>
                 <Field data-invalid={!!submitError}>
                   <MarkdownEditor
                     height={120}
                     onChange={setCommentDraft}
-                    placeholder="说点什么，支持 Markdown 评论。"
+                    placeholder={commentPlaceholder}
                     value={commentDraft}
                   />
-                  <FieldDescription>
-                    当前仅支持发布顶层评论，支持 Markdown，原始 HTML 默认禁用。
-                  </FieldDescription>
+                  <FieldDescription>{commentDescription}</FieldDescription>
                   <FieldError>{submitError}</FieldError>
                 </Field>
               </FieldGroup>
@@ -345,9 +398,23 @@ export function PostCard({ onPostRefreshed, post }: PostCardProps) {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2 text-[0.8rem]">
                       <span className="font-medium leading-none">{comment.author.nickname}</span>
+                      {comment.author.admin ? (
+                        <Badge className="h-4 px-1.5 text-[10px] leading-none">
+                          管理员
+                        </Badge>
+                      ) : null}
                       <span className="text-[0.7rem] text-muted-foreground">
                         {formatRelativeTime(comment.created_at)}
                       </span>
+                      <Button
+                        className="h-auto px-0 py-0 text-[0.7rem] text-muted-foreground"
+                        onClick={() => startReply(comment)}
+                        size="sm"
+                        type="button"
+                        variant="link"
+                      >
+                        回复
+                      </Button>
                     </div>
                     {comment.reply_to_user ? (
                       <div className="mt-1 text-[0.7rem] text-muted-foreground">
