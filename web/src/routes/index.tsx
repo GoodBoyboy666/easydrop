@@ -10,6 +10,7 @@ import {
   RefreshCwIcon,
 } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import type { HTMLMotionProps } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
@@ -64,6 +65,14 @@ const FEED_PAGE_SIZE = 8
 const LATEST_COMMENTS_PAGE_SIZE = 6
 const LATEST_COMMENTS_FETCH_SIZE = 24
 const MOTION_DELAY_SECONDS = 0.1
+const gpuTransformTemplate: NonNullable<
+  HTMLMotionProps<'div'>['transformTemplate']
+> = (_, generatedTransform) =>
+  generatedTransform ? `${generatedTransform} translateZ(0)` : 'translateZ(0)'
+const GPU_ACCELERATED_MOTION_PROPS = {
+  style: { willChange: 'transform, opacity' },
+  transformTemplate: gpuTransformTemplate,
+} as const
 
 function isTopLevelComment(comment: CommentDTO) {
   return comment.root_id == null && comment.parent_id == null
@@ -187,6 +196,7 @@ function HomePage() {
     prefersReducedMotion
       ? { duration: 0 }
       : {
+        type: "tween",
           duration: 0.32,
           ease: 'easeOut' as const,
           delay: delay + MOTION_DELAY_SECONDS,
@@ -253,6 +263,7 @@ function HomePage() {
         className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]"
         initial={false}
         transition={getEntranceTransition()}
+        {...GPU_ACCELERATED_MOTION_PROPS}
       >
         <div className="flex min-w-0 flex-col gap-6">
           {auth.status === 'authenticated' && auth.isAdmin ? (
@@ -262,6 +273,7 @@ function HomePage() {
               }
               initial={false}
               transition={getEntranceTransition(0.06)}
+              {...GPU_ACCELERATED_MOTION_PROPS}
             >
               <Card className="bg-primary/5 shadow-sm">
                 <CardHeader>
@@ -357,6 +369,7 @@ function HomePage() {
               <motion.div
                 whileHover={prefersReducedMotion ? undefined : { scale: 1.02 }}
                 whileTap={prefersReducedMotion ? undefined : { scale: 0.98 }}
+                {...GPU_ACCELERATED_MOTION_PROPS}
               >
                 <Button
                   onClick={() => void refreshFeed()}
@@ -443,6 +456,7 @@ function HomePage() {
                         transition={getEntranceTransition(
                           Math.min(index * 0.03, 0.18),
                         )}
+                        {...GPU_ACCELERATED_MOTION_PROPS}
                       >
                         <PostCard
                           onPostDeleted={() => {
@@ -468,6 +482,7 @@ function HomePage() {
               <motion.div
                 whileHover={prefersReducedMotion ? undefined : { y: -1 }}
                 whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
+                {...GPU_ACCELERATED_MOTION_PROPS}
               >
                 <Button
                   disabled={feedQuery.isFetching}
@@ -489,6 +504,7 @@ function HomePage() {
           className="flex min-w-0 flex-col gap-4"
           initial={false}
           transition={getEntranceTransition(0.12)}
+          {...GPU_ACCELERATED_MOTION_PROPS}
         >
           <Card className="bg-card/90 shadow-sm">
             <CardHeader>
@@ -608,6 +624,7 @@ function HomePage() {
                       transition={getEntranceTransition(
                         Math.min(index * 0.03, 0.15),
                       )}
+                      {...GPU_ACCELERATED_MOTION_PROPS}
                     >
                       <div className="flex items-start gap-3">
                         <Avatar size="sm">
