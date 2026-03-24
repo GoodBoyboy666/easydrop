@@ -10,7 +10,7 @@ import {
   RefreshCwIcon,
 } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import type { HTMLMotionProps } from 'motion/react'
+import type { HTMLMotionProps, Transition } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
@@ -192,11 +192,11 @@ function HomePage() {
     }
   }, [prefersReducedMotion])
 
-  const getEntranceTransition = (delay = 0) =>
+  const getEntranceTransition = (delay = 0): Transition =>
     prefersReducedMotion
       ? { duration: 0 }
       : {
-        type: "tween",
+          type: 'tween',
           duration: 0.32,
           ease: 'easeOut' as const,
           delay: delay + MOTION_DELAY_SECONDS,

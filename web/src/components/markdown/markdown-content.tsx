@@ -1,6 +1,6 @@
 'use client'
 
-import MDEditor from '@uiw/react-md-editor'
+import ReactMarkdown from 'react-markdown'
 import {
   markdownComponents,
   markdownRehypePlugins,
@@ -31,12 +31,15 @@ export function MarkdownContent({
         className,
       )}
     >
-      <MDEditor.Markdown
-        components={markdownComponents}
-        source={content}
-        rehypePlugins={markdownRehypePlugins}
-        remarkPlugins={markdownRemarkPlugins}
-      />
+      <div className="markdown-body">
+        <ReactMarkdown
+          components={markdownComponents}
+          rehypePlugins={markdownRehypePlugins}
+          remarkPlugins={markdownRemarkPlugins}
+        >
+          {content}
+        </ReactMarkdown>
+      </div>
     </div>
   )
 }
