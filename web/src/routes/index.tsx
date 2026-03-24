@@ -10,7 +10,7 @@ import {
   RefreshCwIcon,
 } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
 import { formatRelativeTime, getInitials } from '#/lib/format'
@@ -63,6 +63,7 @@ export const Route = createFileRoute('/')({
 const FEED_PAGE_SIZE = 8
 const LATEST_COMMENTS_PAGE_SIZE = 6
 const LATEST_COMMENTS_FETCH_SIZE = 24
+const MOTION_DELAY_SECONDS = 0.1
 
 function isTopLevelComment(comment: CommentDTO) {
   return comment.root_id == null && comment.parent_id == null
@@ -85,6 +86,7 @@ function HomePage() {
   const [publishPinned, setPublishPinned] = useState(false)
   const [publishPin, setPublishPin] = useState('')
   const [publishError, setPublishError] = useState<string | null>(null)
+  const [motionReady, setMotionReady] = useState(prefersReducedMotion)
 
   const feedQuery = useQuery({
     ...postsQueryOptions(auth.token, {
@@ -158,10 +160,37 @@ function HomePage() {
     ],
     [feedData.total, latestComments.total, tags.total],
   )
+
+  useEffect(() => {
+    if (prefersReducedMotion) {
+      setMotionReady(true)
+      return
+    }
+
+    setMotionReady(false)
+    let raf1 = 0
+    let raf2 = 0
+
+    raf1 = window.requestAnimationFrame(() => {
+      raf2 = window.requestAnimationFrame(() => {
+        setMotionReady(true)
+      })
+    })
+
+    return () => {
+      window.cancelAnimationFrame(raf1)
+      window.cancelAnimationFrame(raf2)
+    }
+  }, [prefersReducedMotion])
+
   const getEntranceTransition = (delay = 0) =>
     prefersReducedMotion
       ? { duration: 0 }
-      : { duration: 0.32, ease: 'easeOut' as const, delay }
+      : {
+          duration: 0.32,
+          ease: 'easeOut' as const,
+          delay: delay + MOTION_DELAY_SECONDS,
+        }
 
   async function refreshFeed() {
     await feedQuery.refetch()
@@ -220,16 +249,18 @@ function HomePage() {
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
       <motion.section
-        animate={{ opacity: 1, y: 0 }}
+        animate={motionReady ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
         className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]"
-        initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+        initial={false}
         transition={getEntranceTransition()}
       >
         <div className="flex min-w-0 flex-col gap-6">
           {auth.status === 'authenticated' && auth.isAdmin ? (
             <motion.div
-              animate={{ opacity: 1, y: 0 }}
-              initial={prefersReducedMotion ? false : { opacity: 0, y: 12 }}
+              animate={
+                motionReady ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }
+              }
+              initial={false}
               transition={getEntranceTransition(0.06)}
             >
               <Card className="bg-primary/5 shadow-sm">
@@ -397,17 +428,17 @@ function HomePage() {
                     (post, index) => (
                       <motion.div
                         key={post.id}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        animate={
+                          motionReady
+                            ? { opacity: 1, scale: 1, y: 0 }
+                            : { opacity: 0, scale: 0.98, y: 12 }
+                        }
                         exit={
                           prefersReducedMotion
                             ? undefined
                             : { opacity: 0, scale: 0.98, y: -8 }
                         }
-                        initial={
-                          prefersReducedMotion
-                            ? false
-                            : { opacity: 0, scale: 0.98, y: 12 }
-                        }
+                        initial={false}
                         layout
                         transition={getEntranceTransition(
                           Math.min(index * 0.03, 0.18),
@@ -454,9 +485,9 @@ function HomePage() {
         </div>
 
         <motion.aside
-          animate={{ opacity: 1, x: 0 }}
+          animate={motionReady ? { opacity: 1, x: 0 } : { opacity: 0, x: 10 }}
           className="flex min-w-0 flex-col gap-4"
-          initial={prefersReducedMotion ? false : { opacity: 0, x: 10 }}
+          initial={false}
           transition={getEntranceTransition(0.12)}
         >
           <Card className="bg-card/90 shadow-sm">
@@ -560,7 +591,11 @@ function HomePage() {
                   {latestComments.items.map((comment, index) => (
                     <motion.article
                       key={comment.id}
-                      animate={{ opacity: 1, x: 0 }}
+                      animate={
+                        motionReady
+                          ? { opacity: 1, x: 0 }
+                          : { opacity: 0, x: 8 }
+                      }
                       className={`px-2.5 pt-2.5 pb-1.5 ${
                         index > 0
                           ? 'border-t border-dashed border-border/60'
@@ -569,9 +604,7 @@ function HomePage() {
                       exit={
                         prefersReducedMotion ? undefined : { opacity: 0, x: -8 }
                       }
-                      initial={
-                        prefersReducedMotion ? false : { opacity: 0, x: 8 }
-                      }
+                      initial={false}
                       transition={getEntranceTransition(
                         Math.min(index * 0.03, 0.15),
                       )}
