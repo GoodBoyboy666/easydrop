@@ -3,6 +3,8 @@ import {
   AlertCircleIcon,
   CornerRightUpIcon,
   HashIcon,
+  LogsIcon,
+  MegaphoneIcon,
   MessageSquareTextIcon,
   RefreshCwIcon,
 } from 'lucide-react'
@@ -266,7 +268,10 @@ function HomePage() {
           <section className="flex flex-col gap-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="font-heading text-lg font-semibold">日志</h2>
+                <h2 className="font-heading flex items-center gap-2 text-lg font-semibold">
+                  <LogsIcon className="size-4 text-muted-foreground" />
+                  日志
+                </h2>
               </div>
               <Button
                 onClick={() => void loadFeed()}
@@ -393,7 +398,10 @@ function HomePage() {
 
           <Card className="bg-card/90 shadow-sm">
             <CardHeader>
-              <CardTitle>网站公告</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <MegaphoneIcon className="size-4 text-muted-foreground" />
+                网站公告
+              </CardTitle>
             </CardHeader>
             <CardContent className="text-sm leading-7 text-muted-foreground">
               {normalizedAnnouncement}
@@ -402,7 +410,10 @@ function HomePage() {
 
           <Card className="bg-card/90 shadow-sm">
             <CardHeader>
-              <CardTitle>最新评论</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquareTextIcon className="size-4 text-muted-foreground" />
+                最新评论
+              </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
               {latestCommentsLoading
@@ -485,7 +496,10 @@ function HomePage() {
 
           <Card className="bg-card/90 shadow-sm">
             <CardHeader>
-              <CardTitle>全站 Tag</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <HashIcon className="size-4 text-muted-foreground" />
+                全站 Tag
+              </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
               {tagsError ? (
