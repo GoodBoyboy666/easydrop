@@ -34,6 +34,7 @@ export interface PostDTO {
   author: PostAuthorDTO
   content: string
   created_at: string
+  disable_comment?: boolean
   hide?: boolean
   id: number
   pin?: number
@@ -117,6 +118,14 @@ export interface InitStatusResult {
 
 export interface CreatePostInput {
   content: string
+  disable_comment?: boolean
+  hide?: boolean
+  pin?: number
+}
+
+export interface UpdatePostInput {
+  content?: string
+  disable_comment?: boolean
   hide?: boolean
   pin?: number
 }

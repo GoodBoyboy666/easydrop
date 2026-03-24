@@ -72,6 +72,7 @@ const LOAD_MORE_COMMENT_PAGE_SIZE = 5
 
 export function PostCard({ onPostDeleted, post }: PostCardProps) {
   const auth = useAuth()
+  const [postState, setPostState] = useState(post)
   const [commentState, setCommentState] = useState<CommentState>({
     items: [],
     loading: true,
@@ -85,6 +86,7 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
   const [replyTarget, setReplyTarget] = useState<CommentDTO | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [updatingCommentSetting, setUpdatingCommentSetting] = useState(false)
   const [deletingCommentId, setDeletingCommentId] = useState<number | null>(null)
   const [deletingPost, setDeletingPost] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<PendingDelete>(null)
@@ -98,7 +100,7 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
     }))
 
     try {
-      const result = await api.getPostComments(post.id, {
+      const result = await api.getPostComments(postState.id, {
         limit,
         offset: 0,
         order: 'created_at_desc',
@@ -124,11 +126,15 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
   }
 
   useEffect(() => {
+    setPostState(post)
+  }, [post])
+
+  useEffect(() => {
     let cancelled = false
 
     async function loadComments() {
       try {
-        const result = await api.getPostComments(post.id, {
+        const result = await api.getPostComments(postState.id, {
           limit: INITIAL_COMMENT_PAGE_SIZE,
           offset: 0,
           order: 'created_at_desc',
@@ -166,7 +172,7 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
     return () => {
       cancelled = true
     }
-  }, [post.id])
+  }, [postState.id])
 
   useEffect(() => {
     setReplyTarget(null)
@@ -174,14 +180,25 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
     setSubmitError(null)
     setCommentSectionOpen(false)
     setComposerOpen(false)
-  }, [post.id])
+  }, [postState.id])
+
+  useEffect(() => {
+    if (!postState.disable_comment) {
+      return
+    }
+
+    setReplyTarget(null)
+    setCommentDraft('')
+    setSubmitError(null)
+    setComposerOpen(false)
+  }, [postState.disable_comment])
 
   async function loadMoreComments() {
     setCommentError(null)
     setCommentState((current) => ({ ...current, loadingMore: true }))
 
     try {
-      const result = await api.getPostComments(post.id, {
+      const result = await api.getPostComments(postState.id, {
         limit: LOAD_MORE_COMMENT_PAGE_SIZE,
         offset: commentState.items.length,
         order: 'created_at_desc',
@@ -206,7 +223,64 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
     window.location.assign('/login?redirect=/')
   }
 
+  async function toggleCommentAvailability() {
+    if (!auth.token || !auth.isAdmin || updatingCommentSetting) {
+      return
+    }
+
+    setUpdatingCommentSetting(true)
+    setCommentError(null)
+
+    try {
+      const updatedPost = await api.updateAdminPost(
+        postState.id,
+        {
+          disable_comment: !postState.disable_comment,
+        },
+        auth.token
+      )
+      setPostState(updatedPost)
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        auth.logout()
+        redirectToLogin()
+        return
+      }
+
+      setCommentError(
+        error instanceof Error ? error.message : '更新评论区状态失败'
+      )
+    } finally {
+      setUpdatingCommentSetting(false)
+    }
+  }
+
+  function handleOpenComposer() {
+    if (postState.disable_comment) {
+      return
+    }
+
+    if (auth.status !== 'authenticated') {
+      redirectToLogin()
+      return
+    }
+
+    setSubmitError(null)
+
+    if (replyTarget) {
+      setReplyTarget(null)
+      setComposerOpen(true)
+      return
+    }
+
+    setComposerOpen((open) => !open)
+  }
+
   function startReply(comment: CommentDTO) {
+    if (postState.disable_comment) {
+      return
+    }
+
     if (auth.status !== 'authenticated' || !auth.token) {
       redirectToLogin()
       return
@@ -248,8 +322,8 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
     setCommentError(null)
 
     try {
-      await api.deleteAdminPost(post.id, auth.token)
-      onPostDeleted?.(post.id)
+      await api.deleteAdminPost(postState.id, auth.token)
+      onPostDeleted?.(postState.id)
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         auth.logout()
@@ -310,6 +384,11 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
   async function handleCommentSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
+    if (postState.disable_comment) {
+      setSubmitError('该日志已关闭评论')
+      return
+    }
+
     if (!hasMarkdownContent(commentDraft)) {
       setSubmitError('评论内容不能为空')
       return
@@ -325,7 +404,7 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
 
     try {
       await api.createPostComment(
-        post.id,
+        postState.id,
         {
           content: normalizeMarkdownContent(commentDraft),
           parent_id: replyTarget?.id,
@@ -407,21 +486,24 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-3">
             <Avatar size="lg">
-              <AvatarImage alt={post.author.nickname} src={post.author.avatar} />
-              <AvatarFallback>{getInitials(post.author.nickname)}</AvatarFallback>
+              <AvatarImage
+                alt={postState.author.nickname}
+                src={postState.author.avatar}
+              />
+              <AvatarFallback>{getInitials(postState.author.nickname)}</AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
               <CardTitle className="flex flex-wrap items-center gap-2">
-                <span className="truncate">{post.author.nickname}</span>
-                {post.pin ? (
+                <span className="truncate">{postState.author.nickname}</span>
+                {postState.pin ? (
                   <Badge
                     className="h-4 px-1.5 text-[10px] leading-none"
-                    variant="default"
+                    variant="outline"
                   >
                     置顶
                   </Badge>
                 ) : null}
-                {post.hide ? (
+                {postState.hide ? (
                   <Badge
                     className="h-4 px-1.5 text-[10px] leading-none"
                     variant="secondary"
@@ -429,10 +511,18 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
                     私密
                   </Badge>
                 ) : null}
+                {postState.disable_comment ? (
+                  <Badge
+                    className="h-4 px-1.5 text-[10px] leading-none"
+                    variant="outline"
+                  >
+                    已关闭评论
+                  </Badge>
+                ) : null}
               </CardTitle>
               <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                <span>{formatRelativeTime(post.created_at)}</span>
-                <span>发布于 {formatDateTime(post.created_at)}</span>
+                <span>{formatRelativeTime(postState.created_at)}</span>
+                <span>发布于 {formatDateTime(postState.created_at)}</span>
               </div>
             </div>
           </div>
@@ -453,10 +543,10 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
 
         <CardContent className="flex flex-col gap-4">
         <div className="flex flex-col gap-3">
-          <MarkdownContent content={post.content} />
-          {post.tags?.length ? (
+          <MarkdownContent content={postState.content} />
+          {postState.tags?.length ? (
             <div className="flex flex-wrap gap-2">
-              {post.tags.map((tag) => (
+              {postState.tags.map((tag) => (
                 <Badge key={tag.id} variant="secondary">
                   #{tag.name}
                 </Badge>
@@ -490,30 +580,31 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
             </CollapsibleTrigger>
           </Collapsible>
 
-          <div className="flex shrink-0 items-center">
+          <div className="flex shrink-0 items-center gap-2">
+            {auth.isAdmin ? (
+              <Button
+                disabled={updatingCommentSetting}
+                onClick={() => void toggleCommentAvailability()}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                {updatingCommentSetting
+                  ? '正在更新…'
+                  : postState.disable_comment
+                    ? '开启评论区'
+                    : '关闭评论区'}
+              </Button>
+            ) : null}
             <Button
+              disabled={postState.disable_comment}
               size="sm"
-              variant={composerOpen ? 'secondary' : 'outline'}
+              variant={composerOpen && !postState.disable_comment ? 'secondary' : 'outline'}
               type="button"
-              onClick={() => {
-                if (auth.status !== 'authenticated') {
-                  redirectToLogin()
-                  return
-                }
-
-                setSubmitError(null)
-
-                if (replyTarget) {
-                  setReplyTarget(null)
-                  setComposerOpen(true)
-                  return
-                }
-
-                setComposerOpen((open) => !open)
-              }}
+              onClick={handleOpenComposer}
             >
               <MessageSquareMoreIcon data-icon="inline-start" />
-              发评论
+              {postState.disable_comment ? '评论已关闭' : '发评论'}
             </Button>
           </div>
         </div>
@@ -693,7 +784,7 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
 
         <CardFooter className="justify-between gap-3">
           <div className="text-xs text-muted-foreground">
-            日志 #{post.id} · 评论 {commentState.total}
+            日志 #{postState.id} · 评论 {commentState.total}
           </div>
         </CardFooter>
       </Card>

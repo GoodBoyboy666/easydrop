@@ -335,11 +335,8 @@ function HomePage() {
                       />
                       <FieldContent>
                         <FieldLabel htmlFor="quick-publish-pin-enabled">
-                          <FieldTitle>置顶发布</FieldTitle>
+                          <FieldTitle>置顶</FieldTitle>
                         </FieldLabel>
-                        <FieldDescription>
-                          开启后可填写 Pin 值，数值越高越靠前。
-                        </FieldDescription>
                         {publishPinned ? (
                           <div className="mt-2">
                             <Input
@@ -348,7 +345,7 @@ function HomePage() {
                               inputMode="numeric"
                               min={1}
                               onChange={(event) => setPublishPin(event.target.value)}
-                              placeholder="Pin 值"
+                              placeholder="权重"
                               step={1}
                               type="number"
                               value={publishPin}

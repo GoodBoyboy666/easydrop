@@ -14,6 +14,7 @@ import type {
   RegisterInput,
   SettingPublicResult,
   TagDTO,
+  UpdatePostInput,
   UserDTO,
 } from '#/lib/types'
 
@@ -190,6 +191,13 @@ export const api = {
   createAdminPost(input: CreatePostInput, token: string) {
     return request<PostDTO>('/admin/posts', {
       method: 'POST',
+      body: JSON.stringify(input),
+      token,
+    })
+  },
+  updateAdminPost(postId: number, input: UpdatePostInput, token: string) {
+    return request<PostDTO>(`/admin/posts/${postId}`, {
+      method: 'PATCH',
       body: JSON.stringify(input),
       token,
     })
