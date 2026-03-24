@@ -32,7 +32,6 @@ import {
 } from '#/components/ui/collapsible'
 import {
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
 } from '#/components/ui/field'
@@ -40,7 +39,6 @@ import { Separator } from '#/components/ui/separator'
 import { Skeleton } from '#/components/ui/skeleton'
 
 interface PostCardProps {
-  onPostRefreshed?: () => Promise<void> | void
   post: PostDTO
 }
 
@@ -54,7 +52,7 @@ interface CommentState {
 const INITIAL_COMMENT_PAGE_SIZE = 3
 const LOAD_MORE_COMMENT_PAGE_SIZE = 5
 
-export function PostCard({ onPostRefreshed, post }: PostCardProps) {
+export function PostCard({ post }: PostCardProps) {
   const auth = useAuth()
   const [commentState, setCommentState] = useState<CommentState>({
     items: [],
@@ -219,8 +217,6 @@ export function PostCard({ onPostRefreshed, post }: PostCardProps) {
         loadingMore: false,
         total: result.total,
       })
-
-      await onPostRefreshed?.()
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         auth.logout()
@@ -237,10 +233,7 @@ export function PostCard({ onPostRefreshed, post }: PostCardProps) {
   const hasMoreComments = commentState.items.length < commentState.total
   const commentPlaceholder = replyTarget
     ? `回复 ${replyTarget.author.nickname}，支持 Markdown 评论。`
-    : '说点什么，支持 Markdown 评论。'
-  const commentDescription = replyTarget
-    ? `当前将回复 ${replyTarget.author.nickname}，发布后会以扁平评论形式展示。`
-    : '支持直接评论和回复评论，原始 HTML 默认禁用。'
+    : '期待你的发言，支持 Markdown 评论。'
 
   return (
     <Card className="border border-border/70 bg-card/90 shadow-sm">
@@ -366,7 +359,6 @@ export function PostCard({ onPostRefreshed, post }: PostCardProps) {
                       placeholder={commentPlaceholder}
                       value={commentDraft}
                     />
-                    <FieldDescription>{commentDescription}</FieldDescription>
                     <FieldError>{submitError}</FieldError>
                   </Field>
                 </FieldGroup>

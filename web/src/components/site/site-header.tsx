@@ -48,7 +48,7 @@ import {
 } from '#/components/ui/sheet'
 
 const navItems = [
-  { label: '日志流', to: '/' as const },
+  { label: '日志', to: '/' as const },
   { label: '我的评论', to: '/me/comments' as const },
 ]
 
