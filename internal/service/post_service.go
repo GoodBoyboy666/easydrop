@@ -304,6 +304,7 @@ func toPostDTO(post *model.Post) *dto.PostDTO {
 			ID:       post.User.ID,
 			Nickname: post.User.Nickname,
 			Avatar:   post.User.Avatar,
+			Admin:    post.User.Admin,
 		},
 		Tags:      toTagDTOs(post.Tags),
 		CreatedAt: post.CreatedAt,

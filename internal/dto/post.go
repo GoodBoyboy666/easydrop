@@ -41,6 +41,7 @@ type PostAuthorDTO struct {
 	ID       uint    `json:"id"`
 	Nickname string  `json:"nickname"`
 	Avatar   *string `json:"avatar"`
+	Admin    bool    `json:"admin"`
 }
 
 type PostListResult struct {

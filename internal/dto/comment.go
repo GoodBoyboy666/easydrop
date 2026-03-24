@@ -69,6 +69,7 @@ type CommentAuthorDTO struct {
 	ID       uint    `json:"id"`
 	Nickname string  `json:"nickname"`
 	Avatar   *string `json:"avatar"`
+	Admin    bool    `json:"admin"`
 }
 
 type CommentListResult struct {

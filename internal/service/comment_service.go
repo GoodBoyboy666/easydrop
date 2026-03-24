@@ -304,6 +304,7 @@ func toCommentDTO(comment *model.Comment) dto.CommentDTO {
 			ID:       comment.ReplyToUser.ID,
 			Nickname: comment.ReplyToUser.Nickname,
 			Avatar:   comment.ReplyToUser.Avatar,
+			Admin:    comment.ReplyToUser.Admin,
 		}
 	}
 
@@ -314,6 +315,7 @@ func toCommentDTO(comment *model.Comment) dto.CommentDTO {
 			ID:       comment.User.ID,
 			Nickname: comment.User.Nickname,
 			Avatar:   comment.User.Avatar,
+			Admin:    comment.User.Admin,
 		},
 		Content:     comment.Content,
 		ParentID:    comment.ParentID,
