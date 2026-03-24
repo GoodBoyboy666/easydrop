@@ -1,5 +1,6 @@
 import rehypeRaw from 'rehype-raw'
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
+import { BilibiliPlayer } from '#/components/markdown/bilibili-player'
 
 const mediaAttributes = [
   'autoplay',
@@ -17,10 +18,11 @@ const videoAttributes = ['height', 'poster', 'width'] as const
 
 const markdownSanitizeSchema = {
   ...defaultSchema,
-  tagNames: [...(defaultSchema.tagNames ?? []), 'audio', 'video'],
+  tagNames: [...(defaultSchema.tagNames ?? []), 'audio', 'bilibili', 'video'],
   attributes: {
     ...defaultSchema.attributes,
     audio: [...(defaultSchema.attributes?.audio ?? []), ...mediaAttributes],
+    bilibili: ['bvid'],
     video: [
       ...(defaultSchema.attributes?.video ?? []),
       ...mediaAttributes,
@@ -38,3 +40,7 @@ export const markdownRehypePlugins = [
   rehypeRaw,
   [rehypeSanitize, markdownSanitizeSchema],
 ] as const
+
+export const markdownComponents = {
+  bilibili: ({ bvid }: { bvid?: string }) => <BilibiliPlayer bvid={bvid} />,
+}

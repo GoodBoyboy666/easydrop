@@ -3,7 +3,10 @@
 import MDEditor from '@uiw/react-md-editor'
 import type { MDEditorProps } from '@uiw/react-md-editor'
 import remarkGfm from 'remark-gfm'
-import { markdownRehypePlugins } from '#/lib/markdown-sanitize'
+import {
+  markdownComponents,
+  markdownRehypePlugins,
+} from '#/lib/markdown-sanitize'
 import { useTheme } from '#/lib/theme'
 import { cn } from '#/lib/utils'
 
@@ -36,6 +39,7 @@ export function MarkdownEditor({
         height={height}
         visibleDragbar={false}
         previewOptions={{
+          components: markdownComponents,
           rehypePlugins: markdownRehypePlugins,
           remarkPlugins: [remarkGfm],
         }}
