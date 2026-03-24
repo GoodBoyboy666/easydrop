@@ -1,14 +1,14 @@
-"use client"
+'use client'
 
 import { useEffect, useState } from 'react'
 import type { MDEditorProps } from '@uiw/react-md-editor'
 import type { ICommand } from '@uiw/react-md-editor/commands'
 import * as mdCommands from '@uiw/react-md-editor/commands'
 import { ClapperboardIcon, Disc3 } from 'lucide-react'
-import remarkGfm from 'remark-gfm'
 import {
   markdownComponents,
   markdownRehypePlugins,
+  markdownRemarkPlugins,
 } from '#/lib/markdown-sanitize'
 import { useTheme } from '#/lib/theme'
 import { cn } from '#/lib/utils'
@@ -87,8 +87,10 @@ const editorCommands: ICommand[] = [
   neteaseCommand,
 ]
 
-interface MarkdownEditorProps
-  extends Omit<MDEditorProps, 'onChange' | 'preview' | 'value'> {
+interface MarkdownEditorProps extends Omit<
+  MDEditorProps,
+  'onChange' | 'preview' | 'value'
+> {
   onChange: (value: string) => void
   placeholder?: string
   value: string
@@ -105,7 +107,8 @@ export function MarkdownEditor({
   ...props
 }: MarkdownEditorProps) {
   const { resolvedTheme } = useTheme()
-  const [EditorComponent, setEditorComponent] = useState<MDEditorComponent | null>(null)
+  const [EditorComponent, setEditorComponent] =
+    useState<MDEditorComponent | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -124,7 +127,10 @@ export function MarkdownEditor({
   return (
     <div
       data-color-mode={resolvedTheme}
-      className={cn('markdown-editor-shell overflow-hidden rounded-xl', className)}
+      className={cn(
+        'markdown-editor-shell overflow-hidden rounded-xl',
+        className,
+      )}
     >
       {EditorComponent ? (
         <EditorComponent
@@ -137,7 +143,7 @@ export function MarkdownEditor({
           previewOptions={{
             components: markdownComponents,
             rehypePlugins: markdownRehypePlugins,
-            remarkPlugins: [remarkGfm],
+            remarkPlugins: markdownRemarkPlugins,
           }}
           textareaProps={{
             placeholder,

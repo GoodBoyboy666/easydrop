@@ -1,10 +1,10 @@
-"use client"
+'use client'
 
 import { useEffect, useState } from 'react'
-import remarkGfm from 'remark-gfm'
 import {
   markdownComponents,
   markdownRehypePlugins,
+  markdownRemarkPlugins,
 } from '#/lib/markdown-sanitize'
 import { useTheme } from '#/lib/theme'
 import { cn } from '#/lib/utils'
@@ -15,7 +15,8 @@ interface MarkdownContentProps {
   content: string
 }
 
-type MarkdownPreviewComponent = (typeof import('@uiw/react-md-editor'))['default']['Markdown']
+type MarkdownPreviewComponent =
+  (typeof import('@uiw/react-md-editor'))['default']['Markdown']
 
 export function MarkdownContent({
   className,
@@ -23,7 +24,8 @@ export function MarkdownContent({
   content,
 }: MarkdownContentProps) {
   const { resolvedTheme } = useTheme()
-  const [PreviewComponent, setPreviewComponent] = useState<MarkdownPreviewComponent | null>(null)
+  const [PreviewComponent, setPreviewComponent] =
+    useState<MarkdownPreviewComponent | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -45,7 +47,7 @@ export function MarkdownContent({
       className={cn(
         'markdown-content rounded-xl',
         compact ? 'markdown-content-compact' : null,
-        className
+        className,
       )}
     >
       {PreviewComponent ? (
@@ -53,7 +55,7 @@ export function MarkdownContent({
           components={markdownComponents}
           source={content}
           rehypePlugins={markdownRehypePlugins}
-          remarkPlugins={[remarkGfm]}
+          remarkPlugins={markdownRemarkPlugins}
         />
       ) : null}
     </div>

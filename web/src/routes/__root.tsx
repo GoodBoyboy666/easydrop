@@ -1,6 +1,7 @@
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
+import { PhotoProvider } from 'react-photo-view'
 import { AuthProvider } from '#/lib/auth'
 import { SiteSettingsProvider, useSiteSettings } from '#/lib/site-settings'
 import { ThemeProvider } from '#/lib/theme'
@@ -77,25 +78,27 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="font-sans antialiased [overflow-wrap:anywhere]">
-        <ThemeProvider>
-          <AuthProvider>
-            <SiteSettingsProvider>
-              <AppShell>{children}</AppShell>
-              <TanStackDevtools
-                config={{
-                  position: 'bottom-right',
-                }}
-                plugins={[
-                  {
-                    name: 'Tanstack Router',
-                    render: <TanStackRouterDevtoolsPanel />,
-                  },
-                ]}
-              />
-              <Scripts />
-            </SiteSettingsProvider>
-          </AuthProvider>
-        </ThemeProvider>
+        <PhotoProvider>
+          <ThemeProvider>
+            <AuthProvider>
+              <SiteSettingsProvider>
+                <AppShell>{children}</AppShell>
+                <TanStackDevtools
+                  config={{
+                    position: 'bottom-right',
+                  }}
+                  plugins={[
+                    {
+                      name: 'Tanstack Router',
+                      render: <TanStackRouterDevtoolsPanel />,
+                    },
+                  ]}
+                />
+                <Scripts />
+              </SiteSettingsProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </PhotoProvider>
       </body>
     </html>
   )
