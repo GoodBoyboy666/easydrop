@@ -18,8 +18,8 @@ export function BilibiliPlayer({ bvid }: BilibiliPlayerProps) {
   }
 
   return (
-    <div className="my-4 overflow-hidden rounded-xl border border-border/70 bg-card/60">
-      <div className="aspect-video w-full">
+    <span className="my-4 block overflow-hidden rounded-xl border border-border/70 bg-card/60">
+      <span className="aspect-video block w-full">
         <iframe
           allow="accelerometer; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
           allowFullScreen
@@ -28,7 +28,7 @@ export function BilibiliPlayer({ bvid }: BilibiliPlayerProps) {
           src={`https://player.bilibili.com/player.html?bvid=${normalizedBvid}&page=1&autoplay=0`}
           title={`Bilibili 视频 ${normalizedBvid}`}
         />
-      </div>
-    </div>
+      </span>
+    </span>
   )
 }

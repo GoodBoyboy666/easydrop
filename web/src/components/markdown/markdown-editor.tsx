@@ -1,6 +1,6 @@
 "use client"
 
-import MDEditor from '@uiw/react-md-editor'
+import { useEffect, useState } from 'react'
 import type { MDEditorProps } from '@uiw/react-md-editor'
 import type { ICommand } from '@uiw/react-md-editor/commands'
 import * as mdCommands from '@uiw/react-md-editor/commands'
@@ -94,6 +94,8 @@ interface MarkdownEditorProps
   value: string
 }
 
+type MDEditorComponent = (typeof import('@uiw/react-md-editor'))['default']
+
 export function MarkdownEditor({
   className,
   height = 240,
@@ -103,29 +105,53 @@ export function MarkdownEditor({
   ...props
 }: MarkdownEditorProps) {
   const { resolvedTheme } = useTheme()
+  const [EditorComponent, setEditorComponent] = useState<MDEditorComponent | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    void import('@uiw/react-md-editor').then((module) => {
+      if (!cancelled) {
+        setEditorComponent(() => module.default)
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   return (
     <div
       data-color-mode={resolvedTheme}
       className={cn('markdown-editor-shell overflow-hidden rounded-xl', className)}
     >
-      <MDEditor
-        commands={editorCommands}
-        value={value}
-        onChange={(nextValue) => onChange(nextValue ?? '')}
-        preview="edit"
-        height={height}
-        visibleDragbar={false}
-        previewOptions={{
-          components: markdownComponents,
-          rehypePlugins: markdownRehypePlugins,
-          remarkPlugins: [remarkGfm],
-        }}
-        textareaProps={{
-          placeholder,
-        }}
-        {...props}
-      />
+      {EditorComponent ? (
+        <EditorComponent
+          commands={editorCommands}
+          value={value}
+          onChange={(nextValue) => onChange(nextValue ?? '')}
+          preview="edit"
+          height={height}
+          visibleDragbar={false}
+          previewOptions={{
+            components: markdownComponents,
+            rehypePlugins: markdownRehypePlugins,
+            remarkPlugins: [remarkGfm],
+          }}
+          textareaProps={{
+            placeholder,
+          }}
+          {...props}
+        />
+      ) : (
+        <div
+          className="flex min-h-[inherit] items-center justify-center px-4 py-8 text-sm text-muted-foreground"
+          style={{ height }}
+        >
+          编辑器加载中…
+        </div>
+      )}
     </div>
   )
 }

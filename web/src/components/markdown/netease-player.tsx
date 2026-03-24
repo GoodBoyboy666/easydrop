@@ -40,15 +40,15 @@ export function NeteasePlayer({ id, songid }: NeteasePlayerProps) {
   }
 
   return (
-    <div className="my-4 overflow-hidden rounded-xl border border-border/70 bg-card/60">
-      <div className="h-[86px] w-full">
+    <span className="my-4 block overflow-hidden rounded-xl border border-border/70 bg-card/60">
+      <span className="block h-[86px] w-full">
         <iframe
           className="size-full border-0"
           referrerPolicy="strict-origin-when-cross-origin"
           src={`https://music.163.com/outchain/player?type=2&id=${normalizedSongId}&auto=0&height=66`}
           title={`网易云音乐 ${normalizedSongId}`}
         />
-      </div>
-    </div>
+      </span>
+    </span>
   )
 }

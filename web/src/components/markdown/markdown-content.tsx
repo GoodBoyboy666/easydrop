@@ -1,6 +1,6 @@
 "use client"
 
-import MDEditor from '@uiw/react-md-editor'
+import { useEffect, useState } from 'react'
 import remarkGfm from 'remark-gfm'
 import {
   markdownComponents,
@@ -15,12 +15,29 @@ interface MarkdownContentProps {
   content: string
 }
 
+type MarkdownPreviewComponent = (typeof import('@uiw/react-md-editor'))['default']['Markdown']
+
 export function MarkdownContent({
   className,
   compact = false,
   content,
 }: MarkdownContentProps) {
   const { resolvedTheme } = useTheme()
+  const [PreviewComponent, setPreviewComponent] = useState<MarkdownPreviewComponent | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    void import('@uiw/react-md-editor').then((module) => {
+      if (!cancelled) {
+        setPreviewComponent(() => module.default.Markdown)
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   return (
     <div
@@ -31,12 +48,14 @@ export function MarkdownContent({
         className
       )}
     >
-      <MDEditor.Markdown
-        components={markdownComponents}
-        source={content}
-        rehypePlugins={markdownRehypePlugins}
-        remarkPlugins={[remarkGfm]}
-      />
+      {PreviewComponent ? (
+        <PreviewComponent
+          components={markdownComponents}
+          source={content}
+          rehypePlugins={markdownRehypePlugins}
+          remarkPlugins={[remarkGfm]}
+        />
+      ) : null}
     </div>
   )
 }
