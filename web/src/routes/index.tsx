@@ -8,6 +8,7 @@ import {
   MessageSquareTextIcon,
   RefreshCwIcon,
 } from 'lucide-react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
@@ -39,7 +40,6 @@ import {
 import {
   Field,
   FieldContent,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -87,6 +87,7 @@ function isTopLevelComment(comment: CommentDTO) {
 
 function HomePage() {
   const auth = useAuth()
+  const prefersReducedMotion = useReducedMotion()
   const {
     error: settingsError,
     loading: settingsLoading,
@@ -242,6 +243,10 @@ function HomePage() {
     ],
     [feedState.total, latestComments.total, tags.total]
   )
+  const getEntranceTransition = (delay = 0) =>
+    prefersReducedMotion
+      ? { duration: 0 }
+      : { duration: 0.32, ease: 'easeOut' as const, delay }
 
   async function handlePublish(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -301,15 +306,25 @@ function HomePage() {
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <motion.section
+        animate={{ opacity: 1, y: 0 }}
+        className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]"
+        initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+        transition={getEntranceTransition()}
+      >
         <div className="flex min-w-0 flex-col gap-6">
           {auth.status === 'authenticated' && auth.isAdmin ? (
-            <Card className="bg-primary/5 shadow-sm">
-              <CardHeader>
-                <CardTitle>快捷发布</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handlePublish}>
+            <motion.div
+              animate={{ opacity: 1, y: 0 }}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 12 }}
+              transition={getEntranceTransition(0.06)}
+            >
+              <Card className="bg-primary/5 shadow-sm">
+                <CardHeader>
+                  <CardTitle>快捷发布</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handlePublish}>
                   <FieldGroup>
                     <Field data-invalid={!!publishError}>
                       <MarkdownEditor
@@ -376,9 +391,10 @@ function HomePage() {
                       {publishing ? '正在发布…' : '立即发布'}
                     </Button>
                   </div>
-                </form>
-              </CardContent>
-            </Card>
+                  </form>
+                </CardContent>
+              </Card>
+            </motion.div>
           ) : null}
 
           <section className="flex flex-col gap-4">
@@ -389,15 +405,20 @@ function HomePage() {
                   日志
                 </h2>
               </div>
-              <Button
-                onClick={() => void loadFeed()}
-                size="sm"
-                type="button"
-                variant="outline"
+              <motion.div
+                whileHover={prefersReducedMotion ? undefined : { scale: 1.02 }}
+                whileTap={prefersReducedMotion ? undefined : { scale: 0.98 }}
               >
-                <RefreshCwIcon data-icon="inline-start" />
-                刷新
-              </Button>
+                <Button
+                  onClick={() => void loadFeed()}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  <RefreshCwIcon data-icon="inline-start" />
+                  刷新
+                </Button>
+              </motion.div>
             </div>
 
             {feedState.loading ? (
@@ -450,43 +471,71 @@ function HomePage() {
 
             {!feedState.loading && !feedState.error ? (
               <div className="flex flex-col gap-4">
-                {[...feedState.pinnedItems, ...feedState.items].map((post) => (
-                  <PostCard
-                    key={post.id}
-                    onPostDeleted={(postId) => {
-                      setFeedState((current) => ({
-                        ...current,
-                        pinnedItems: current.pinnedItems.filter(
-                          (item) => item.id !== postId
-                        ),
-                        items: current.items.filter((item) => item.id !== postId),
-                        total: Math.max(0, current.total - 1),
-                      }))
-                      setLatestComments((current) => ({
-                        ...current,
-                        items: current.items.filter((comment) => comment.post_id !== postId),
-                      }))
-                    }}
-                    post={post}
-                  />
-                ))}
+                <AnimatePresence initial={false}>
+                  {[...feedState.pinnedItems, ...feedState.items].map((post, index) => (
+                    <motion.div
+                      key={post.id}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={
+                        prefersReducedMotion
+                          ? undefined
+                          : { opacity: 0, scale: 0.98, y: -8 }
+                      }
+                      initial={
+                        prefersReducedMotion
+                          ? false
+                          : { opacity: 0, scale: 0.98, y: 12 }
+                      }
+                      layout
+                      transition={getEntranceTransition(Math.min(index * 0.03, 0.18))}
+                    >
+                      <PostCard
+                        onPostDeleted={(postId) => {
+                          setFeedState((current) => ({
+                            ...current,
+                            pinnedItems: current.pinnedItems.filter(
+                              (item) => item.id !== postId
+                            ),
+                            items: current.items.filter((item) => item.id !== postId),
+                            total: Math.max(0, current.total - 1),
+                          }))
+                          setLatestComments((current) => ({
+                            ...current,
+                            items: current.items.filter((comment) => comment.post_id !== postId),
+                          }))
+                        }}
+                        post={post}
+                      />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
             ) : null}
 
             {canLoadMorePosts ? (
-              <Button
-                disabled={feedState.loadingMore}
-                onClick={() => void loadFeed('more')}
-                type="button"
-                variant="outline"
+              <motion.div
+                whileHover={prefersReducedMotion ? undefined : { y: -1 }}
+                whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
               >
-                {feedState.loadingMore ? '正在加载…' : '加载更多日志'}
-              </Button>
+                <Button
+                  disabled={feedState.loadingMore}
+                  onClick={() => void loadFeed('more')}
+                  type="button"
+                  variant="outline"
+                >
+                  {feedState.loadingMore ? '正在加载…' : '加载更多日志'}
+                </Button>
+              </motion.div>
             ) : null}
           </section>
         </div>
 
-        <aside className="flex min-w-0 flex-col gap-4">
+        <motion.aside
+          animate={{ opacity: 1, x: 0 }}
+          className="flex min-w-0 flex-col gap-4"
+          initial={prefersReducedMotion ? false : { opacity: 0, x: 10 }}
+          transition={getEntranceTransition(0.12)}
+        >
           <Card className="bg-card/90 shadow-sm">
             <CardHeader>
               <CardTitle>{siteOwner}</CardTitle>
@@ -577,13 +626,18 @@ function HomePage() {
                 </Empty>
               ) : null}
 
-              {!latestCommentsLoading && !latestCommentsError
-                ? latestComments.items.map((comment, index) => (
-                    <article
+              {!latestCommentsLoading && !latestCommentsError ? (
+                <AnimatePresence initial={false}>
+                  {latestComments.items.map((comment, index) => (
+                    <motion.article
                       key={comment.id}
+                      animate={{ opacity: 1, x: 0 }}
                       className={`px-2.5 pt-2.5 pb-1.5 ${
                         index > 0 ? 'border-t border-dashed border-border/60' : ''
                       }`}
+                      exit={prefersReducedMotion ? undefined : { opacity: 0, x: -8 }}
+                      initial={prefersReducedMotion ? false : { opacity: 0, x: 8 }}
+                      transition={getEntranceTransition(Math.min(index * 0.03, 0.15))}
                     >
                       <div className="flex items-start gap-3">
                         <Avatar size="sm">
@@ -610,9 +664,10 @@ function HomePage() {
                           </div>
                         </div>
                       </div>
-                    </article>
-                  ))
-                : null}
+                    </motion.article>
+                  ))}
+                </AnimatePresence>
+              ) : null}
             </CardContent>
           </Card>
 
@@ -656,8 +711,8 @@ function HomePage() {
               ) : null}
             </CardContent>
           </Card>
-        </aside>
-      </section>
+        </motion.aside>
+      </motion.section>
     </div>
   )
 }
