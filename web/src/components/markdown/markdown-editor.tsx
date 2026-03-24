@@ -4,7 +4,7 @@ import MDEditor from '@uiw/react-md-editor'
 import type { MDEditorProps } from '@uiw/react-md-editor'
 import type { ICommand } from '@uiw/react-md-editor/commands'
 import * as mdCommands from '@uiw/react-md-editor/commands'
-import { ClapperboardIcon } from 'lucide-react'
+import { ClapperboardIcon, Disc3 } from 'lucide-react'
 import remarkGfm from 'remark-gfm'
 import {
   markdownComponents,
@@ -14,8 +14,23 @@ import { useTheme } from '#/lib/theme'
 import { cn } from '#/lib/utils'
 
 const DEFAULT_BILIBILI_BVID = 'BV1xx411c7mD'
+const DEFAULT_NETEASE_SONG_ID = '347230'
 const BILIBILI_PREFIX = '<bilibili bvid="'
 const BILIBILI_SUFFIX = '"></bilibili>'
+const NETEASE_PREFIX = '<netease songid="'
+const NETEASE_SUFFIX = '"></netease>'
+
+function normalizeNeteaseSongId(value: string) {
+  const trimmedValue = value.trim()
+
+  if (/^\d+$/.test(trimmedValue)) {
+    return trimmedValue
+  }
+
+  const matchedSongId = trimmedValue.match(/(?:^|[?&])id=(\d+)(?:&|$)/)?.[1]
+
+  return matchedSongId?.trim() || null
+}
 
 const bilibiliCommand: ICommand = {
   buttonProps: {
@@ -41,10 +56,35 @@ const bilibiliCommand: ICommand = {
   },
 }
 
+const neteaseCommand: ICommand = {
+  buttonProps: {
+    'aria-label': '插入网易云音乐',
+    title: '插入网易云音乐',
+  },
+  icon: <Disc3 className="size-3.5" />,
+  keyCommand: 'netease',
+  name: 'netease',
+  execute: (state, api) => {
+    const selectedSongId = normalizeNeteaseSongId(state.selectedText)
+    const songId = selectedSongId || DEFAULT_NETEASE_SONG_ID
+    const template = `${NETEASE_PREFIX}${songId}${NETEASE_SUFFIX}`
+    const nextState = api.replaceSelection(template)
+    const songIdStart = state.selection.start + NETEASE_PREFIX.length
+
+    api.setSelectionRange({
+      start: songIdStart,
+      end: songIdStart + songId.length,
+    })
+
+    return nextState
+  },
+}
+
 const editorCommands: ICommand[] = [
   ...mdCommands.getCommands(),
   mdCommands.divider,
   bilibiliCommand,
+  neteaseCommand,
 ]
 
 interface MarkdownEditorProps
