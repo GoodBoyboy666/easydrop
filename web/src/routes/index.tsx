@@ -234,7 +234,7 @@ function HomePage() {
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="flex min-w-0 flex-col gap-6">
           {auth.status === 'authenticated' && auth.isAdmin ? (
-            <Card className="border border-primary/20 bg-primary/5 shadow-sm">
+            <Card className="bg-primary/5 shadow-sm">
               <CardHeader>
                 <CardTitle>快捷发布</CardTitle>
               </CardHeader>
@@ -243,7 +243,7 @@ function HomePage() {
                   <FieldGroup>
                     <Field data-invalid={!!publishError}>
                       <MarkdownEditor
-                        height={200}
+                        height={150}
                         onChange={setPublishDraft}
                         placeholder="快写下你的想法吧，支持 Markdown。"
                         value={publishDraft}
@@ -360,7 +360,7 @@ function HomePage() {
         </div>
 
         <aside className="flex min-w-0 flex-col gap-4">
-          <Card className="border border-border/70 bg-card/90 shadow-sm">
+          <Card className="bg-card/90 shadow-sm">
             <CardHeader>
               <CardTitle>{siteOwner}</CardTitle>
               <CardDescription>{siteOwnerDescription}</CardDescription>
@@ -391,7 +391,7 @@ function HomePage() {
             </CardContent>
           </Card>
 
-          <Card className="border border-border/70 bg-card/90 shadow-sm">
+          <Card className="bg-card/90 shadow-sm">
             <CardHeader>
               <CardTitle>网站公告</CardTitle>
             </CardHeader>
@@ -400,7 +400,7 @@ function HomePage() {
             </CardContent>
           </Card>
 
-          <Card className="border border-border/70 bg-card/90 shadow-sm">
+          <Card className="bg-card/90 shadow-sm">
             <CardHeader>
               <CardTitle>最新评论</CardTitle>
             </CardHeader>
@@ -483,7 +483,7 @@ function HomePage() {
             </CardContent>
           </Card>
 
-          <Card className="border border-border/70 bg-card/90 shadow-sm">
+          <Card className="bg-card/90 shadow-sm">
             <CardHeader>
               <CardTitle>全站 Tag</CardTitle>
             </CardHeader>

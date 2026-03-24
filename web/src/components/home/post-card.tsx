@@ -402,7 +402,7 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Card className="border border-border/70 bg-card/90 shadow-sm">
+      <Card className="bg-card/90 shadow-sm">
         <CardHeader className="gap-4 border-b border-border/60">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-3">
