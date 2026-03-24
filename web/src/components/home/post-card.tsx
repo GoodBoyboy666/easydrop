@@ -16,6 +16,17 @@ import type { CommentDTO, PostDTO } from '#/lib/types'
 import { MarkdownContent } from '#/components/markdown/markdown-content'
 import { MarkdownEditor } from '#/components/markdown/markdown-editor'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from '#/components/ui/alert-dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar'
 import { Badge } from '#/components/ui/badge'
 import { Button } from '#/components/ui/button'
@@ -51,6 +62,11 @@ interface CommentState {
   total: number
 }
 
+type PendingDelete =
+  | { type: 'post' }
+  | { type: 'comment'; comment: CommentDTO }
+  | null
+
 const INITIAL_COMMENT_PAGE_SIZE = 3
 const LOAD_MORE_COMMENT_PAGE_SIZE = 5
 
@@ -71,6 +87,7 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
   const [submitting, setSubmitting] = useState(false)
   const [deletingCommentId, setDeletingCommentId] = useState<number | null>(null)
   const [deletingPost, setDeletingPost] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete>(null)
 
   async function refreshComments(limit = INITIAL_COMMENT_PAGE_SIZE) {
     setCommentError(null)
@@ -206,11 +223,24 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
     setSubmitError(null)
   }
 
-  async function handleDeletePost() {
+  function requestDeletePost() {
     if (!auth.token || !auth.isAdmin || deletingPost) {
       return
     }
-    if (!window.confirm('确认删除这条日志吗？')) {
+
+    setPendingDelete({ type: 'post' })
+  }
+
+  function requestDeleteComment(comment: CommentDTO) {
+    if (!auth.token || !auth.isAdmin || deletingCommentId) {
+      return
+    }
+
+    setPendingDelete({ type: 'comment', comment })
+  }
+
+  async function handleDeletePost() {
+    if (!auth.token || !auth.isAdmin || deletingPost) {
       return
     }
 
@@ -230,14 +260,12 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
       setCommentError(error instanceof Error ? error.message : '删除日志失败')
     } finally {
       setDeletingPost(false)
+      setPendingDelete(null)
     }
   }
 
   async function handleDeleteComment(comment: CommentDTO) {
     if (!auth.token || !auth.isAdmin || deletingCommentId) {
-      return
-    }
-    if (!window.confirm('确认删除这条评论吗？')) {
       return
     }
 
@@ -262,7 +290,21 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
       setCommentError(error instanceof Error ? error.message : '删除评论失败')
     } finally {
       setDeletingCommentId(null)
+      setPendingDelete(null)
     }
+  }
+
+  async function handleConfirmDelete() {
+    if (!pendingDelete) {
+      return
+    }
+
+    if (pendingDelete.type === 'post') {
+      await handleDeletePost()
+      return
+    }
+
+    await handleDeleteComment(pendingDelete.comment)
   }
 
   async function handleCommentSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -319,10 +361,49 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
   const commentPlaceholder = replyTarget
     ? `回复 ${replyTarget.author.nickname}，支持 Markdown 评论。`
     : '期待你的发言，支持 Markdown 评论。'
+  const deleteDialogBusy = deletingPost || deletingCommentId !== null
+  const deleteDialogTitle =
+    pendingDelete?.type === 'post' ? '删除这条日志？' : '删除这条评论？'
+  const deleteDialogDescription =
+    pendingDelete?.type === 'post'
+      ? '删除后这条日志会立即从当前列表移除，相关评论也会一并消失。此操作不可撤销。'
+      : '删除后这条评论会立即从当前日志的评论列表移除。此操作不可撤销。'
 
   return (
-    <Card className="border border-border/70 bg-card/90 shadow-sm">
-      <CardHeader className="gap-4 border-b border-border/60">
+    <>
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleteDialogBusy) {
+            setPendingDelete(null)
+          }
+        }}
+      >
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogMedia className="bg-background">
+              <Trash2Icon/>
+            </AlertDialogMedia>
+            <AlertDialogTitle>{deleteDialogTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteDialogDescription}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteDialogBusy}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteDialogBusy}
+              onClick={() => void handleConfirmDelete()}
+              variant="destructive"
+            >
+              {deleteDialogBusy ? '正在删除…' : '确认删除'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Card className="border border-border/70 bg-card/90 shadow-sm">
+        <CardHeader className="gap-4 border-b border-border/60">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-3">
             <Avatar size="lg">
@@ -341,7 +422,7 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
             <Button
               aria-label="删除日志"
               disabled={deletingPost}
-              onClick={() => void handleDeletePost()}
+              onClick={requestDeletePost}
               size="icon-sm"
               type="button"
               variant="ghost"
@@ -352,7 +433,7 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
         </div>
       </CardHeader>
 
-      <CardContent className="flex flex-col gap-4">
+        <CardContent className="flex flex-col gap-4">
         <div className="flex flex-col gap-3">
           <MarkdownContent content={post.content} />
           {post.tags?.length ? (
@@ -549,7 +630,7 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
                             <Button
                               className="h-auto px-0 py-0 text-[0.7rem] text-destructive"
                               disabled={deletingCommentId === comment.id}
-                              onClick={() => void handleDeleteComment(comment)}
+                              onClick={() => requestDeleteComment(comment)}
                               size="sm"
                               type="button"
                               variant="link"
@@ -590,13 +671,14 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
             </CollapsibleContent>
           </Collapsible>
         ) : null}
-      </CardContent>
+        </CardContent>
 
-      <CardFooter className="justify-between gap-3">
-        <div className="text-xs text-muted-foreground">
-          日志 #{post.id} · 评论 {commentState.total}
-        </div>
-      </CardFooter>
-    </Card>
+        <CardFooter className="justify-between gap-3">
+          <div className="text-xs text-muted-foreground">
+            日志 #{post.id} · 评论 {commentState.total}
+          </div>
+        </CardFooter>
+      </Card>
+    </>
   )
 }
