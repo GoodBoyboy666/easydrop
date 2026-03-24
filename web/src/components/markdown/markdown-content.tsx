@@ -2,6 +2,7 @@
 
 import MDEditor from '@uiw/react-md-editor'
 import remarkGfm from 'remark-gfm'
+import { markdownRehypePlugins } from '#/lib/markdown-sanitize'
 import { useTheme } from '#/lib/theme'
 import { cn } from '#/lib/utils'
 
@@ -29,8 +30,8 @@ export function MarkdownContent({
     >
       <MDEditor.Markdown
         source={content}
+        rehypePlugins={markdownRehypePlugins}
         remarkPlugins={[remarkGfm]}
-        skipHtml
       />
     </div>
   )
