@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query'
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
+import { Outlet, createRootRoute } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { PhotoProvider } from 'react-photo-view'
@@ -11,102 +11,38 @@ import { SiteFooter } from '#/components/site/site-footer'
 import { SiteHeader } from '#/components/site/site-header'
 import { Toaster } from '#/components/ui/sonner'
 
-import appCss from '../styles.css?url'
-
-const themeScript = `
-(() => {
-  try {
-    const storageKey = 'easydrop-theme'
-    const storedTheme = window.localStorage.getItem(storageKey)
-    const themeMode =
-      storedTheme === 'light' || storedTheme === 'dark' || storedTheme === 'system'
-        ? storedTheme
-        : 'system'
-    const resolvedTheme =
-      themeMode === 'light' || themeMode === 'dark'
-        ? themeMode
-        : window.matchMedia('(prefers-color-scheme: dark)').matches
-          ? 'dark'
-          : 'light'
-
-    document.documentElement.dataset.themeMode = themeMode
-    document.documentElement.classList.toggle('dark', resolvedTheme === 'dark')
-    document.documentElement.style.colorScheme = resolvedTheme
-  } catch {
-    const fallbackTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
-      ? 'dark'
-      : 'light'
-
-    document.documentElement.dataset.themeMode = 'system'
-    document.documentElement.classList.toggle('dark', fallbackTheme === 'dark')
-    document.documentElement.style.colorScheme = fallbackTheme
-  }
-})()
-`
-
 export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      {
-        charSet: 'utf-8',
-      },
-      {
-        name: 'viewport',
-        content: 'width=device-width, initial-scale=1',
-      },
-      {
-        title: 'EasyDrop',
-      },
-      {
-        name: 'description',
-        content: '一个采用双栏结构的中文日志发布网站骨架。',
-      },
-    ],
-    links: [
-      {
-        rel: 'stylesheet',
-        href: appCss,
-      },
-    ],
-  }),
-  shellComponent: RootDocument,
+  component: RootApp,
 })
 
-function RootDocument({ children }: { children: React.ReactNode }) {
+function RootApp() {
   const queryClient = getQueryClient()
 
   return (
-    <html lang="zh-CN" suppressHydrationWarning>
-      <head>
-        <HeadContent />
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-      </head>
-      <body className="font-sans antialiased [overflow-wrap:anywhere]">
-        <QueryClientProvider client={queryClient}>
-          <PhotoProvider>
-            <ThemeProvider>
-              <AuthProvider>
-                <SiteSettingsProvider>
-                  <AppShell>{children}</AppShell>
-                  <TanStackDevtools
-                    config={{
-                      position: 'bottom-right',
-                    }}
-                    plugins={[
-                      {
-                        name: 'Tanstack Router',
-                        render: <TanStackRouterDevtoolsPanel />,
-                      },
-                    ]}
-                  />
-                  <Scripts />
-                </SiteSettingsProvider>
-              </AuthProvider>
-            </ThemeProvider>
-          </PhotoProvider>
-        </QueryClientProvider>
-      </body>
-    </html>
+    <QueryClientProvider client={queryClient}>
+      <PhotoProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <SiteSettingsProvider>
+              <AppShell>
+                <Outlet />
+              </AppShell>
+              <TanStackDevtools
+                config={{
+                  position: 'bottom-right',
+                }}
+                plugins={[
+                  {
+                    name: 'Tanstack Router',
+                    render: <TanStackRouterDevtoolsPanel />,
+                  },
+                ]}
+              />
+            </SiteSettingsProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </PhotoProvider>
+    </QueryClientProvider>
   )
 }
 

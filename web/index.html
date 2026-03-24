@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="一个采用双栏结构的中文日志发布网站骨架。"
+    />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <title>EasyDrop</title>
+    <script>
+      ;(() => {
+        try {
+          const storageKey = 'easydrop-theme'
+          const storedTheme = window.localStorage.getItem(storageKey)
+          const themeMode =
+            storedTheme === 'light' ||
+            storedTheme === 'dark' ||
+            storedTheme === 'system'
+              ? storedTheme
+              : 'system'
+          const resolvedTheme =
+            themeMode === 'light' || themeMode === 'dark'
+              ? themeMode
+              : window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light'
+
+          document.documentElement.dataset.themeMode = themeMode
+          document.documentElement.classList.toggle(
+            'dark',
+            resolvedTheme === 'dark',
+          )
+          document.documentElement.style.colorScheme = resolvedTheme
+        } catch {
+          const fallbackTheme = window.matchMedia(
+            '(prefers-color-scheme: dark)',
+          ).matches
+            ? 'dark'
+            : 'light'
+
+          document.documentElement.dataset.themeMode = 'system'
+          document.documentElement.classList.toggle(
+            'dark',
+            fallbackTheme === 'dark',
+          )
+          document.documentElement.style.colorScheme = fallbackTheme
+        }
+      })()
+    </script>
+  </head>
+  <body class="font-sans antialiased [overflow-wrap:anywhere]">
+    <div id="app"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
