@@ -8,11 +8,12 @@ import {
   MenuIcon,
   MessageSquareIcon,
   MoonStarIcon,
+  SearchIcon,
   SettingsIcon,
   SunIcon,
   UserCircleIcon,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '#/lib/auth'
 import { getInitials } from '#/lib/format'
 import { useSiteSettings } from '#/lib/site-settings'
@@ -37,6 +38,7 @@ import {
   NavigationMenuLink,
   NavigationMenuList,
 } from '#/components/ui/navigation-menu'
+import { Input } from '#/components/ui/input'
 import { Separator } from '#/components/ui/separator'
 import {
   Sheet,
@@ -59,10 +61,35 @@ export function SiteHeader() {
   const { allowRegister, siteDescription, siteName } = useSiteSettings()
   const { resolvedTheme, setTheme, theme } = useTheme()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [searchValue, setSearchValue] = useState('')
   const user = auth.user
+  const currentSearchContent =
+    typeof location.search === 'object' &&
+    location.search !== null &&
+    'content' in location.search &&
+    typeof location.search.content === 'string'
+      ? location.search.content
+      : ''
+
+  useEffect(() => {
+    setSearchValue(currentSearchContent)
+  }, [currentSearchContent])
 
   function closeMobileMenu() {
     setMobileMenuOpen(false)
+  }
+
+  function submitSearch(options?: { closeMobileMenu?: boolean }) {
+    const normalizedContent = searchValue.trim()
+
+    if (options?.closeMobileMenu) {
+      closeMobileMenu()
+    }
+
+    void navigate({
+      to: '/',
+      search: normalizedContent ? { content: normalizedContent } : {},
+    })
   }
 
   const themeLabel =
@@ -127,7 +154,26 @@ export function SiteHeader() {
           </NavigationMenu>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <form
+            className="relative hidden md:block"
+            role="search"
+            onSubmit={(event) => {
+              event.preventDefault()
+              submitSearch()
+            }}
+          >
+            <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              aria-label="搜索日志内容"
+              className="h-9 w-56 rounded-xl pl-9 lg:w-72"
+              onChange={(event) => setSearchValue(event.target.value)}
+              placeholder="搜索日志内容"
+              type="search"
+              value={searchValue}
+            />
+          </form>
+
           {auth.status === 'loading' ? (
             <div className="text-sm text-muted-foreground">正在加载登录状态…</div>
           ) : null}
@@ -221,6 +267,25 @@ export function SiteHeader() {
               </SheetHeader>
 
               <div className="flex flex-1 flex-col gap-4 px-4 pb-4">
+                <form
+                  className="relative"
+                  role="search"
+                  onSubmit={(event) => {
+                    event.preventDefault()
+                    submitSearch({ closeMobileMenu: true })
+                  }}
+                >
+                  <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    aria-label="搜索日志内容"
+                    className="h-10 rounded-xl pl-9"
+                    onChange={(event) => setSearchValue(event.target.value)}
+                    placeholder="搜索日志内容"
+                    type="search"
+                    value={searchValue}
+                  />
+                </form>
+
                 <div className="flex flex-col gap-2">
                   {navItems.map((item) => {
                     const active = location.pathname === item.to

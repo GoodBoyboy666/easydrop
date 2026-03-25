@@ -44,6 +44,14 @@ import { Skeleton } from '#/components/ui/skeleton'
 import { Switch } from '#/components/ui/switch'
 
 export const Route = createFileRoute('/')({
+  validateSearch: (search: Record<string, unknown>) => {
+    const content =
+      typeof search.content === 'string' ? search.content.trim() : ''
+
+    return {
+      content: content || undefined,
+    }
+  },
   component: HomePage,
 })
 
@@ -60,23 +68,33 @@ const GPU_ACCELERATED_MOTION_PROPS = {
 
 function HomePage() {
   const auth = useAuth()
+  const { content } = Route.useSearch()
   const queryClient = useQueryClient()
   const prefersReducedMotion = useReducedMotion()
+  const searchContent = content ?? ''
+  const isSearchMode = searchContent.length > 0
   const [feedLimit, setFeedLimit] = useState(FEED_PAGE_SIZE)
+  const [feedLimitSearchKey, setFeedLimitSearchKey] = useState(searchContent)
   const [publishDraft, setPublishDraft] = useState('')
   const [publishHidden, setPublishHidden] = useState(false)
   const [publishPinned, setPublishPinned] = useState(false)
   const [publishPin, setPublishPin] = useState('')
   const [publishError, setPublishError] = useState<string | null>(null)
   const [motionReady, setMotionReady] = useState(prefersReducedMotion)
+  const effectiveFeedLimit =
+    feedLimitSearchKey === searchContent ? feedLimit : FEED_PAGE_SIZE
 
   const feedQuery = useQuery({
     ...postsQueryOptions(auth.token, {
-      limit: feedLimit,
+      content: searchContent || undefined,
+      limit: effectiveFeedLimit,
       offset: 0,
       order: 'created_at_desc',
     }),
-    placeholderData: (previousData) => previousData,
+    placeholderData:
+      feedLimitSearchKey === searchContent
+        ? (previousData) => previousData
+        : undefined,
   })
   const publishMutation = useMutation({
     mutationFn: (token: string) =>
@@ -99,6 +117,13 @@ function HomePage() {
     feedQuery.error instanceof Error ? feedQuery.error.message : null
   const loadedPostCount = feedData.items.length + feedData.pinnedItems.length
   const canLoadMorePosts = loadedPostCount < feedData.total
+
+  useEffect(() => {
+    if (feedLimitSearchKey !== searchContent) {
+      setFeedLimit(FEED_PAGE_SIZE)
+      setFeedLimitSearchKey(searchContent)
+    }
+  }, [feedLimitSearchKey, searchContent])
 
   useEffect(() => {
     if (prefersReducedMotion) {
@@ -359,9 +384,13 @@ function HomePage() {
                   <EmptyMedia variant="icon">
                     <AlertCircleIcon />
                   </EmptyMedia>
-                  <EmptyTitle>还没有任何日志</EmptyTitle>
+                  <EmptyTitle>
+                    {isSearchMode ? '没有找到匹配的日志' : '还没有任何日志'}
+                  </EmptyTitle>
                   <EmptyDescription>
-                    发布第一条日志后，这里会成为站点的主时间线。
+                    {isSearchMode
+                      ? `没有找到包含“${searchContent}”的日志内容。`
+                      : '发布第一条日志后，这里会成为站点的主时间线。'}
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>
