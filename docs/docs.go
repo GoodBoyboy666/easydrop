@@ -551,6 +551,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "description": "内容关键字",
+                        "name": "content",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "分页大小",
                         "name": "limit",
@@ -1975,6 +1981,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "description": "内容关键字",
+                        "name": "content",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "分页大小",
                         "name": "limit",
@@ -3175,6 +3187,9 @@ const docTemplate = `{
         "dto.PostUpdateInput": {
             "type": "object",
             "properties": {
+                "clear_pin": {
+                    "type": "boolean"
+                },
                 "content": {
                     "type": "string"
                 },

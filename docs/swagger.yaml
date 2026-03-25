@@ -242,6 +242,8 @@ definitions:
     type: object
   dto.PostUpdateInput:
     properties:
+      clear_pin:
+        type: boolean
       content:
         type: string
       disable_comment:
@@ -767,6 +769,10 @@ paths:
         in: query
         name: tag_id
         type: integer
+      - description: 内容关键字
+        in: query
+        name: content
+        type: string
       - description: 分页大小
         in: query
         name: limit
@@ -1689,6 +1695,10 @@ paths:
         in: query
         name: tag_id
         type: integer
+      - description: 内容关键字
+        in: query
+        name: content
+        type: string
       - description: 分页大小
         in: query
         name: limit

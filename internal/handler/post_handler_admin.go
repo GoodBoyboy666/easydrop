@@ -30,6 +30,7 @@ func NewPostAdminHandler(postService service.PostService) *PostAdminHandler {
 // @Security BearerAuth
 // @Param user_id query int false "用户ID"
 // @Param tag_id query int false "标签ID"
+// @Param content query string false "内容关键字"
 // @Param limit query int false "分页大小"
 // @Param offset query int false "偏移量"
 // @Param order query string false "排序，如 created_at desc"
@@ -50,6 +51,7 @@ func (h *PostAdminHandler) List(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "查询参数不合法"})
 		return
 	}
+	req.Content = strings.TrimSpace(req.Content)
 	req.Order = strings.TrimSpace(req.Order)
 
 	result, err := h.postService.List(c.Request.Context(), req)

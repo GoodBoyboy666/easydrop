@@ -24,12 +24,13 @@ type PostUpdateInput struct {
 }
 
 type PostListInput struct {
-	UserID *uint  `json:"user_id" form:"user_id" binding:"omitempty,gt=0"`
-	TagID  *uint  `json:"tag_id" form:"tag_id" binding:"omitempty,gt=0"`
-	Hide   *bool  `json:"hide" form:"hide"`
-	Limit  int    `json:"limit" form:"limit"`
-	Offset int    `json:"offset" form:"offset"`
-	Order  string `json:"order" form:"order"`
+	UserID  *uint  `json:"user_id" form:"user_id" binding:"omitempty,gt=0"`
+	TagID   *uint  `json:"tag_id" form:"tag_id" binding:"omitempty,gt=0"`
+	Content string `json:"content" form:"content"`
+	Hide    *bool  `json:"hide" form:"hide"`
+	Limit   int    `json:"limit" form:"limit"`
+	Offset  int    `json:"offset" form:"offset"`
+	Order   string `json:"order" form:"order"`
 }
 
 type PostDTO struct {

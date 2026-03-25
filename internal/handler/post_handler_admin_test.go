@@ -68,6 +68,9 @@ func TestPostAdminHandlerListSuccess(t *testing.T) {
 			if input.TagID == nil || *input.TagID != 3 {
 				t.Fatalf("expected tag_id=3, got %#v", input.TagID)
 			}
+			if input.Content != "admin key" {
+				t.Fatalf("expected content=admin key, got %q", input.Content)
+			}
 			if input.Limit != 10 || input.Offset != 20 || input.Order != "created_at desc" {
 				t.Fatalf("unexpected list input: %+v", input)
 			}
@@ -75,7 +78,7 @@ func TestPostAdminHandlerListSuccess(t *testing.T) {
 		},
 	})
 
-	c, w := newTestContext(http.MethodGet, "/api/v1/admin/posts?user_id=12&tag_id=3&limit=10&offset=20&order=created_at%20desc")
+	c, w := newTestContext(http.MethodGet, "/api/v1/admin/posts?user_id=12&tag_id=3&content=%20admin%20key%20&limit=10&offset=20&order=created_at%20desc")
 	h.List(c)
 
 	if w.Code != http.StatusOK {

@@ -71,6 +71,9 @@ func TestPostHandlerListSuccess(t *testing.T) {
 			if input.TagID == nil || *input.TagID != 2 {
 				t.Fatalf("expected tag_id=2, got %#v", input.TagID)
 			}
+			if input.Content != "hello" {
+				t.Fatalf("expected content=hello, got %q", input.Content)
+			}
 			if input.Hide == nil || *input.Hide {
 				t.Fatalf("expected hide=false, got %#v", input.Hide)
 			}
@@ -85,7 +88,7 @@ func TestPostHandlerListSuccess(t *testing.T) {
 		},
 	})
 
-	c, w := newTestContext(http.MethodGet, "/api/v1/posts?user_id=7&tag_id=2&limit=5&offset=10&order=created_at_desc&hide=true")
+	c, w := newTestContext(http.MethodGet, "/api/v1/posts?user_id=7&tag_id=2&content=%20hello%20&limit=5&offset=10&order=created_at_desc&hide=true")
 	h.List(c)
 
 	if w.Code != http.StatusOK {
