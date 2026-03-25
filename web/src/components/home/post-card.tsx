@@ -90,6 +90,11 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
     post.pin != null ? String(post.pin) : '',
   )
   const [editError, setEditError] = useState<string | null>(null)
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null)
+  const [editingCommentDraft, setEditingCommentDraft] = useState('')
+  const [editingCommentError, setEditingCommentError] = useState<string | null>(
+    null,
+  )
   const [pendingDelete, setPendingDelete] = useState<PendingDelete>(null)
 
   const commentsQuery = useQuery({
@@ -109,7 +114,27 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
   })
   const deleteCommentMutation = useMutation({
     mutationFn: (comment: CommentDTO) =>
-      api.deleteAdminComment(comment.id, auth.token!),
+      auth.isAdmin
+        ? api.deleteAdminComment(comment.id, auth.token!)
+        : api.deleteMyComment(comment.id, auth.token!),
+  })
+  const editCommentMutation = useMutation({
+    mutationFn: (comment: CommentDTO) =>
+      auth.isAdmin
+        ? api.updateAdminComment(
+            comment.id,
+            {
+              content: normalizeMarkdownContent(editingCommentDraft),
+            },
+            auth.token!,
+          )
+        : api.updateMyComment(
+            comment.id,
+            {
+              content: normalizeMarkdownContent(editingCommentDraft),
+            },
+            auth.token!,
+          ),
   })
   const editPostMutation = useMutation({
     mutationFn: (input: {
@@ -143,6 +168,9 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
     setEditPinned(post.pin != null)
     setEditPin(post.pin != null ? String(post.pin) : '')
     setEditError(null)
+    setEditingCommentId(null)
+    setEditingCommentDraft('')
+    setEditingCommentError(null)
     setEditingPost(false)
     setCommentLimit(INITIAL_COMMENT_PAGE_SIZE)
     setCommentError(null)
@@ -152,6 +180,9 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
     setReplyTarget(null)
     setCommentDraft('')
     setSubmitError(null)
+    setEditingCommentId(null)
+    setEditingCommentDraft('')
+    setEditingCommentError(null)
     setCommentSectionOpen(false)
     setComposerOpen(false)
   }, [postState.id])
@@ -171,10 +202,18 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
     window.location.assign('/login?redirect=/')
   }
 
-  function handleApiError(error: unknown, fallbackMessage: string) {
+  function handleUnauthorized(error: unknown) {
     if (error instanceof ApiError && error.status === 401) {
       auth.logout()
       redirectToLogin()
+      return true
+    }
+
+    return false
+  }
+
+  function handleApiError(error: unknown, fallbackMessage: string) {
+    if (handleUnauthorized(error)) {
       return true
     }
 
@@ -197,6 +236,14 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
         queryKey: queryKeys.myCommentsPrefix(),
       }),
     ])
+  }
+
+  function isCommentOwner(comment: CommentDTO) {
+    return auth.user?.id === comment.author.id
+  }
+
+  function canManageComment(comment: CommentDTO) {
+    return auth.isAdmin || isCommentOwner(comment)
   }
 
   function startEditPost() {
@@ -291,6 +338,32 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
     setSubmitError(null)
   }
 
+  function startEditComment(comment: CommentDTO) {
+    if (
+      !auth.token ||
+      !canManageComment(comment) ||
+      editCommentMutation.isPending ||
+      editingCommentId !== null
+    ) {
+      return
+    }
+
+    setCommentSectionOpen(true)
+    setEditingCommentId(comment.id)
+    setEditingCommentDraft(comment.content)
+    setEditingCommentError(null)
+  }
+
+  function cancelEditComment() {
+    if (editCommentMutation.isPending) {
+      return
+    }
+
+    setEditingCommentId(null)
+    setEditingCommentDraft('')
+    setEditingCommentError(null)
+  }
+
   function cancelReply() {
     setReplyTarget(null)
     setSubmitError(null)
@@ -305,7 +378,12 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
   }
 
   function requestDeleteComment(comment: CommentDTO) {
-    if (!auth.token || !auth.isAdmin || deleteCommentMutation.isPending) {
+    if (
+      !auth.token ||
+      !canManageComment(comment) ||
+      deleteCommentMutation.isPending ||
+      editCommentMutation.isPending
+    ) {
       return
     }
 
@@ -338,7 +416,12 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
   }
 
   async function handleDeleteComment(comment: CommentDTO) {
-    if (!auth.token || !auth.isAdmin || deleteCommentMutation.isPending) {
+    if (
+      !auth.token ||
+      !canManageComment(comment) ||
+      deleteCommentMutation.isPending ||
+      editCommentMutation.isPending
+    ) {
       return
     }
 
@@ -348,6 +431,11 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
       await deleteCommentMutation.mutateAsync(comment)
       if (replyTarget?.id === comment.id) {
         setReplyTarget(null)
+      }
+      if (editingCommentId === comment.id) {
+        setEditingCommentId(null)
+        setEditingCommentDraft('')
+        setEditingCommentError(null)
       }
       await invalidatePostQueries()
     } catch (error) {
@@ -368,6 +456,66 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
     }
 
     await handleDeleteComment(pendingDelete.comment)
+  }
+
+  async function handleEditCommentSubmit(
+    event: React.FormEvent<HTMLFormElement>,
+    comment: CommentDTO,
+  ) {
+    event.preventDefault()
+
+    if (
+      !auth.token ||
+      !canManageComment(comment) ||
+      editCommentMutation.isPending ||
+      editingCommentId !== comment.id
+    ) {
+      return
+    }
+
+    if (!hasMarkdownContent(editingCommentDraft)) {
+      setEditingCommentError('评论内容不能为空')
+      return
+    }
+
+    setEditingCommentError(null)
+
+    try {
+      const updatedComment = await editCommentMutation.mutateAsync(comment)
+
+      queryClient.setQueryData<{ items: CommentDTO[]; total: number }>(
+        queryKeys.postComments(postState.id, {
+          limit: commentLimit,
+          offset: 0,
+          order: 'created_at_desc',
+        }),
+        (previousData) => {
+          if (!previousData) {
+            return previousData
+          }
+
+          return {
+            ...previousData,
+            items: previousData.items.map((item) =>
+              item.id === updatedComment.id ? updatedComment : item,
+            ),
+          }
+        },
+      )
+
+      setEditingCommentId(null)
+      setEditingCommentDraft('')
+      setEditingCommentError(null)
+      await invalidatePostQueries()
+    } catch (error) {
+      if (handleUnauthorized(error)) {
+        return
+      }
+
+      setEditingCommentError(
+        error instanceof Error ? error.message : '更新评论失败',
+      )
+    }
   }
 
   async function handleEditPostSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -558,7 +706,12 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
                 </CardTitle>
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                   <span>{formatRelativeTime(postState.created_at)}</span>
-                  <span>发布于 {formatDateTime(postState.created_at)}</span>
+                  <span>
+                    发布于{' '}
+                    {formatDateTime(postState.created_at, {
+                      includeYear: true,
+                    })}
+                  </span>
                 </div>
               </div>
             </div>
@@ -855,50 +1008,118 @@ export function PostCard({ onPostDeleted, post }: PostCardProps) {
                             </AvatarFallback>
                           </Avatar>
                           <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2 text-[0.8rem]">
-                              <span className="font-medium leading-none">
-                                {comment.author.nickname}
-                              </span>
-                              {comment.author.admin ? (
-                                <Badge className="h-4 px-1.5 text-[10px] leading-none">
-                                  管理员
-                                </Badge>
-                              ) : null}
-                              <span className="text-[0.7rem] text-muted-foreground">
-                                {formatRelativeTime(comment.created_at)}
-                              </span>
-                              <Button
-                                className="h-auto px-0 py-0 text-[0.7rem] text-muted-foreground"
-                                onClick={() => startReply(comment)}
-                                size="sm"
-                                type="button"
-                                variant="link"
+                            {editingCommentId === comment.id ? (
+                              <form
+                                className="rounded-xl border border-border/70 bg-muted/40 p-3"
+                                onSubmit={(event) =>
+                                  void handleEditCommentSubmit(event, comment)
+                                }
                               >
-                                回复
-                              </Button>
-                              {auth.isAdmin ? (
-                                <Button
-                                  className="h-auto px-0 py-0 text-[0.7rem] text-destructive"
-                                  disabled={deleteCommentMutation.isPending}
-                                  onClick={() => requestDeleteComment(comment)}
-                                  size="sm"
-                                  type="button"
-                                  variant="link"
-                                >
-                                  删除
-                                </Button>
-                              ) : null}
-                            </div>
-                            {comment.reply_to_user ? (
-                              <div className="mt-1 text-[0.7rem] text-muted-foreground">
-                                回复 {comment.reply_to_user.nickname}
-                              </div>
-                            ) : null}
-                            <MarkdownContent
-                              compact
-                              className="mt-1"
-                              content={comment.content}
-                            />
+                                <FieldGroup>
+                                  <Field data-invalid={!!editingCommentError}>
+                                    <MarkdownEditor
+                                      height={120}
+                                      onChange={setEditingCommentDraft}
+                                      placeholder="编辑这条评论，支持 Markdown。"
+                                      value={editingCommentDraft}
+                                    />
+                                    <FieldError>
+                                      {editingCommentError}
+                                    </FieldError>
+                                  </Field>
+                                </FieldGroup>
+
+                                <div className="mt-3 flex items-center justify-end gap-2">
+                                  <Button
+                                    disabled={editCommentMutation.isPending}
+                                    onClick={cancelEditComment}
+                                    type="button"
+                                    variant="outline"
+                                  >
+                                    取消
+                                  </Button>
+                                  <Button
+                                    disabled={editCommentMutation.isPending}
+                                    type="submit"
+                                  >
+                                    {editCommentMutation.isPending
+                                      ? '正在保存…'
+                                      : '保存修改'}
+                                  </Button>
+                                </div>
+                              </form>
+                            ) : (
+                              <>
+                                <div className="flex flex-wrap items-center gap-2 text-[0.8rem]">
+                                  <span className="font-medium leading-none">
+                                    {comment.author.nickname}
+                                  </span>
+                                  {comment.author.admin ? (
+                                    <Badge className="h-4 px-1.5 text-[10px] leading-none">
+                                      管理员
+                                    </Badge>
+                                  ) : null}
+                                  <span className="text-[0.7rem] text-muted-foreground">
+                                    {formatRelativeTime(comment.created_at)}
+                                  </span>
+                                  <Button
+                                    className="h-auto px-0 py-0 text-[0.7rem] text-muted-foreground"
+                                    disabled={editingCommentId !== null}
+                                    onClick={() => startReply(comment)}
+                                    size="sm"
+                                    type="button"
+                                    variant="link"
+                                  >
+                                    回复
+                                  </Button>
+                                  {canManageComment(comment) ? (
+                                    <>
+                                      <Button
+                                        className="h-auto px-0 py-0 text-[0.7rem] text-muted-foreground"
+                                        disabled={
+                                          editingCommentId !== null ||
+                                          editCommentMutation.isPending
+                                        }
+                                        onClick={() =>
+                                          startEditComment(comment)
+                                        }
+                                        size="sm"
+                                        type="button"
+                                        variant="link"
+                                      >
+                                        编辑
+                                      </Button>
+                                      <Button
+                                        className="h-auto px-0 py-0 text-[0.7rem] text-destructive"
+                                        disabled={
+                                          deleteCommentMutation.isPending ||
+                                          editCommentMutation.isPending ||
+                                          editingCommentId !== null
+                                        }
+                                        onClick={() =>
+                                          requestDeleteComment(comment)
+                                        }
+                                        size="sm"
+                                        type="button"
+                                        variant="link"
+                                      >
+                                        删除
+                                      </Button>
+                                    </>
+                                  ) : null}
+                                </div>
+                                {comment.reply_to_user ? (
+                                  <div className="mt-1 text-[0.7rem] text-muted-foreground">
+                                    回复 {comment.reply_to_user.nickname}
+                                  </div>
+                                ) : null}
+                                <MarkdownContent
+                                  compact
+                                  className="mt-1"
+                                  content={comment.content}
+                                />
+                              </>
+                            )}
                           </div>
                         </div>
                       </article>

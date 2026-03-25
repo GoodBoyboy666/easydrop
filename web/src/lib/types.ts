@@ -136,6 +136,10 @@ export interface CreateCommentInput {
   parent_id?: number
 }
 
+export interface UpdateCommentInput {
+  content?: string
+}
+
 export interface AuthState {
   status: 'anonymous' | 'loading' | 'authenticated'
   token: string | null

@@ -2,7 +2,10 @@ const relativeTimeFormatter = new Intl.RelativeTimeFormat('zh-CN', {
   numeric: 'auto',
 })
 
-export function formatDateTime(input?: string) {
+export function formatDateTime(
+  input?: string,
+  options?: { includeYear?: boolean },
+) {
   if (!input) {
     return '未知时间'
   }
@@ -14,6 +17,7 @@ export function formatDateTime(input?: string) {
   }
 
   return new Intl.DateTimeFormat('zh-CN', {
+    ...(options?.includeYear ? { year: 'numeric' as const } : {}),
     month: 'numeric',
     day: 'numeric',
     hour: '2-digit',

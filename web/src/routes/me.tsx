@@ -1,4 +1,9 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  useLocation,
+} from '@tanstack/react-router'
 import { MailIcon, ShieldCheckIcon, UserCircleIcon } from 'lucide-react'
 import { useAuth } from '#/lib/auth'
 import { formatDateTime, getInitials } from '#/lib/format'
@@ -20,6 +25,11 @@ export const Route = createFileRoute('/me')({
 
 function MePage() {
   const auth = useAuth()
+  const location = useLocation()
+
+  if (location.pathname !== '/me') {
+    return <Outlet />
+  }
 
   if (auth.status !== 'authenticated' || !auth.user) {
     return (
@@ -39,7 +49,6 @@ function MePage() {
       <Card className="border border-border/70 bg-card/95 shadow-sm">
         <CardHeader>
           <CardTitle>个人信息</CardTitle>
-          <CardDescription>首版展示当前登录用户的基础资料。</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-6">
           <div className="flex flex-col gap-4 rounded-2xl border border-border/70 bg-muted/30 p-4 sm:flex-row sm:items-center">
@@ -49,7 +58,9 @@ function MePage() {
             </Avatar>
             <div className="min-w-0">
               <div className="text-lg font-semibold">{auth.user.nickname}</div>
-              <div className="text-sm text-muted-foreground">@{auth.user.username}</div>
+              <div className="text-sm text-muted-foreground">
+                @{auth.user.username}
+              </div>
             </div>
             <div className="flex flex-wrap gap-2 sm:ml-auto">
               {auth.user.admin ? (
@@ -67,14 +78,14 @@ function MePage() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
+            <div className="rounded-2xl  bg-transparent p-4">
               <div className="text-sm text-muted-foreground">邮箱</div>
               <div className="mt-2 flex items-center gap-2 text-sm">
                 <MailIcon />
                 <span>{auth.user.email || '未设置邮箱'}</span>
               </div>
             </div>
-            <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
+            <div className="rounded-2xl bg-transparent p-4">
               <div className="text-sm text-muted-foreground">注册时间</div>
               <div className="mt-2 text-sm">
                 {formatDateTime(auth.user.created_at)}

@@ -14,6 +14,7 @@ import type {
   RegisterInput,
   SettingPublicResult,
   TagDTO,
+  UpdateCommentInput,
   UpdatePostInput,
   UserDTO,
 } from '#/lib/types'
@@ -21,7 +22,7 @@ import type {
 const DEFAULT_API_BASE_URL = '/api/v1'
 
 export const API_BASE_URL = normalizeBaseUrl(
-  import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL
+  import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL,
 )
 
 export class ApiError extends Error {
@@ -72,7 +73,10 @@ function normalizeBaseUrl(baseUrl: string) {
   return baseUrl.replace(/\/+$/, '')
 }
 
-function buildUrl(path: string, query?: Record<string, string | number | undefined>) {
+function buildUrl(
+  path: string,
+  query?: Record<string, string | number | undefined>,
+) {
   const pathname = path.startsWith('/') ? path : `/${path}`
   const url = new URL(`${API_BASE_URL}${pathname}`, 'http://localhost')
 
@@ -90,7 +94,9 @@ function buildUrl(path: string, query?: Record<string, string | number | undefin
 async function parseResponse<T>(response: Response) {
   const contentType = response.headers.get('content-type') ?? ''
   const isJson = contentType.includes('application/json')
-  const payload = isJson ? ((await response.json()) as T | { message?: string }) : null
+  const payload = isJson
+    ? ((await response.json()) as T | { message?: string })
+    : null
 
   if (!response.ok) {
     const message =
@@ -108,7 +114,7 @@ async function request<T>(
   init?: RequestInit & {
     query?: Record<string, string | number | undefined>
     token?: string | null
-  }
+  },
 ) {
   const { query, token, headers, ...rest } = init ?? {}
   const response = await fetch(buildUrl(path, query), {
@@ -153,29 +159,34 @@ export const api = {
   },
   getPosts(
     query?: Record<string, string | number | undefined>,
-    token?: string | null
+    token?: string | null,
   ) {
-    return request<PublicPostListResult & { pinned_items?: PostDTO[] | null }>('/posts', {
-      query,
-      token,
-    }).then(normalizePublicPostListResult)
+    return request<PublicPostListResult & { pinned_items?: PostDTO[] | null }>(
+      '/posts',
+      {
+        query,
+        token,
+      },
+    ).then(normalizePublicPostListResult)
   },
   getPublicSettings() {
     return request<SettingPublicResult>('/settings/public').then(
-      normalizeSettingPublicResult
+      normalizeSettingPublicResult,
     )
   },
   getTags(query?: Record<string, string | number | undefined>) {
-    return request<PagedResult<TagDTO>>('/tags', { query }).then(normalizePagedResult)
+    return request<PagedResult<TagDTO>>('/tags', { query }).then(
+      normalizePagedResult,
+    )
   },
   getLatestComments(query?: Record<string, string | number | undefined>) {
     return request<PagedResult<CommentDTO>>('/comments', { query }).then(
-      normalizePagedResult
+      normalizePagedResult,
     )
   },
   getPostComments(
     postId: number,
-    query?: Record<string, string | number | undefined>
+    query?: Record<string, string | number | undefined>,
   ) {
     return request<PagedResult<CommentDTO>>(`/posts/${postId}/comments`, {
       query,
@@ -214,7 +225,34 @@ export const api = {
       token,
     })
   },
-  getMyComments(token: string, query?: Record<string, string | number | undefined>) {
+  deleteMyComment(commentId: number, token: string) {
+    return request<{ message?: string }>(`/users/me/comments/${commentId}`, {
+      method: 'DELETE',
+      token,
+    })
+  },
+  updateAdminComment(
+    commentId: number,
+    input: UpdateCommentInput,
+    token: string,
+  ) {
+    return request<CommentDTO>(`/admin/comments/${commentId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+      token,
+    })
+  },
+  updateMyComment(commentId: number, input: UpdateCommentInput, token: string) {
+    return request<CommentDTO>(`/users/me/comments/${commentId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+      token,
+    })
+  },
+  getMyComments(
+    token: string,
+    query?: Record<string, string | number | undefined>,
+  ) {
     return request<PagedResult<CommentDTO>>('/users/me/comments', {
       query,
       token,
@@ -222,7 +260,9 @@ export const api = {
   },
 }
 
-export function toPublicSettingsMap(result: SettingPublicResult): PublicSettingsMap {
+export function toPublicSettingsMap(
+  result: SettingPublicResult,
+): PublicSettingsMap {
   return asArray(result.items).reduce<PublicSettingsMap>((acc, item) => {
     acc[item.key] = item.value
     return acc
