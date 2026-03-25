@@ -239,6 +239,13 @@ func initDefaultSettings(db *gorm.DB) error {
 			Category: "storage",
 			Public:   true,
 		},
+		{
+			Key:      "system.initialized",
+			Value:    "false",
+			Desc:     "系统已初始化",
+			Category: "system",
+			Public:   false,
+		},
 	}
 
 	return db.Clauses(clause.OnConflict{
