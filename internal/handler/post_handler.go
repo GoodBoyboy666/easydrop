@@ -21,6 +21,42 @@ func NewPostHandler(postService service.PostService) *PostHandler {
 	return &PostHandler{postService: postService}
 }
 
+// Get 查询公开说说详情。
+// @Summary 前端查询说说详情
+// @Description 根据说说 ID 查询公开说说详情
+// @Tags post
+// @Produce json
+// @Param id path int true "说说ID"
+// @Success 200 {object} dto.PostDTO
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 404 {object} dto.ErrorResponse "说说不存在"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
+// @Router /posts/{id} [get]
+func (h *PostHandler) Get(c *gin.Context) {
+	if h.postService == nil {
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+		return
+	}
+
+	var req dto.PostIDURIInput
+	if err := c.ShouldBindUri(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "路径参数不合法"})
+		return
+	}
+
+	result, err := h.postService.Get(c.Request.Context(), req.ID)
+	if err != nil {
+		c.JSON(mapPostErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		return
+	}
+	if result.Hide && !canViewHiddenPost(c) {
+		c.JSON(http.StatusNotFound, dto.ErrorResponse{Message: service.ErrPostNotFound.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
 // List 查询公开说说列表。
 // @Summary 前端查询公开说说列表
 // @Description 分页查询公开说说，支持按用户和标签过滤
@@ -49,13 +85,7 @@ func (h *PostHandler) List(c *gin.Context) {
 	}
 	req.Content = strings.TrimSpace(req.Content)
 	req.Order = strings.TrimSpace(req.Order)
-	canViewHide := false
-	if _, ok := middleware.GetUserID(c); ok {
-		if isAdmin, ok := middleware.GetUserAdmin(c); ok && isAdmin {
-			canViewHide = true
-		}
-	}
-	if !canViewHide {
+	if !canViewHiddenPost(c) {
 		publicOnly := false
 		req.Hide = &publicOnly
 	} else {
@@ -83,4 +113,12 @@ func (h *PostHandler) List(c *gin.Context) {
 		Items:       normalItems,
 		Total:       result.Total,
 	})
+}
+
+func canViewHiddenPost(c *gin.Context) bool {
+	if _, ok := middleware.GetUserID(c); !ok {
+		return false
+	}
+	isAdmin, ok := middleware.GetUserAdmin(c)
+	return ok && isAdmin
 }

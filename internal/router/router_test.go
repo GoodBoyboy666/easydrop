@@ -41,6 +41,7 @@ func TestBuildEngineRegistersAllRoutes(t *testing.T) {
 		"POST /api/v1/init":                           {},
 		"GET /api/v1/settings/public":                 {},
 		"GET /api/v1/posts":                           {},
+		"GET /api/v1/posts/:id":                       {},
 		"GET /api/v1/posts/:id/comments":              {},
 		"GET /api/v1/tags":                            {},
 		"GET /api/v1/users/me":                        {},
@@ -149,6 +150,15 @@ func TestBuildEngineAppliesMiddlewareGroups(t *testing.T) {
 		r.ServeHTTP(w, req)
 		if w.Code == http.StatusUnauthorized || w.Code == http.StatusForbidden {
 			t.Fatalf("public settings route should not be blocked by auth middleware, got %d", w.Code)
+		}
+	}
+
+	{
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/posts/1", nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code == http.StatusUnauthorized || w.Code == http.StatusForbidden {
+			t.Fatalf("public post detail route should not be blocked by auth middleware, got %d", w.Code)
 		}
 	}
 

@@ -119,6 +119,83 @@ func TestPostHandlerListSuccess(t *testing.T) {
 	}
 }
 
+func TestPostHandlerGetSuccess(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	called := false
+	h := NewPostHandler(&mockPostServiceForPublicHandler{
+		getFn: func(_ context.Context, id uint) (*dto.PostDTO, error) {
+			called = true
+			if id != 9 {
+				t.Fatalf("expected id=9, got %d", id)
+			}
+			return &dto.PostDTO{ID: id, Content: "hello"}, nil
+		},
+	})
+
+	c, w := newTestContext(http.MethodGet, "/api/v1/posts/9")
+	c.Params = gin.Params{{Key: "id", Value: "9"}}
+	h.Get(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+	if !called {
+		t.Fatal("expected Get to be called")
+	}
+}
+
+func TestPostHandlerGetHiddenPostForPublicViewer(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	h := NewPostHandler(&mockPostServiceForPublicHandler{
+		getFn: func(_ context.Context, id uint) (*dto.PostDTO, error) {
+			return &dto.PostDTO{ID: id, Content: "hidden", Hide: true}, nil
+		},
+	})
+
+	c, w := newTestContext(http.MethodGet, "/api/v1/posts/3")
+	c.Params = gin.Params{{Key: "id", Value: "3"}}
+	h.Get(c)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected status 404, got %d", w.Code)
+	}
+}
+
+func TestPostHandlerGetHiddenPostForAdminViewer(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	h := NewPostHandler(&mockPostServiceForPublicHandler{
+		getFn: func(_ context.Context, id uint) (*dto.PostDTO, error) {
+			return &dto.PostDTO{ID: id, Content: "hidden", Hide: true}, nil
+		},
+	})
+
+	c, w := newTestContext(http.MethodGet, "/api/v1/posts/3")
+	c.Params = gin.Params{{Key: "id", Value: "3"}}
+	c.Set(middleware.ContextUserIDKey, uint(1))
+	c.Set(middleware.ContextUserAdminKey, true)
+	h.Get(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+}
+
+func TestPostHandlerGetInvalidPathID(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	h := NewPostHandler(&mockPostServiceForPublicHandler{})
+	c, w := newTestContext(http.MethodGet, "/api/v1/posts/0")
+	c.Params = gin.Params{{Key: "id", Value: "0"}}
+	h.Get(c)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", w.Code)
+	}
+}
+
 func TestPostHandlerListInvalidQuery(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

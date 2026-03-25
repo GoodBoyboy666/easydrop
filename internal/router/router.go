@@ -139,6 +139,7 @@ func BuildEngine(app *di.App) *gin.Engine {
 		posts := v1.Group("/posts")
 		{
 			posts.GET("", postHandler.List)
+			posts.GET("/:id", postHandler.Get)
 			posts.GET("/:id/comments", commentHandler.ListByPost)
 		}
 
