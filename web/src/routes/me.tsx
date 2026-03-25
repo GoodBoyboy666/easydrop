@@ -255,7 +255,7 @@ function MePage() {
           <Separator />
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <Card className="border border-border/70 bg-card/95 shadow-sm">
+            <Card>
               <CardHeader>
                 <CardTitle className="text-base">修改昵称</CardTitle>
                 <CardDescription>
@@ -288,7 +288,7 @@ function MePage() {
               </CardContent>
             </Card>
 
-            <Card className="border border-border/70 bg-card/95 shadow-sm">
+            <Card>
               <CardHeader>
                 <CardTitle className="text-base">修改密码</CardTitle>
                 <CardDescription>
@@ -350,7 +350,7 @@ function MePage() {
             </Card>
           </div>
 
-          <Card className="border border-border/70 bg-card/95 shadow-sm">
+          <Card>
             <CardHeader>
               <CardTitle className="text-base">修改邮箱</CardTitle>
               <CardDescription>
