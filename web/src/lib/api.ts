@@ -4,6 +4,8 @@ import type {
   CommentDTO,
   CreateCommentInput,
   CreatePostInput,
+  ChangeMyEmailInput,
+  ChangeMyPasswordInput,
   InitInput,
   InitStatusResult,
   LoginInput,
@@ -15,6 +17,7 @@ import type {
   SettingPublicResult,
   TagDTO,
   UpdateCommentInput,
+  UpdateMyProfileInput,
   UpdatePostInput,
   UserDTO,
 } from '#/lib/types'
@@ -156,6 +159,27 @@ export const api = {
   },
   getCurrentUser(token: string) {
     return request<UserDTO>('/users/me', { token })
+  },
+  updateMyProfile(input: UpdateMyProfileInput, token: string) {
+    return request<UserDTO>('/users/me/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+      token,
+    })
+  },
+  changeMyPassword(input: ChangeMyPasswordInput, token: string) {
+    return request<{ message?: string }>('/users/me/password', {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+      token,
+    })
+  },
+  requestMyEmailChange(input: ChangeMyEmailInput, token: string) {
+    return request<{ message?: string }>('/users/me/email-change', {
+      method: 'POST',
+      body: JSON.stringify(input),
+      token,
+    })
   },
   getPosts(
     query?: Record<string, string | number | undefined>,

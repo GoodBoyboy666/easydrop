@@ -101,6 +101,20 @@ export interface RegisterInput {
   captcha?: Record<string, string>
 }
 
+export interface UpdateMyProfileInput {
+  nickname?: string
+}
+
+export interface ChangeMyPasswordInput {
+  old_password: string
+  new_password: string
+}
+
+export interface ChangeMyEmailInput {
+  current_password: string
+  new_email: string
+}
+
 export interface InitInput {
   allow_register: boolean
   email: string
