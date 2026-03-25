@@ -1,6 +1,12 @@
 import { queryOptions } from '@tanstack/react-query'
 import { api, toPublicSettingsMap } from '#/lib/api'
 import type {
+  AdminAttachmentListQuery,
+  AdminCommentListQuery,
+  AdminPostListQuery,
+  AdminSettingListQuery,
+  AdminUserListQuery,
+  AttachmentDTO,
   CaptchaConfigResult,
   CommentDTO,
   InitStatusResult,
@@ -8,6 +14,7 @@ import type {
   PostDTO,
   PublicPostListResult,
   PublicSettingsMap,
+  SettingItem,
   TagDTO,
   UserDTO,
 } from '#/lib/types'
@@ -28,7 +35,9 @@ const FALLBACK_HITOKOTO: HitokotoResult = {
   source: 'EasyDrop',
 }
 
-function normalizeQuery(query?: Record<string, string | number | undefined>) {
+function normalizeQuery(
+  query?: Record<string, string | number | boolean | undefined>,
+) {
   if (!query) {
     return {}
   }
@@ -76,29 +85,51 @@ export const queryKeys = {
   hitokoto: () => ['hitokoto'] as const,
   initStatus: () => ['init-status'] as const,
   latestCommentsPrefix: () => ['latest-comments'] as const,
-  latestComments: (query?: Record<string, string | number | undefined>) =>
+  latestComments: (
+    query?: Record<string, string | number | boolean | undefined>,
+  ) =>
     ['latest-comments', normalizeQuery(query)] as const,
   myCommentsPrefix: () => ['my-comments'] as const,
   myComments: (
     token: string,
-    query?: Record<string, string | number | undefined>,
+    query?: Record<string, string | number | boolean | undefined>,
   ) => ['my-comments', token, normalizeQuery(query)] as const,
   postComments: (
     postId: number,
-    query?: Record<string, string | number | undefined>,
+    query?: Record<string, string | number | boolean | undefined>,
   ) => ['post-comments', postId, normalizeQuery(query)] as const,
   postCommentsPrefix: (postId: number) => ['post-comments', postId] as const,
   post: (postId: number, token?: string | null) =>
     ['post', authScope(token), postId] as const,
   posts: (
     token?: string | null,
-    query?: Record<string, string | number | undefined>,
+    query?: Record<string, string | number | boolean | undefined>,
   ) => ['posts', authScope(token), normalizeQuery(query)] as const,
   postsPrefix: (token?: string | null) => ['posts', authScope(token)] as const,
   publicSettings: () => ['public-settings'] as const,
   tagsPrefix: () => ['tags'] as const,
-  tags: (query?: Record<string, string | number | undefined>) =>
+  tags: (query?: Record<string, string | number | boolean | undefined>) =>
     ['tags', normalizeQuery(query)] as const,
+  adminUsersPrefix: (token?: string | null) =>
+    ['admin-users', authScope(token)] as const,
+  adminUsers: (token: string, query?: AdminUserListQuery) =>
+    ['admin-users', authScope(token), normalizeQuery(query)] as const,
+  adminPostsPrefix: (token?: string | null) =>
+    ['admin-posts', authScope(token)] as const,
+  adminPosts: (token: string, query?: AdminPostListQuery) =>
+    ['admin-posts', authScope(token), normalizeQuery(query)] as const,
+  adminCommentsPrefix: (token?: string | null) =>
+    ['admin-comments', authScope(token)] as const,
+  adminComments: (token: string, query?: AdminCommentListQuery) =>
+    ['admin-comments', authScope(token), normalizeQuery(query)] as const,
+  adminAttachmentsPrefix: (token?: string | null) =>
+    ['admin-attachments', authScope(token)] as const,
+  adminAttachments: (token: string, query?: AdminAttachmentListQuery) =>
+    ['admin-attachments', authScope(token), normalizeQuery(query)] as const,
+  adminSettingsPrefix: (token?: string | null) =>
+    ['admin-settings', authScope(token)] as const,
+  adminSettings: (token: string, query?: AdminSettingListQuery) =>
+    ['admin-settings', authScope(token), normalizeQuery(query)] as const,
 }
 
 export function captchaConfigQueryOptions() {
@@ -124,7 +155,7 @@ export function initStatusQueryOptions() {
 }
 
 export function latestCommentsQueryOptions(
-  query?: Record<string, string | number | undefined>,
+  query?: Record<string, string | number | boolean | undefined>,
 ) {
   return queryOptions<PagedResult<CommentDTO>>({
     queryKey: queryKeys.latestComments(query),
@@ -134,7 +165,7 @@ export function latestCommentsQueryOptions(
 
 export function myCommentsQueryOptions(
   token: string,
-  query?: Record<string, string | number | undefined>,
+  query?: Record<string, string | number | boolean | undefined>,
 ) {
   return queryOptions<PagedResult<CommentDTO>>({
     queryKey: queryKeys.myComments(token, query),
@@ -144,7 +175,7 @@ export function myCommentsQueryOptions(
 
 export function postCommentsQueryOptions(
   postId: number,
-  query?: Record<string, string | number | undefined>,
+  query?: Record<string, string | number | boolean | undefined>,
 ) {
   return queryOptions<PagedResult<CommentDTO>>({
     queryKey: queryKeys.postComments(postId, query),
@@ -161,7 +192,7 @@ export function postQueryOptions(postId: number, token?: string | null) {
 
 export function postsQueryOptions(
   token?: string | null,
-  query?: Record<string, string | number | undefined>,
+  query?: Record<string, string | number | boolean | undefined>,
 ) {
   return queryOptions<PublicPostListResult>({
     queryKey: queryKeys.posts(token, query),
@@ -178,7 +209,7 @@ export function publicSettingsMapQueryOptions() {
 }
 
 export function tagsQueryOptions(
-  query?: Record<string, string | number | undefined>,
+  query?: Record<string, string | number | boolean | undefined>,
 ) {
   return queryOptions<PagedResult<TagDTO>>({
     queryKey: queryKeys.tags(query),
@@ -196,6 +227,56 @@ export function tagsQueryOptions(
         })
       }
     },
+  })
+}
+
+export function adminUsersQueryOptions(
+  token: string,
+  query: AdminUserListQuery,
+) {
+  return queryOptions<PagedResult<UserDTO>>({
+    queryKey: queryKeys.adminUsers(token, query),
+    queryFn: () => api.getAdminUsers(query, token),
+  })
+}
+
+export function adminPostsQueryOptions(
+  token: string,
+  query: AdminPostListQuery,
+) {
+  return queryOptions<PagedResult<PostDTO>>({
+    queryKey: queryKeys.adminPosts(token, query),
+    queryFn: () => api.getAdminPosts(query, token),
+  })
+}
+
+export function adminCommentsQueryOptions(
+  token: string,
+  query: AdminCommentListQuery,
+) {
+  return queryOptions<PagedResult<CommentDTO>>({
+    queryKey: queryKeys.adminComments(token, query),
+    queryFn: () => api.getAdminComments(query, token),
+  })
+}
+
+export function adminAttachmentsQueryOptions(
+  token: string,
+  query: AdminAttachmentListQuery,
+) {
+  return queryOptions<PagedResult<AttachmentDTO>>({
+    queryKey: queryKeys.adminAttachments(token, query),
+    queryFn: () => api.getAdminAttachments(query, token),
+  })
+}
+
+export function adminSettingsQueryOptions(
+  token: string,
+  query: AdminSettingListQuery,
+) {
+  return queryOptions<PagedResult<SettingItem>>({
+    queryKey: queryKeys.adminSettings(token, query),
+    queryFn: () => api.getAdminSettings(query, token),
   })
 }
 

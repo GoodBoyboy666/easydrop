@@ -1,7 +1,15 @@
 import type {
+  AdminAttachmentListQuery,
+  AdminCommentListQuery,
+  AdminPostListQuery,
+  AdminSettingListQuery,
+  AdminUserListQuery,
+  AttachmentBatchDeleteResult,
+  AttachmentDTO,
   AuthResult,
   CaptchaConfigResult,
   CommentDTO,
+  CreateUserInput,
   CreateCommentInput,
   CreatePostInput,
   ChangeMyEmailInput,
@@ -14,11 +22,14 @@ import type {
   PublicPostListResult,
   PublicSettingsMap,
   RegisterInput,
+  SettingItem,
   SettingPublicResult,
   TagDTO,
+  UpdateSettingInput,
   UpdateCommentInput,
   UpdateMyProfileInput,
   UpdatePostInput,
+  UpdateUserInput,
   UserDTO,
 } from '#/lib/types'
 
@@ -78,7 +89,7 @@ function normalizeBaseUrl(baseUrl: string) {
 
 function buildUrl(
   path: string,
-  query?: Record<string, string | number | undefined>,
+  query?: Record<string, string | number | boolean | undefined>,
 ) {
   const pathname = path.startsWith('/') ? path : `/${path}`
   const url = new URL(`${API_BASE_URL}${pathname}`, 'http://localhost')
@@ -115,16 +126,18 @@ async function parseResponse<T>(response: Response) {
 async function request<T>(
   path: string,
   init?: RequestInit & {
-    query?: Record<string, string | number | undefined>
+    query?: Record<string, string | number | boolean | undefined>
     token?: string | null
   },
 ) {
   const { query, token, headers, ...rest } = init ?? {}
+  const isFormData =
+    typeof FormData !== 'undefined' && rest.body instanceof FormData
   const response = await fetch(buildUrl(path, query), {
     ...rest,
     headers: {
-      'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...headers,
     },
   })
@@ -182,7 +195,7 @@ export const api = {
     })
   },
   getPosts(
-    query?: Record<string, string | number | undefined>,
+    query?: Record<string, string | number | boolean | undefined>,
     token?: string | null,
   ) {
     return request<PublicPostListResult & { pinned_items?: PostDTO[] | null }>(
@@ -203,19 +216,21 @@ export const api = {
       normalizeSettingPublicResult,
     )
   },
-  getTags(query?: Record<string, string | number | undefined>) {
+  getTags(query?: Record<string, string | number | boolean | undefined>) {
     return request<PagedResult<TagDTO>>('/tags', { query }).then(
       normalizePagedResult,
     )
   },
-  getLatestComments(query?: Record<string, string | number | undefined>) {
+  getLatestComments(
+    query?: Record<string, string | number | boolean | undefined>,
+  ) {
     return request<PagedResult<CommentDTO>>('/comments', { query }).then(
       normalizePagedResult,
     )
   },
   getPostComments(
     postId: number,
-    query?: Record<string, string | number | undefined>,
+    query?: Record<string, string | number | boolean | undefined>,
   ) {
     return request<PagedResult<CommentDTO>>(`/posts/${postId}/comments`, {
       query,
@@ -280,12 +295,112 @@ export const api = {
   },
   getMyComments(
     token: string,
-    query?: Record<string, string | number | undefined>,
+    query?: Record<string, string | number | boolean | undefined>,
   ) {
     return request<PagedResult<CommentDTO>>('/users/me/comments', {
       query,
       token,
     }).then(normalizePagedResult)
+  },
+  getAdminUsers(query: AdminUserListQuery, token: string) {
+    return request<PagedResult<UserDTO>>('/admin/users', {
+      query,
+      token,
+    }).then(normalizePagedResult)
+  },
+  createAdminUser(input: CreateUserInput, token: string) {
+    return request<UserDTO>('/admin/users', {
+      method: 'POST',
+      body: JSON.stringify(input),
+      token,
+    })
+  },
+  updateAdminUser(userId: number, input: UpdateUserInput, token: string) {
+    return request<UserDTO>(`/admin/users/${userId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+      token,
+    })
+  },
+  deleteAdminUser(userId: number, token: string) {
+    return request<{ message?: string }>(`/admin/users/${userId}`, {
+      method: 'DELETE',
+      token,
+    })
+  },
+  uploadAdminUserAvatar(userId: number, file: File, token: string) {
+    const body = new FormData()
+    body.set('avatar', file)
+    return request<UserDTO>(`/admin/users/${userId}/avatar`, {
+      method: 'POST',
+      body,
+      token,
+    })
+  },
+  deleteAdminUserAvatar(userId: number, token: string) {
+    return request<{ message?: string }>(`/admin/users/${userId}/avatar`, {
+      method: 'DELETE',
+      token,
+    })
+  },
+  getAdminPosts(query: AdminPostListQuery, token: string) {
+    return request<PagedResult<PostDTO>>('/admin/posts', {
+      query,
+      token,
+    }).then(normalizePagedResult)
+  },
+  getAdminPost(postId: number, token: string) {
+    return request<PostDTO>(`/admin/posts/${postId}`, { token })
+  },
+  getAdminComments(query: AdminCommentListQuery, token: string) {
+    return request<PagedResult<CommentDTO>>('/admin/comments', {
+      query,
+      token,
+    }).then(normalizePagedResult)
+  },
+  getAdminComment(commentId: number, token: string) {
+    return request<CommentDTO>(`/admin/comments/${commentId}`, {
+      token,
+    })
+  },
+  getAdminAttachments(query: AdminAttachmentListQuery, token: string) {
+    return request<PagedResult<AttachmentDTO>>('/admin/attachments', {
+      query,
+      token,
+    }).then(normalizePagedResult)
+  },
+  deleteAdminAttachment(attachmentId: number, token: string) {
+    return request<{ message?: string }>(`/admin/attachments/${attachmentId}`, {
+      method: 'DELETE',
+      token,
+    })
+  },
+  batchDeleteAdminAttachments(ids: number[], token: string) {
+    return request<AttachmentBatchDeleteResult>('/admin/attachments/batch-delete', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+      token,
+    })
+  },
+  getAdminSettings(query: AdminSettingListQuery, token: string) {
+    return request<PagedResult<SettingItem>>('/admin/settings', {
+      query,
+      token,
+    }).then(normalizePagedResult)
+  },
+  updateAdminSetting(
+    key: string,
+    input: UpdateSettingInput,
+    token: string,
+  ) {
+    return request<{ message?: string }>(
+      `/admin/settings/${encodeURIComponent(key)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(input),
+        token,
+      },
+    )
   },
 }
 

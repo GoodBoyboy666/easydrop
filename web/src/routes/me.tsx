@@ -1,6 +1,5 @@
 import {
   createFileRoute,
-  Link,
   Outlet,
   useLocation,
 } from '@tanstack/react-router'
@@ -493,18 +492,6 @@ function MePage() {
                   </form>
                 </CardContent>
               </Card>
-            </motion.div>
-
-            <motion.div
-              animate={motionReady ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
-              className="flex justify-end"
-              initial={prefersReducedMotion ? false : SECTION_ENTER_INITIAL}
-              transition={getEntranceTransition(0.24)}
-              {...GPU_ACCELERATED_MOTION_PROPS}
-            >
-              <Button asChild variant="outline">
-                <Link to="/me/comments">查看我的评论</Link>
-              </Button>
             </motion.div>
           </CardContent>
         </Card>

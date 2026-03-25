@@ -17,6 +17,11 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PostsIdRouteImport } from './routes/posts.$id'
 import { Route as MeCommentsRouteImport } from './routes/me.comments'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminPostsRouteImport } from './routes/admin.posts'
+import { Route as AdminCommentsRouteImport } from './routes/admin.comments'
+import { Route as AdminAttachmentsRouteImport } from './routes/admin.attachments'
 
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
@@ -58,35 +63,75 @@ const MeCommentsRoute = MeCommentsRouteImport.update({
   path: '/comments',
   getParentRoute: () => MeRoute,
 } as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPostsRoute = AdminPostsRouteImport.update({
+  id: '/posts',
+  path: '/posts',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCommentsRoute = AdminCommentsRouteImport.update({
+  id: '/comments',
+  path: '/comments',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAttachmentsRoute = AdminAttachmentsRouteImport.update({
+  id: '/attachments',
+  path: '/attachments',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/init': typeof InitRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRouteWithChildren
   '/register': typeof RegisterRoute
+  '/admin/attachments': typeof AdminAttachmentsRoute
+  '/admin/comments': typeof AdminCommentsRoute
+  '/admin/posts': typeof AdminPostsRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/me/comments': typeof MeCommentsRoute
   '/posts/$id': typeof PostsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/init': typeof InitRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRouteWithChildren
   '/register': typeof RegisterRoute
+  '/admin/attachments': typeof AdminAttachmentsRoute
+  '/admin/comments': typeof AdminCommentsRoute
+  '/admin/posts': typeof AdminPostsRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/me/comments': typeof MeCommentsRoute
   '/posts/$id': typeof PostsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/init': typeof InitRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRouteWithChildren
   '/register': typeof RegisterRoute
+  '/admin/attachments': typeof AdminAttachmentsRoute
+  '/admin/comments': typeof AdminCommentsRoute
+  '/admin/posts': typeof AdminPostsRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/me/comments': typeof MeCommentsRoute
   '/posts/$id': typeof PostsIdRoute
 }
@@ -99,6 +144,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/me'
     | '/register'
+    | '/admin/attachments'
+    | '/admin/comments'
+    | '/admin/posts'
+    | '/admin/settings'
+    | '/admin/users'
     | '/me/comments'
     | '/posts/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -109,6 +159,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/me'
     | '/register'
+    | '/admin/attachments'
+    | '/admin/comments'
+    | '/admin/posts'
+    | '/admin/settings'
+    | '/admin/users'
     | '/me/comments'
     | '/posts/$id'
   id:
@@ -119,13 +174,18 @@ export interface FileRouteTypes {
     | '/login'
     | '/me'
     | '/register'
+    | '/admin/attachments'
+    | '/admin/comments'
+    | '/admin/posts'
+    | '/admin/settings'
+    | '/admin/users'
     | '/me/comments'
     | '/posts/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   InitRoute: typeof InitRoute
   LoginRoute: typeof LoginRoute
   MeRoute: typeof MeRouteWithChildren
@@ -191,8 +251,61 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MeCommentsRouteImport
       parentRoute: typeof MeRoute
     }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/posts': {
+      id: '/admin/posts'
+      path: '/posts'
+      fullPath: '/admin/posts'
+      preLoaderRoute: typeof AdminPostsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/comments': {
+      id: '/admin/comments'
+      path: '/comments'
+      fullPath: '/admin/comments'
+      preLoaderRoute: typeof AdminCommentsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/attachments': {
+      id: '/admin/attachments'
+      path: '/attachments'
+      fullPath: '/admin/attachments'
+      preLoaderRoute: typeof AdminAttachmentsRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
+
+interface AdminRouteChildren {
+  AdminAttachmentsRoute: typeof AdminAttachmentsRoute
+  AdminCommentsRoute: typeof AdminCommentsRoute
+  AdminPostsRoute: typeof AdminPostsRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminUsersRoute: typeof AdminUsersRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAttachmentsRoute: AdminAttachmentsRoute,
+  AdminCommentsRoute: AdminCommentsRoute,
+  AdminPostsRoute: AdminPostsRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
+  AdminUsersRoute: AdminUsersRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface MeRouteChildren {
   MeCommentsRoute: typeof MeCommentsRoute
@@ -206,7 +319,7 @@ const MeRouteWithChildren = MeRoute._addFileChildren(MeRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   InitRoute: InitRoute,
   LoginRoute: LoginRoute,
   MeRoute: MeRouteWithChildren,

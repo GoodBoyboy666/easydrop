@@ -72,8 +72,38 @@ export interface PagedResult<T> {
   total: number
 }
 
+export interface AttachmentDTO {
+  biz_type: number
+  created_at: string
+  file_key: string
+  file_size: number
+  id: number
+  storage_type: string
+  url: string
+  user_id: number
+}
+
+export interface AttachmentBatchDeleteFailedItem {
+  id: number
+  message: string
+}
+
+export interface AttachmentBatchDeleteResult {
+  failed: AttachmentBatchDeleteFailedItem[]
+  success_ids: number[]
+}
+
 export interface SettingPublicItem {
   key: string
+  value: string
+}
+
+export interface SettingItem {
+  category: string
+  desc: string
+  key: string
+  public: boolean
+  sensitive: boolean
   value: string
 }
 
@@ -152,6 +182,78 @@ export interface CreateCommentInput {
 
 export interface UpdateCommentInput {
   content?: string
+}
+
+export interface CreateUserInput {
+  admin?: boolean
+  email: string
+  email_verified?: boolean
+  nickname?: string
+  password: string
+  status?: number
+  storage_quota?: number | null
+  username: string
+}
+
+export interface UpdateUserInput {
+  admin?: boolean
+  email?: string
+  email_verified?: boolean
+  nickname?: string
+  password?: string
+  status?: number
+  storage_quota?: number | null
+  username?: string
+}
+
+export interface UpdateSettingInput {
+  value?: string
+}
+
+export interface AdminUserListQuery {
+  email?: string
+  limit?: number
+  offset?: number
+  order?: string
+  status?: number
+  username?: string
+}
+
+export interface AdminPostListQuery {
+  content?: string
+  hide?: boolean
+  limit?: number
+  offset?: number
+  order?: string
+  tag_id?: number
+  user_id?: number
+}
+
+export interface AdminCommentListQuery {
+  limit?: number
+  offset?: number
+  order?: string
+  post_id?: number
+  user_id?: number
+}
+
+export interface AdminAttachmentListQuery {
+  biz_type?: number
+  created_from?: number
+  created_to?: number
+  id?: number
+  limit?: number
+  offset?: number
+  order?: string
+  user_id?: number
+}
+
+export interface AdminSettingListQuery {
+  category?: string
+  key?: string
+  limit?: number
+  offset?: number
+  order?: string
 }
 
 export interface AuthState {
