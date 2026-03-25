@@ -1,7 +1,9 @@
 'use client'
 
-import { useMemo } from 'react'
+import { motion, useReducedMotion } from 'motion/react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
 import { HashIcon, MegaphoneIcon, MessageSquareTextIcon } from 'lucide-react'
 import { useAuth } from '#/lib/auth'
 import { formatRelativeTime, getInitials } from '#/lib/format'
@@ -33,6 +35,7 @@ import { Skeleton } from '#/components/ui/skeleton'
 
 const LATEST_COMMENTS_PAGE_SIZE = 6
 const LATEST_COMMENTS_FETCH_SIZE = 24
+const SIDEBAR_MOTION_DELAY_SECONDS = 0.12
 
 function isTopLevelComment(comment: CommentDTO) {
   return comment.root_id == null && comment.parent_id == null
@@ -40,6 +43,8 @@ function isTopLevelComment(comment: CommentDTO) {
 
 export function SiteSidebar() {
   const auth = useAuth()
+  const prefersReducedMotion = useReducedMotion()
+  const [motionReady, setMotionReady] = useState(prefersReducedMotion)
   const {
     error: settingsError,
     loading: settingsLoading,
@@ -100,8 +105,44 @@ export function SiteSidebar() {
     [latestComments.total, postsTotal, tags.total],
   )
 
+  useEffect(() => {
+    if (prefersReducedMotion) {
+      setMotionReady(true)
+      return
+    }
+
+    setMotionReady(false)
+    let raf1 = 0
+    let raf2 = 0
+
+    raf1 = window.requestAnimationFrame(() => {
+      raf2 = window.requestAnimationFrame(() => {
+        setMotionReady(true)
+      })
+    })
+
+    return () => {
+      window.cancelAnimationFrame(raf1)
+      window.cancelAnimationFrame(raf2)
+    }
+  }, [prefersReducedMotion])
+
   return (
-    <aside className="flex min-w-0 flex-col gap-4">
+    <motion.aside
+      animate={motionReady ? { opacity: 1, x: 0 } : { opacity: 0, x: 10 }}
+      className="flex min-w-0 flex-col gap-4"
+      initial={false}
+      transition={
+        prefersReducedMotion
+          ? { duration: 0 }
+          : {
+              type: 'spring',
+              duration: 0.32,
+              ease: 'easeOut',
+              delay: SIDEBAR_MOTION_DELAY_SECONDS,
+            }
+      }
+    >
       <Card className="bg-card/90 shadow-sm">
         <CardHeader>
           <CardTitle>{siteOwner}</CardTitle>
@@ -216,9 +257,13 @@ export function SiteSidebar() {
                     </Avatar>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2 text-[0.8rem]">
-                        <span className="font-medium leading-none">
+                        <Link
+                          className="font-medium leading-none hover:underline"
+                          params={{ id: String(comment.post_id) }}
+                          to="/posts/$id"
+                        >
                           {comment.author.nickname}
-                        </span>
+                        </Link>
                         <span className="text-[0.7rem] text-muted-foreground">
                           {formatRelativeTime(comment.created_at)}
                         </span>
@@ -277,6 +322,6 @@ export function SiteSidebar() {
           ) : null}
         </CardContent>
       </Card>
-    </aside>
+    </motion.aside>
   )
 }
