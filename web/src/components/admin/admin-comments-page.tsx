@@ -375,7 +375,7 @@ export function AdminCommentsPage() {
               onPageChange={setPage}
               page={page}
               pageSize={ADMIN_PAGE_SIZE}
-              total={commentsQuery.data?.total ?? 0}
+              total={commentsQuery.data.total}
             />
           </>
         ) : null}

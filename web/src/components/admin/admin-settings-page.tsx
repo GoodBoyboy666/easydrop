@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { SaveIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { ADMIN_SELECT_CLASSNAME } from '#/lib/admin'
 import { api } from '#/lib/api'
 import { adminSettingsQueryOptions, queryKeys } from '#/lib/query-options'
 import type { SettingItem } from '#/lib/types'
@@ -18,25 +17,12 @@ import { Button } from '#/components/ui/button'
 import {
   Field,
   FieldContent,
-  FieldDescription,
   FieldLabel,
   FieldTitle,
 } from '#/components/ui/field'
 import { Input } from '#/components/ui/input'
 import { Switch } from '#/components/ui/switch'
 import { Textarea } from '#/components/ui/textarea'
-
-interface SettingFilterState {
-  category: string
-  key: string
-  order: string
-}
-
-const EMPTY_FILTERS: SettingFilterState = {
-  category: '',
-  key: '',
-  order: 'key_asc',
-}
 
 function isBooleanSettingValue(value: string | null | undefined) {
   const normalized = value?.trim().toLowerCase()
@@ -60,17 +46,13 @@ function shouldUseTextarea(setting: SettingItem, value: string) {
 export function AdminSettingsPage() {
   const queryClient = useQueryClient()
   const { auth, handleUnauthorized } = useAdminSession('/admin/settings')
-  const [draftFilters, setDraftFilters] = useState<SettingFilterState>(EMPTY_FILTERS)
-  const [filters, setFilters] = useState<SettingFilterState>(EMPTY_FILTERS)
   const [draftValues, setDraftValues] = useState<Record<string, string>>({})
 
   const settingsQuery = useQuery({
     ...adminSettingsQueryOptions(auth.token ?? '', {
-      category: filters.category.trim() || undefined,
-      key: filters.key.trim() || undefined,
       limit: 100,
       offset: 0,
-      order: filters.order,
+      order: 'key_asc',
     }),
     enabled: !!auth.token,
   })
@@ -90,7 +72,7 @@ export function AdminSettingsPage() {
 
   useEffect(() => {
     const nextDrafts = settings.reduce<Record<string, string>>((acc, setting) => {
-      acc[setting.key] = setting.value ?? ''
+      acc[setting.key] = setting.value
       return acc
     }, {})
 
@@ -180,7 +162,7 @@ export function AdminSettingsPage() {
               const currentValue = draftValues[setting.key] ?? ''
               const savingCurrent =
                 updateMutation.isPending &&
-                updateMutation.variables?.key === setting.key
+                updateMutation.variables.key === setting.key
               const isBooleanSetting = isBooleanSettingValue(setting.value)
               const useTextarea = shouldUseTextarea(setting, currentValue)
 

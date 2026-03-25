@@ -194,7 +194,9 @@ function InitPage() {
                 重新检查
               </Button>
               <Button asChild>
-                <Link to="/">返回首页</Link>
+                <Link search={{ content: undefined }} to="/">
+                  返回首页
+                </Link>
               </Button>
             </div>
           </CardContent>
@@ -203,7 +205,7 @@ function InitPage() {
     )
   }
 
-  if (initStatusQuery.data?.initialized) {
+  if (initStatusQuery.data.initialized) {
     return (
       <div className="mx-auto flex min-h-[calc(100vh-9rem)] w-full max-w-7xl items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
         <Card className="w-full max-w-2xl border border-border/70 bg-card/95 shadow-sm">
@@ -219,7 +221,9 @@ function InitPage() {
           <CardContent className="flex flex-col gap-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
               <Button asChild variant="outline">
-                <Link to="/">返回首页</Link>
+                <Link search={{ content: undefined }} to="/">
+                  返回首页
+                </Link>
               </Button>
               <Button asChild>
                 <Link search={{ redirect: '/' }} to="/login">
@@ -374,7 +378,9 @@ function InitPage() {
 
               <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
                 <Button asChild type="button" variant="outline">
-                  <Link to="/">返回首页</Link>
+                  <Link search={{ content: undefined }} to="/">
+                    返回首页
+                  </Link>
                 </Button>
                 <Button disabled={initializeMutation.isPending} type="submit">
                   {initializeMutation.isPending

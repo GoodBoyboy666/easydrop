@@ -19,13 +19,11 @@ vi.mock('@tanstack/react-router', () => ({
 }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@tanstack/react-query')>()
+  const actual = await importOriginal()
 
-  return {
-    ...actual,
+  return Object.assign({}, actual, {
     useQuery: (...args: unknown[]) => mockUseQuery(...args),
-  }
+  })
 })
 
 vi.mock('#/lib/auth', () => ({

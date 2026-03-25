@@ -87,16 +87,24 @@ function normalizeBaseUrl(baseUrl: string) {
   return baseUrl.replace(/\/+$/, '')
 }
 
+function isQueryParamValue(value: unknown): value is string | number | boolean {
+  return (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  )
+}
+
 function buildUrl(
   path: string,
-  query?: Record<string, string | number | boolean | undefined>,
+  query?: object,
 ) {
   const pathname = path.startsWith('/') ? path : `/${path}`
   const url = new URL(`${API_BASE_URL}${pathname}`, 'http://localhost')
 
   if (query) {
     for (const [key, value] of Object.entries(query)) {
-      if (value !== undefined && value !== '') {
+      if (value !== undefined && value !== '' && isQueryParamValue(value)) {
         url.searchParams.set(key, String(value))
       }
     }
@@ -126,7 +134,7 @@ async function parseResponse<T>(response: Response) {
 async function request<T>(
   path: string,
   init?: RequestInit & {
-    query?: Record<string, string | number | boolean | undefined>
+    query?: object
     token?: string | null
   },
 ) {

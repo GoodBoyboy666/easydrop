@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import type MDEditor from '@uiw/react-md-editor'
 import type { MDEditorProps } from '@uiw/react-md-editor'
 import type { ICommand } from '@uiw/react-md-editor/commands'
 import * as mdCommands from '@uiw/react-md-editor/commands'
@@ -96,7 +97,7 @@ interface MarkdownEditorProps extends Omit<
   value: string
 }
 
-type MDEditorComponent = (typeof import('@uiw/react-md-editor'))['default']
+type MDEditorComponent = typeof MDEditor
 
 export function MarkdownEditor({
   className,

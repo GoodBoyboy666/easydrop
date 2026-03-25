@@ -343,7 +343,7 @@ export function AdminPostsPage() {
               onPageChange={setPage}
               page={page}
               pageSize={ADMIN_PAGE_SIZE}
-              total={postsQuery.data?.total ?? 0}
+              total={postsQuery.data.total}
             />
           </>
         ) : null}

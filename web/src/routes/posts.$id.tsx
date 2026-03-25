@@ -225,7 +225,9 @@ function PostDetailPage() {
             {...GPU_ACCELERATED_MOTION_PROPS}
           >
             <PostCard
-              onPostDeleted={() => void navigate({ to: '/' })}
+              onPostDeleted={() =>
+                void navigate({ to: '/', search: { content: undefined } })
+              }
               onPostUpdated={setPostState}
               post={postState}
               showComments={false}

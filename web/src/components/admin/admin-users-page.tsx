@@ -31,7 +31,6 @@ import { Input } from '#/components/ui/input'
 import {
   AlertDialog,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogHeader,
   AlertDialogTitle,
 } from '#/components/ui/alert-dialog'
@@ -87,7 +86,7 @@ function toUserFormState(user: UserDTO): UserFormState {
     admin: !!user.admin,
     email: user.email ?? '',
     emailVerified: !!user.email_verified,
-    nickname: user.nickname ?? '',
+    nickname: user.nickname,
     password: '',
     status: String(user.status ?? 1),
     storageQuota:
@@ -683,7 +682,7 @@ export function AdminUsersPage() {
 
               <Field>
                 <FieldLabel htmlFor="admin-user-form-password">
-                  {editingUser ? '新密码（留空不改）' : '密码'}
+                  新密码（留空不改）
                 </FieldLabel>
                 <Input
                   id="admin-user-form-password"
@@ -693,7 +692,7 @@ export function AdminUsersPage() {
                       password: event.target.value,
                     }))
                   }
-                  placeholder={editingUser ? '如需重置密码再填写' : '设置登录密码'}
+                  placeholder="如需重置密码再填写"
                   type="password"
                   value={formState.password}
                 />
@@ -781,7 +780,7 @@ export function AdminUsersPage() {
               <Avatar size="lg">
                 <AvatarImage
                   alt={formState.nickname || formState.username}
-                  src={editingUser?.avatar}
+                  src={editingUser.avatar}
                 />
                 <AvatarFallback>
                   {getInitials(formState.nickname || formState.username || '用户')}
@@ -792,49 +791,43 @@ export function AdminUsersPage() {
                   {formState.nickname || formState.username || '未命名用户'}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  {editingUser ? `用户 #${editingUser.id}` : '新用户'}
+                  用户 #{editingUser.id}
                 </div>
               </div>
             </div>
 
-            {editingUser ? (
-              <div className="space-y-3">
-                <Field>
-                  <FieldLabel htmlFor="admin-user-avatar">上传头像</FieldLabel>
-                  <Input
-                    id="admin-user-avatar"
-                    onChange={(event) =>
-                      setAvatarFile(event.target.files?.[0] ?? null)
-                    }
-                    type="file"
-                  />
-                </Field>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    disabled={!avatarFile || uploadAvatarMutation.isPending}
-                    onClick={() => void handleUploadAvatar()}
-                    type="button"
-                    variant="outline"
-                  >
-                    <ImageUpIcon data-icon="inline-start" />
-                    {uploadAvatarMutation.isPending ? '上传中…' : '上传头像'}
-                  </Button>
-                  <Button
-                    disabled={!editingUser.avatar || deleteAvatarMutation.isPending}
-                    onClick={() => void handleDeleteAvatar()}
-                    type="button"
-                    variant="destructive"
-                  >
-                    <Trash2Icon data-icon="inline-start" />
-                    {deleteAvatarMutation.isPending ? '删除中…' : '删除头像'}
-                  </Button>
-                </div>
+            <div className="space-y-3">
+              <Field>
+                <FieldLabel htmlFor="admin-user-avatar">上传头像</FieldLabel>
+                <Input
+                  id="admin-user-avatar"
+                  onChange={(event) =>
+                    setAvatarFile(event.target.files?.[0] ?? null)
+                  }
+                  type="file"
+                />
+              </Field>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  disabled={!avatarFile || uploadAvatarMutation.isPending}
+                  onClick={() => void handleUploadAvatar()}
+                  type="button"
+                  variant="outline"
+                >
+                  <ImageUpIcon data-icon="inline-start" />
+                  {uploadAvatarMutation.isPending ? '上传中…' : '上传头像'}
+                </Button>
+                <Button
+                  disabled={!editingUser.avatar || deleteAvatarMutation.isPending}
+                  onClick={() => void handleDeleteAvatar()}
+                  type="button"
+                  variant="destructive"
+                >
+                  <Trash2Icon data-icon="inline-start" />
+                  {deleteAvatarMutation.isPending ? '删除中…' : '删除头像'}
+                </Button>
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                创建完成后即可继续为该用户上传或替换头像。
-              </p>
-            )}
+            </div>
           </div>
           </form>
         </AdminSection>
@@ -920,7 +913,7 @@ export function AdminUsersPage() {
               onPageChange={setPage}
               page={page}
               pageSize={ADMIN_PAGE_SIZE}
-              total={usersQuery.data?.total ?? 0}
+              total={usersQuery.data.total}
             />
           </>
         ) : null}

@@ -471,7 +471,7 @@ export function AdminAttachmentsPage() {
               onPageChange={setPage}
               page={page}
               pageSize={ADMIN_PAGE_SIZE}
-              total={attachmentsQuery.data?.total ?? 0}
+              total={attachmentsQuery.data.total}
             />
           </>
         ) : null}

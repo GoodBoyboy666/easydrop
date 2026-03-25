@@ -68,7 +68,7 @@ export function AdminMotionItem({
   className?: string
   delay?: number
 }) {
-  const prefersReducedMotion = useReducedMotion()
+  const prefersReducedMotion = useReducedMotion() ?? false
 
   return (
     <motion.div
@@ -89,7 +89,7 @@ export function AdminAccessNotice({
   description: React.ReactNode
   title: string
 }) {
-  const prefersReducedMotion = useReducedMotion()
+  const prefersReducedMotion = useReducedMotion() ?? false
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
@@ -113,7 +113,7 @@ export function AdminLayout({
   activePath: string
   children: React.ReactNode
 }) {
-  const prefersReducedMotion = useReducedMotion()
+  const prefersReducedMotion = useReducedMotion() ?? false
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -126,7 +126,7 @@ export function AdminLayout({
               </CardHeader>
               <CardContent className="flex gap-2">
                 <Button asChild size="sm" variant="outline">
-                  <Link to="/">
+                  <Link search={{ content: undefined }} to="/">
                     <ArrowLeftIcon data-icon="inline-start" />
                     返回站点
                   </Link>
@@ -199,15 +199,20 @@ function AdminNavButton({
 
 export function AdminPageHeader({
   actions,
+  description,
   title,
 }: {
   actions?: React.ReactNode
+  description?: React.ReactNode
   title: string
 }) {
   return (
     <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
       <div>
         <h1 className="font-heading text-2xl font-semibold tracking-tight">{title}</h1>
+        {description ? (
+          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+        ) : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
     </div>
@@ -221,7 +226,7 @@ export function AdminStatCard({
   title: string
   value: React.ReactNode
 }) {
-  const prefersReducedMotion = useReducedMotion()
+  const prefersReducedMotion = useReducedMotion() ?? false
 
   return (
     <motion.div {...getAdminMotionProps(prefersReducedMotion)}>
@@ -237,18 +242,23 @@ export function AdminStatCard({
 
 export function AdminSection({
   children,
+  description,
   title,
 }: {
   children: React.ReactNode
+  description?: React.ReactNode
   title: string
 }) {
-  const prefersReducedMotion = useReducedMotion()
+  const prefersReducedMotion = useReducedMotion() ?? false
 
   return (
     <motion.div {...getAdminMotionProps(prefersReducedMotion, 0.04)}>
       <Card className="border border-border/70 bg-transparent shadow-sm backdrop-blur-sm">
         <CardHeader>
           <CardTitle>{title}</CardTitle>
+          {description ? (
+            <CardDescription>{description}</CardDescription>
+          ) : null}
         </CardHeader>
         <CardContent>{children}</CardContent>
       </Card>
@@ -257,7 +267,7 @@ export function AdminSection({
 }
 
 export function AdminListSkeleton({ rows = 3 }: { rows?: number }) {
-  const prefersReducedMotion = useReducedMotion()
+  const prefersReducedMotion = useReducedMotion() ?? false
 
   return (
     <div className="flex flex-col gap-3">
@@ -423,7 +433,7 @@ export function AdminItemMeta({
 export function AdminDividerLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="my-4">
-      <Separator/>
+      <Separator />
       <div className="-mt-2 text-center text-xs text-muted-foreground">{children}</div>
     </div>
   )

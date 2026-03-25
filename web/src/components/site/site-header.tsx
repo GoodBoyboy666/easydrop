@@ -65,7 +65,6 @@ export function SiteHeader() {
   const user = auth.user
   const currentSearchContent =
     typeof location.search === 'object' &&
-    location.search !== null &&
     'content' in location.search &&
     typeof location.search.content === 'string'
       ? location.search.content
@@ -88,7 +87,7 @@ export function SiteHeader() {
 
     void navigate({
       to: '/',
-      search: normalizedContent ? { content: normalizedContent } : {},
+      search: { content: normalizedContent || undefined },
     })
   }
 
@@ -111,6 +110,7 @@ export function SiteHeader() {
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-4">
           <Link
+            search={{ content: undefined }}
             to="/"
             className="flex items-center gap-3 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
@@ -238,7 +238,7 @@ export function SiteHeader() {
                     variant="destructive"
                     onSelect={() => {
                       auth.logout()
-                      void navigate({ to: '/' })
+                      void navigate({ to: '/', search: { content: undefined } })
                     }}
                   >
                     <LogOutIcon data-icon="inline-start" />
@@ -398,7 +398,7 @@ export function SiteHeader() {
                       onClick={() => {
                         closeMobileMenu()
                         auth.logout()
-                        void navigate({ to: '/' })
+                        void navigate({ to: '/', search: { content: undefined } })
                       }}
                     >
                       <LogOutIcon data-icon="inline-start" />

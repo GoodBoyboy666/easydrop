@@ -35,8 +35,16 @@ const FALLBACK_HITOKOTO: HitokotoResult = {
   source: 'EasyDrop',
 }
 
-function normalizeQuery(
-  query?: Record<string, string | number | boolean | undefined>,
+function isQueryParamValue(value: unknown): value is string | number | boolean {
+  return (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  )
+}
+
+function normalizeQuery<TQuery extends object>(
+  query?: TQuery,
 ) {
   if (!query) {
     return {}
@@ -44,7 +52,9 @@ function normalizeQuery(
 
   return Object.fromEntries(
     Object.entries(query)
-      .filter(([, value]) => value !== undefined && value !== '')
+      .filter(
+        ([, value]) => value !== undefined && value !== '' && isQueryParamValue(value),
+      )
       .sort(([left], [right]) => left.localeCompare(right)),
   )
 }

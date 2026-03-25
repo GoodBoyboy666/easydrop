@@ -1,13 +1,13 @@
 import { Link, Outlet, useLocation } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { CartesianGrid, Line, LineChart, XAxis } from 'recharts'
+import type { ChartConfig } from '#/components/ui/chart'
 import type { CommentDTO, PostDTO } from '#/lib/types'
 import { useAuth } from '#/lib/auth'
 import {
   adminAttachmentsQueryOptions,
   adminCommentsQueryOptions,
   adminPostsQueryOptions,
-  adminSettingsQueryOptions,
   adminUsersQueryOptions,
 } from '#/lib/query-options'
 import {
@@ -24,7 +24,6 @@ import {
   ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
-  type ChartConfig,
 } from '#/components/ui/chart'
 
 const overviewChartConfig = {
@@ -107,7 +106,9 @@ export function AdminRoutePage() {
               </Link>
             </Button>
             <Button asChild variant="outline">
-              <Link to="/">返回首页</Link>
+              <Link search={{ content: undefined }} to="/">
+                返回首页
+              </Link>
             </Button>
           </>
         }
@@ -122,7 +123,9 @@ export function AdminRoutePage() {
         description="当前账号不是管理员，不能进入后台管理入口。"
         actions={
           <Button asChild variant="outline">
-            <Link to="/">返回首页</Link>
+            <Link search={{ content: undefined }} to="/">
+              返回首页
+            </Link>
           </Button>
         }
       />
@@ -169,14 +172,6 @@ function AdminOverviewPage() {
       limit: 1,
       offset: 0,
       order: 'created_at_desc',
-    }),
-    enabled,
-  })
-  const settingsQuery = useQuery({
-    ...adminSettingsQueryOptions(auth.token ?? '', {
-      limit: 1,
-      offset: 0,
-      order: 'key_asc',
     }),
     enabled,
   })
