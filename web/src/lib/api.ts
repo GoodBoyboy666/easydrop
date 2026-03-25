@@ -169,6 +169,11 @@ export const api = {
       },
     ).then(normalizePublicPostListResult)
   },
+  getPost(postId: number, token?: string | null) {
+    return request<PostDTO>(`/posts/${postId}`, {
+      token,
+    })
+  },
   getPublicSettings() {
     return request<SettingPublicResult>('/settings/public').then(
       normalizeSettingPublicResult,

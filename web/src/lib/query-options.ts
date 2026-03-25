@@ -5,6 +5,7 @@ import type {
   CommentDTO,
   InitStatusResult,
   PagedResult,
+  PostDTO,
   PublicPostListResult,
   PublicSettingsMap,
   TagDTO,
@@ -87,6 +88,8 @@ export const queryKeys = {
     query?: Record<string, string | number | undefined>,
   ) => ['post-comments', postId, normalizeQuery(query)] as const,
   postCommentsPrefix: (postId: number) => ['post-comments', postId] as const,
+  post: (postId: number, token?: string | null) =>
+    ['post', authScope(token), postId] as const,
   posts: (
     token?: string | null,
     query?: Record<string, string | number | undefined>,
@@ -145,6 +148,13 @@ export function postCommentsQueryOptions(
   return queryOptions<PagedResult<CommentDTO>>({
     queryKey: queryKeys.postComments(postId, query),
     queryFn: () => api.getPostComments(postId, query),
+  })
+}
+
+export function postQueryOptions(postId: number, token?: string | null) {
+  return queryOptions<PostDTO>({
+    queryKey: queryKeys.post(postId, token),
+    queryFn: () => api.getPost(postId, token),
   })
 }
 
