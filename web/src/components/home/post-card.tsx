@@ -167,6 +167,9 @@ export function PostCard({
         queryClient.invalidateQueries({
           queryKey: queryKeys.latestCommentsPrefix(),
         }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.tagsPrefix(),
+        }),
       ])
       onPostDeleted?.(postState.id)
     } catch (error) {
@@ -229,6 +232,9 @@ export function PostCard({
         }),
         queryClient.invalidateQueries({
           queryKey: queryKeys.postsPrefix(auth.token),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.tagsPrefix(),
         }),
       ])
     } catch (error) {

@@ -250,6 +250,9 @@ function HomePage() {
         queryClient.invalidateQueries({
           queryKey: queryKeys.latestCommentsPrefix(),
         }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.tagsPrefix(),
+        }),
       ])
     } catch (error) {
       setPublishError(error instanceof Error ? error.message : '发布失败')
@@ -466,6 +469,9 @@ function HomePage() {
                               }),
                               queryClient.invalidateQueries({
                                 queryKey: queryKeys.latestCommentsPrefix(),
+                              }),
+                              queryClient.invalidateQueries({
+                                queryKey: queryKeys.tagsPrefix(),
                               }),
                             ])
                           }}

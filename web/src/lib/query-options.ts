@@ -96,6 +96,7 @@ export const queryKeys = {
   ) => ['posts', authScope(token), normalizeQuery(query)] as const,
   postsPrefix: (token?: string | null) => ['posts', authScope(token)] as const,
   publicSettings: () => ['public-settings'] as const,
+  tagsPrefix: () => ['tags'] as const,
   tags: (query?: Record<string, string | number | undefined>) =>
     ['tags', normalizeQuery(query)] as const,
 }
