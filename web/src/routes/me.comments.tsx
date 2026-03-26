@@ -68,12 +68,12 @@ function MyCommentsPage() {
   const [pendingDelete, setPendingDelete] = useState<CommentDTO | null>(null)
   const [motionReady, setMotionReady] = useState(prefersReducedMotion)
   const commentsQuery = useQuery({
-    ...myCommentsQueryOptions(auth.token ?? '', {
+    ...myCommentsQueryOptions({
       limit: 20,
       offset: 0,
       order: 'created_at_desc',
     }),
-    enabled: !!auth.token,
+    enabled: auth.status === 'authenticated',
   })
   const updateCommentMutation = useMutation({
     mutationFn: (comment: CommentDTO) =>
@@ -82,12 +82,10 @@ function MyCommentsPage() {
         {
           content: normalizeMarkdownContent(editingDraft),
         },
-        auth.token!,
       ),
   })
   const deleteCommentMutation = useMutation({
-    mutationFn: (comment: CommentDTO) =>
-      api.deleteMyComment(comment.id, auth.token!),
+    mutationFn: (comment: CommentDTO) => api.deleteMyComment(comment.id),
   })
   const comments = commentsQuery.data?.items ?? []
   const loadError =
@@ -157,7 +155,7 @@ function MyCommentsPage() {
 
   function startEditComment(comment: CommentDTO) {
     if (
-      !auth.token ||
+      auth.status !== 'authenticated' ||
       updateCommentMutation.isPending ||
       deleteCommentMutation.isPending
     ) {
@@ -187,7 +185,7 @@ function MyCommentsPage() {
     event.preventDefault()
 
     if (
-      !auth.token ||
+      auth.status !== 'authenticated' ||
       updateCommentMutation.isPending ||
       editingCommentId !== comment.id
     ) {
@@ -218,7 +216,7 @@ function MyCommentsPage() {
 
   function requestDeleteComment(comment: CommentDTO) {
     if (
-      !auth.token ||
+      auth.status !== 'authenticated' ||
       updateCommentMutation.isPending ||
       deleteCommentMutation.isPending
     ) {
@@ -230,7 +228,7 @@ function MyCommentsPage() {
   }
 
   async function handleDeleteComment() {
-    if (!auth.token || !pendingDelete || deleteCommentMutation.isPending) {
+    if (auth.status !== 'authenticated' || !pendingDelete || deleteCommentMutation.isPending) {
       return
     }
 
@@ -255,7 +253,7 @@ function MyCommentsPage() {
     }
   }
 
-  if (!auth.token) {
+  if (auth.status !== 'authenticated') {
     return (
       <motion.div
         animate={motionReady ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}

@@ -57,7 +57,7 @@ export function AdminPostsPage() {
   const [pendingDelete, setPendingDelete] = useState<PostDTO | null>(null)
 
   const postsQuery = useQuery({
-    ...adminPostsQueryOptions(auth.token ?? '', {
+    ...adminPostsQueryOptions({
       content: filters.content.trim() || undefined,
       hide: parseOptionalBoolean(filters.hide),
       limit: ADMIN_PAGE_SIZE,
@@ -66,11 +66,11 @@ export function AdminPostsPage() {
       tag_id: parseOptionalInteger(filters.tagId),
       user_id: parseOptionalInteger(filters.userId),
     }),
-    enabled: !!auth.token,
+    enabled: auth.status === 'authenticated',
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (post: PostDTO) => api.deleteAdminPost(post.id, auth.token!),
+    mutationFn: (post: PostDTO) => api.deleteAdminPost(post.id),
   })
 
   const posts = postsQuery.data?.items ?? []
@@ -78,27 +78,21 @@ export function AdminPostsPage() {
   async function invalidatePostQueries(postId?: number) {
     await Promise.all([
       queryClient.invalidateQueries({
-        queryKey: queryKeys.adminPostsPrefix(auth.token),
+        queryKey: queryKeys.adminPostsPrefix(),
       }),
       queryClient.invalidateQueries({
         queryKey: queryKeys.postsPrefix(),
       }),
       queryClient.invalidateQueries({
-        queryKey: queryKeys.postsPrefix(auth.token),
-      }),
-      queryClient.invalidateQueries({
         queryKey: queryKeys.latestCommentsPrefix(),
       }),
       queryClient.invalidateQueries({
-        queryKey: queryKeys.adminCommentsPrefix(auth.token),
+        queryKey: queryKeys.adminCommentsPrefix(),
       }),
       ...(postId
         ? [
             queryClient.invalidateQueries({
-              queryKey: queryKeys.post(postId, auth.token),
-            }),
-            queryClient.invalidateQueries({
-              queryKey: queryKeys.post(postId),
+              queryKey: queryKeys.postPrefix(),
             }),
             queryClient.invalidateQueries({
               queryKey: queryKeys.postCommentsPrefix(postId),
@@ -109,7 +103,7 @@ export function AdminPostsPage() {
   }
 
   async function handleDeletePost() {
-    if (!auth.token || !pendingDelete) {
+    if (auth.status !== 'authenticated' || !pendingDelete) {
       return
     }
 

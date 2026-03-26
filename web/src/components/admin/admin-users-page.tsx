@@ -129,7 +129,7 @@ export function AdminUsersPage() {
   const [pendingDelete, setPendingDelete] = useState<UserDTO | null>(null)
 
   const usersQuery = useQuery({
-    ...adminUsersQueryOptions(auth.token ?? '', {
+    ...adminUsersQueryOptions({
       email: filters.email.trim() || undefined,
       limit: ADMIN_PAGE_SIZE,
       offset: page * ADMIN_PAGE_SIZE,
@@ -137,26 +137,23 @@ export function AdminUsersPage() {
       status: filters.status === 'all' ? undefined : Number(filters.status),
       username: filters.username.trim() || undefined,
     }),
-    enabled: !!auth.token,
+    enabled: auth.status === 'authenticated',
   })
 
   const createMutation = useMutation({
-    mutationFn: (input: CreateUserInput) =>
-      api.createAdminUser(input, auth.token!),
+    mutationFn: (input: CreateUserInput) => api.createAdminUser(input),
   })
   const updateMutation = useMutation({
-    mutationFn: (input: UpdateUserInput) =>
-      api.updateAdminUser(editingUser!.id, input, auth.token!),
+    mutationFn: (input: UpdateUserInput) => api.updateAdminUser(editingUser!.id, input),
   })
   const deleteMutation = useMutation({
-    mutationFn: (user: UserDTO) => api.deleteAdminUser(user.id, auth.token!),
+    mutationFn: (user: UserDTO) => api.deleteAdminUser(user.id),
   })
   const uploadAvatarMutation = useMutation({
-    mutationFn: (file: File) =>
-      api.uploadAdminUserAvatar(editingUser!.id, file, auth.token!),
+    mutationFn: (file: File) => api.uploadAdminUserAvatar(editingUser!.id, file),
   })
   const deleteAvatarMutation = useMutation({
-    mutationFn: () => api.deleteAdminUserAvatar(editingUser!.id, auth.token!),
+    mutationFn: () => api.deleteAdminUserAvatar(editingUser!.id),
   })
 
   const users = usersQuery.data?.items ?? []
@@ -186,20 +183,18 @@ export function AdminUsersPage() {
 
   async function refreshUserQueries(targetUserId?: number) {
     await queryClient.invalidateQueries({
-      queryKey: queryKeys.adminUsersPrefix(auth.token),
+      queryKey: queryKeys.adminUsersPrefix(),
     })
 
-    if (auth.token) {
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.currentUser(auth.token),
-      })
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.currentUser(),
+    })
 
-      if (targetUserId && targetUserId === auth.user?.id) {
-        try {
-          await auth.refreshUser()
-        } catch (error) {
-          handleUnauthorized(error)
-        }
+    if (targetUserId && targetUserId === auth.user?.id) {
+      try {
+        await auth.refreshUser()
+      } catch (error) {
+        handleUnauthorized(error)
       }
     }
   }
@@ -207,7 +202,7 @@ export function AdminUsersPage() {
   async function handleCreateSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (!auth.token) {
+    if (auth.status !== 'authenticated') {
       return
     }
 
@@ -249,7 +244,7 @@ export function AdminUsersPage() {
   async function handleUpdateSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (!auth.token || !editingUser) {
+    if (auth.status !== 'authenticated' || !editingUser) {
       return
     }
 
@@ -282,7 +277,7 @@ export function AdminUsersPage() {
   }
 
   async function handleUploadAvatar() {
-    if (!auth.token || !editingUser || !avatarFile) {
+    if (auth.status !== 'authenticated' || !editingUser || !avatarFile) {
       return
     }
 
@@ -303,7 +298,7 @@ export function AdminUsersPage() {
   }
 
   async function handleDeleteAvatar() {
-    if (!auth.token || !editingUser) {
+    if (auth.status !== 'authenticated' || !editingUser) {
       return
     }
 
@@ -327,7 +322,7 @@ export function AdminUsersPage() {
   }
 
   async function handleDeleteUser() {
-    if (!auth.token || !pendingDelete) {
+    if (auth.status !== 'authenticated' || !pendingDelete) {
       return
     }
 
@@ -342,7 +337,7 @@ export function AdminUsersPage() {
       setPendingDelete(null)
 
       if (deletedSelf) {
-        auth.logout()
+        void auth.logout()
         window.location.assign('/')
       }
     } catch (error) {

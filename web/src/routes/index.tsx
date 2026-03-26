@@ -85,7 +85,7 @@ function HomePage() {
     feedLimitSearchKey === searchContent ? feedLimit : FEED_PAGE_SIZE
 
   const feedQuery = useQuery({
-    ...postsQueryOptions(auth.token, {
+    ...postsQueryOptions(auth.status === 'authenticated', {
       content: searchContent || undefined,
       limit: effectiveFeedLimit,
       offset: 0,
@@ -97,14 +97,13 @@ function HomePage() {
         : undefined,
   })
   const publishMutation = useMutation({
-    mutationFn: (token: string) =>
+    mutationFn: () =>
       api.createAdminPost(
         {
           content: normalizeMarkdownContent(publishDraft),
           hide: publishHidden,
           pin: publishPinned ? Number(publishPin.trim()) : undefined,
         },
-        token,
       ),
   })
 
@@ -169,7 +168,7 @@ function HomePage() {
       return
     }
 
-    if (!auth.token || !auth.isAdmin) {
+    if (auth.status !== 'authenticated' || !auth.isAdmin) {
       setPublishError('只有管理员可以发布日志')
       return
     }
@@ -193,14 +192,14 @@ function HomePage() {
     setPublishError(null)
 
     try {
-      await publishMutation.mutateAsync(auth.token)
+      await publishMutation.mutateAsync()
       setPublishDraft('')
       setPublishHidden(false)
       setPublishPinned(false)
       setPublishPin('')
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: queryKeys.postsPrefix(auth.token),
+          queryKey: queryKeys.postsPrefix(),
         }),
         queryClient.invalidateQueries({
           queryKey: queryKeys.latestCommentsPrefix(),
@@ -424,7 +423,7 @@ function HomePage() {
                           onPostDeleted={() => {
                             void Promise.all([
                               queryClient.invalidateQueries({
-                                queryKey: queryKeys.postsPrefix(auth.token),
+                                queryKey: queryKeys.postsPrefix(),
                               }),
                               queryClient.invalidateQueries({
                                 queryKey: queryKeys.latestCommentsPrefix(),

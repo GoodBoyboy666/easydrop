@@ -139,6 +139,7 @@ async function request<T>(
   const isFormData =
     typeof FormData !== 'undefined' && rest.body instanceof FormData
   const response = await fetch(buildUrl(path, query), {
+    credentials: rest.credentials ?? 'include',
     ...rest,
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -175,24 +176,29 @@ export const api = {
   getCaptchaConfig() {
     return request<CaptchaConfigResult>('/captcha/config')
   },
-  getCurrentUser(token: string) {
+  logout() {
+    return request<{ message?: string }>('/auth/logout', {
+      method: 'POST',
+    })
+  },
+  getCurrentUser(token?: string | null) {
     return request<UserDTO>('/users/me', { token })
   },
-  updateMyProfile(input: UpdateMyProfileInput, token: string) {
+  updateMyProfile(input: UpdateMyProfileInput, token?: string | null) {
     return request<UserDTO>('/users/me/profile', {
       method: 'PATCH',
       body: JSON.stringify(input),
       token,
     })
   },
-  changeMyPassword(input: ChangeMyPasswordInput, token: string) {
+  changeMyPassword(input: ChangeMyPasswordInput, token?: string | null) {
     return request<{ message?: string }>('/users/me/password', {
       method: 'PATCH',
       body: JSON.stringify(input),
       token,
     })
   },
-  requestMyEmailChange(input: ChangeMyEmailInput, token: string) {
+  requestMyEmailChange(input: ChangeMyEmailInput, token?: string | null) {
     return request<{ message?: string }>('/users/me/email-change', {
       method: 'POST',
       body: JSON.stringify(input),
@@ -241,46 +247,54 @@ export const api = {
       query,
     }).then(normalizePagedResult)
   },
-  createPostComment(postId: number, input: CreateCommentInput, token: string) {
+  createPostComment(
+    postId: number,
+    input: CreateCommentInput,
+    token?: string | null,
+  ) {
     return request<CommentDTO>(`/posts/${postId}/comments`, {
       method: 'POST',
       body: JSON.stringify(input),
       token,
     })
   },
-  createAdminPost(input: CreatePostInput, token: string) {
+  createAdminPost(input: CreatePostInput, token?: string | null) {
     return request<PostDTO>('/admin/posts', {
       method: 'POST',
       body: JSON.stringify(input),
       token,
     })
   },
-  updateAdminPost(postId: number, input: UpdatePostInput, token: string) {
+  updateAdminPost(
+    postId: number,
+    input: UpdatePostInput,
+    token?: string | null,
+  ) {
     return request<PostDTO>(`/admin/posts/${postId}`, {
       method: 'PATCH',
       body: JSON.stringify(input),
       token,
     })
   },
-  deleteAdminPost(postId: number, token: string) {
+  deleteAdminPost(postId: number, token?: string | null) {
     return request<{ message?: string }>(`/admin/posts/${postId}`, {
       method: 'DELETE',
       token,
     })
   },
-  deleteAdminComment(commentId: number, token: string) {
+  deleteAdminComment(commentId: number, token?: string | null) {
     return request<{ message?: string }>(`/admin/comments/${commentId}`, {
       method: 'DELETE',
       token,
     })
   },
-  deleteMyComment(commentId: number, token: string) {
+  deleteMyComment(commentId: number, token?: string | null) {
     return request<{ message?: string }>(`/users/me/comments/${commentId}`, {
       method: 'DELETE',
       token,
     })
   },
-  uploadAttachment(file: File, token: string) {
+  uploadAttachment(file: File, token?: string | null) {
     const body = new FormData()
     body.set('file', file)
     return request<AttachmentDTO>('/attachments', {
@@ -292,7 +306,7 @@ export const api = {
   updateAdminComment(
     commentId: number,
     input: UpdateCommentInput,
-    token: string,
+    token?: string | null,
   ) {
     return request<CommentDTO>(`/admin/comments/${commentId}`, {
       method: 'PATCH',
@@ -300,7 +314,11 @@ export const api = {
       token,
     })
   },
-  updateMyComment(commentId: number, input: UpdateCommentInput, token: string) {
+  updateMyComment(
+    commentId: number,
+    input: UpdateCommentInput,
+    token?: string | null,
+  ) {
     return request<CommentDTO>(`/users/me/comments/${commentId}`, {
       method: 'PATCH',
       body: JSON.stringify(input),
@@ -308,7 +326,7 @@ export const api = {
     })
   },
   getMyComments(
-    token: string,
+    token?: string | null,
     query?: Record<string, string | number | boolean | undefined>,
   ) {
     return request<PagedResult<CommentDTO>>('/users/me/comments', {
@@ -316,33 +334,41 @@ export const api = {
       token,
     }).then(normalizePagedResult)
   },
-  getAdminUsers(query: AdminUserListQuery, token: string) {
+  getAdminUsers(query: AdminUserListQuery, token?: string | null) {
     return request<PagedResult<UserDTO>>('/admin/users', {
       query,
       token,
     }).then(normalizePagedResult)
   },
-  createAdminUser(input: CreateUserInput, token: string) {
+  createAdminUser(input: CreateUserInput, token?: string | null) {
     return request<UserDTO>('/admin/users', {
       method: 'POST',
       body: JSON.stringify(input),
       token,
     })
   },
-  updateAdminUser(userId: number, input: UpdateUserInput, token: string) {
+  updateAdminUser(
+    userId: number,
+    input: UpdateUserInput,
+    token?: string | null,
+  ) {
     return request<UserDTO>(`/admin/users/${userId}`, {
       method: 'PATCH',
       body: JSON.stringify(input),
       token,
     })
   },
-  deleteAdminUser(userId: number, token: string) {
+  deleteAdminUser(userId: number, token?: string | null) {
     return request<{ message?: string }>(`/admin/users/${userId}`, {
       method: 'DELETE',
       token,
     })
   },
-  uploadAdminUserAvatar(userId: number, file: File, token: string) {
+  uploadAdminUserAvatar(
+    userId: number,
+    file: File,
+    token?: string | null,
+  ) {
     const body = new FormData()
     body.set('avatar', file)
     return request<UserDTO>(`/admin/users/${userId}/avatar`, {
@@ -351,45 +377,48 @@ export const api = {
       token,
     })
   },
-  deleteAdminUserAvatar(userId: number, token: string) {
+  deleteAdminUserAvatar(userId: number, token?: string | null) {
     return request<{ message?: string }>(`/admin/users/${userId}/avatar`, {
       method: 'DELETE',
       token,
     })
   },
-  getAdminPosts(query: AdminPostListQuery, token: string) {
+  getAdminPosts(query: AdminPostListQuery, token?: string | null) {
     return request<PagedResult<PostDTO>>('/admin/posts', {
       query,
       token,
     }).then(normalizePagedResult)
   },
-  getAdminPost(postId: number, token: string) {
+  getAdminPost(postId: number, token?: string | null) {
     return request<PostDTO>(`/admin/posts/${postId}`, { token })
   },
-  getAdminComments(query: AdminCommentListQuery, token: string) {
+  getAdminComments(query: AdminCommentListQuery, token?: string | null) {
     return request<PagedResult<CommentDTO>>('/admin/comments', {
       query,
       token,
     }).then(normalizePagedResult)
   },
-  getAdminComment(commentId: number, token: string) {
+  getAdminComment(commentId: number, token?: string | null) {
     return request<CommentDTO>(`/admin/comments/${commentId}`, {
       token,
     })
   },
-  getAdminAttachments(query: AdminAttachmentListQuery, token: string) {
+  getAdminAttachments(
+    query: AdminAttachmentListQuery,
+    token?: string | null,
+  ) {
     return request<PagedResult<AttachmentDTO>>('/admin/attachments', {
       query,
       token,
     }).then(normalizePagedResult)
   },
-  deleteAdminAttachment(attachmentId: number, token: string) {
+  deleteAdminAttachment(attachmentId: number, token?: string | null) {
     return request<{ message?: string }>(`/admin/attachments/${attachmentId}`, {
       method: 'DELETE',
       token,
     })
   },
-  batchDeleteAdminAttachments(ids: number[], token: string) {
+  batchDeleteAdminAttachments(ids: number[], token?: string | null) {
     return request<AttachmentBatchDeleteResult>(
       '/admin/attachments/batch-delete',
       {
@@ -399,13 +428,17 @@ export const api = {
       },
     )
   },
-  getAdminSettings(query: AdminSettingListQuery, token: string) {
+  getAdminSettings(query: AdminSettingListQuery, token?: string | null) {
     return request<PagedResult<SettingItem>>('/admin/settings', {
       query,
       token,
     }).then(normalizePagedResult)
   },
-  updateAdminSetting(key: string, input: UpdateSettingInput, token: string) {
+  updateAdminSetting(
+    key: string,
+    input: UpdateSettingInput,
+    token?: string | null,
+  ) {
     return request<{ message?: string }>(
       `/admin/settings/${encodeURIComponent(key)}`,
       {

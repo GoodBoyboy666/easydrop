@@ -73,7 +73,7 @@ export function PostCard({
   const [pendingDeletePost, setPendingDeletePost] = useState(false)
 
   const deletePostMutation = useMutation({
-    mutationFn: () => api.deleteAdminPost(postState.id, auth.token!),
+    mutationFn: () => api.deleteAdminPost(postState.id),
   })
   const editPostMutation = useMutation({
     mutationFn: (input: {
@@ -81,7 +81,7 @@ export function PostCard({
       content: string
       hide: boolean
       pin?: number
-    }) => api.updateAdminPost(postState.id, input, auth.token!),
+    }) => api.updateAdminPost(postState.id, input),
   })
 
   useEffect(() => {
@@ -102,7 +102,7 @@ export function PostCard({
 
   function handleApiError(error: unknown, fallbackMessage: string) {
     if (error instanceof ApiError && error.status === 401) {
-      auth.logout()
+      void auth.logout()
       redirectToLogin()
       return true
     }
@@ -117,7 +117,7 @@ export function PostCard({
   }
 
   function startEditPost() {
-    if (!auth.token || !auth.isAdmin || editPostMutation.isPending) {
+    if (auth.status !== 'authenticated' || !auth.isAdmin || editPostMutation.isPending) {
       return
     }
 
@@ -143,7 +143,7 @@ export function PostCard({
   }
 
   function requestDeletePost() {
-    if (!auth.token || !auth.isAdmin || deletePostMutation.isPending) {
+    if (auth.status !== 'authenticated' || !auth.isAdmin || deletePostMutation.isPending) {
       return
     }
 
@@ -151,7 +151,7 @@ export function PostCard({
   }
 
   async function handleDeletePost() {
-    if (!auth.token || !auth.isAdmin || deletePostMutation.isPending) {
+    if (auth.status !== 'authenticated' || !auth.isAdmin || deletePostMutation.isPending) {
       return
     }
 
@@ -159,10 +159,10 @@ export function PostCard({
       await deletePostMutation.mutateAsync()
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: queryKeys.post(postState.id, auth.token),
+          queryKey: queryKeys.postPrefix(),
         }),
         queryClient.invalidateQueries({
-          queryKey: queryKeys.postsPrefix(auth.token),
+          queryKey: queryKeys.postsPrefix(),
         }),
         queryClient.invalidateQueries({
           queryKey: queryKeys.latestCommentsPrefix(),
@@ -182,7 +182,7 @@ export function PostCard({
   async function handleEditPostSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (!auth.token || !auth.isAdmin || editPostMutation.isPending) {
+    if (auth.status !== 'authenticated' || !auth.isAdmin || editPostMutation.isPending) {
       return
     }
 
@@ -228,10 +228,10 @@ export function PostCard({
       setEditingPost(false)
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: queryKeys.post(postState.id, auth.token),
+          queryKey: queryKeys.postPrefix(),
         }),
         queryClient.invalidateQueries({
-          queryKey: queryKeys.postsPrefix(auth.token),
+          queryKey: queryKeys.postsPrefix(),
         }),
         queryClient.invalidateQueries({
           queryKey: queryKeys.tagsPrefix(),

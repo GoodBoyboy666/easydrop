@@ -69,7 +69,6 @@ describe('AdminRoutePage', () => {
     mockUseAuth.mockReturnValue({
       isAdmin: true,
       status: 'authenticated',
-      token: 'token-admin',
       user: {
         admin: true,
       },

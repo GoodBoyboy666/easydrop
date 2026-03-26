@@ -40,7 +40,7 @@ function PostDetailPage() {
   const [postState, setPostState] = useState<PostDTO | null>(null)
   const [motionReady, setMotionReady] = useState(prefersReducedMotion)
   const postQuery = useQuery({
-    ...postQueryOptions(postId, auth.token),
+    ...postQueryOptions(postId, auth.status === 'authenticated'),
     enabled: Number.isInteger(postId) && postId > 0,
   })
 

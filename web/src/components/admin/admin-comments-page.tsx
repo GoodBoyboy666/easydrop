@@ -56,14 +56,14 @@ export function AdminCommentsPage() {
   const [pendingDelete, setPendingDelete] = useState<CommentDTO | null>(null)
 
   const commentsQuery = useQuery({
-    ...adminCommentsQueryOptions(auth.token ?? '', {
+    ...adminCommentsQueryOptions({
       limit: ADMIN_PAGE_SIZE,
       offset: page * ADMIN_PAGE_SIZE,
       order: filters.order,
       post_id: parseOptionalInteger(filters.postId),
       user_id: parseOptionalInteger(filters.userId),
     }),
-    enabled: !!auth.token,
+    enabled: auth.status === 'authenticated',
   })
 
   const updateMutation = useMutation({
@@ -73,12 +73,10 @@ export function AdminCommentsPage() {
         {
           content: normalizeMarkdownContent(draftContent),
         },
-        auth.token!,
       ),
   })
   const deleteMutation = useMutation({
-    mutationFn: (comment: CommentDTO) =>
-      api.deleteAdminComment(comment.id, auth.token!),
+    mutationFn: (comment: CommentDTO) => api.deleteAdminComment(comment.id),
   })
 
   const comments = commentsQuery.data?.items ?? []
@@ -96,7 +94,7 @@ export function AdminCommentsPage() {
   async function invalidateCommentQueries(comment: CommentDTO) {
     await Promise.all([
       queryClient.invalidateQueries({
-        queryKey: queryKeys.adminCommentsPrefix(auth.token),
+        queryKey: queryKeys.adminCommentsPrefix(),
       }),
       queryClient.invalidateQueries({
         queryKey: queryKeys.latestCommentsPrefix(),
@@ -113,7 +111,7 @@ export function AdminCommentsPage() {
   async function handleSaveComment(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (!auth.token || !editingComment) {
+    if (auth.status !== 'authenticated' || !editingComment) {
       return
     }
 
@@ -137,7 +135,7 @@ export function AdminCommentsPage() {
   }
 
   async function handleDeleteComment() {
-    if (!auth.token || !pendingDelete) {
+    if (auth.status !== 'authenticated' || !pendingDelete) {
       return
     }
 

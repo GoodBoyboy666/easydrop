@@ -62,11 +62,11 @@ function LoginPage() {
     }
 
     try {
-      const result = await loginMutation.mutateAsync({
+      await loginMutation.mutateAsync({
         account: account.trim(),
         password,
       })
-      await auth.authenticateWithToken(result.access_token)
+      await auth.refreshUser()
       window.location.assign(safeRedirectPath(redirect))
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : '登录失败')

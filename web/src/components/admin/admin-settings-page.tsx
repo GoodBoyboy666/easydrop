@@ -50,12 +50,12 @@ export function AdminSettingsPage() {
   const [draftValues, setDraftValues] = useState<Record<string, string>>({})
 
   const settingsQuery = useQuery({
-    ...adminSettingsQueryOptions(auth.token ?? '', {
+    ...adminSettingsQueryOptions({
       limit: 100,
       offset: 0,
       order: 'key_asc',
     }),
-    enabled: !!auth.token,
+    enabled: auth.status === 'authenticated',
   })
 
   const updateMutation = useMutation({
@@ -65,7 +65,6 @@ export function AdminSettingsPage() {
         {
           value: input.value,
         },
-        auth.token!,
       ),
   })
 
@@ -86,7 +85,7 @@ export function AdminSettingsPage() {
   async function invalidateSettingQueries() {
     await Promise.all([
       queryClient.invalidateQueries({
-        queryKey: queryKeys.adminSettingsPrefix(auth.token),
+        queryKey: queryKeys.adminSettingsPrefix(),
       }),
       queryClient.invalidateQueries({
         queryKey: queryKeys.publicSettings(),
@@ -95,7 +94,7 @@ export function AdminSettingsPage() {
   }
 
   async function handleSaveSetting(setting: SettingItem) {
-    if (!auth.token) {
+    if (auth.status !== 'authenticated') {
       return
     }
 

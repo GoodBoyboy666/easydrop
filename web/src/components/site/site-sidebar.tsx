@@ -53,7 +53,7 @@ export function SiteSidebar() {
     siteOwnerDescription,
   } = useSiteSettings()
   const postsQuery = useQuery({
-    ...postsQueryOptions(auth.token, {
+    ...postsQueryOptions(auth.status === 'authenticated', {
       limit: 1,
       offset: 0,
       order: 'created_at_desc',

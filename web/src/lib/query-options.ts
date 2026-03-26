@@ -59,8 +59,8 @@ function normalizeQuery<TQuery extends object>(
   )
 }
 
-function authScope(token?: string | null) {
-  return token ?? 'anonymous'
+function authScope(isAuthenticated?: boolean) {
+  return isAuthenticated ? 'authenticated' : 'anonymous'
 }
 
 function buildHitokotoSource(payload: HitokotoResponse) {
@@ -91,7 +91,7 @@ async function getHitokoto() {
 
 export const queryKeys = {
   captchaConfig: () => ['captcha-config'] as const,
-  currentUser: (token: string) => ['current-user', token] as const,
+  currentUser: () => ['current-user'] as const,
   hitokoto: () => ['hitokoto'] as const,
   initStatus: () => ['init-status'] as const,
   latestCommentsPrefix: () => ['latest-comments'] as const,
@@ -101,45 +101,40 @@ export const queryKeys = {
     ['latest-comments', normalizeQuery(query)] as const,
   myCommentsPrefix: () => ['my-comments'] as const,
   myComments: (
-    token: string,
     query?: Record<string, string | number | boolean | undefined>,
-  ) => ['my-comments', token, normalizeQuery(query)] as const,
+  ) => ['my-comments', normalizeQuery(query)] as const,
   postComments: (
     postId: number,
     query?: Record<string, string | number | boolean | undefined>,
   ) => ['post-comments', postId, normalizeQuery(query)] as const,
   postCommentsPrefix: (postId: number) => ['post-comments', postId] as const,
-  post: (postId: number, token?: string | null) =>
-    ['post', authScope(token), postId] as const,
+  postPrefix: () => ['post'] as const,
+  post: (postId: number, isAuthenticated?: boolean) =>
+    ['post', authScope(isAuthenticated), postId] as const,
   posts: (
-    token?: string | null,
+    isAuthenticated?: boolean,
     query?: Record<string, string | number | boolean | undefined>,
-  ) => ['posts', authScope(token), normalizeQuery(query)] as const,
-  postsPrefix: (token?: string | null) => ['posts', authScope(token)] as const,
+  ) => ['posts', authScope(isAuthenticated), normalizeQuery(query)] as const,
+  postsPrefix: () => ['posts'] as const,
   publicSettings: () => ['public-settings'] as const,
   tagsPrefix: () => ['tags'] as const,
   tags: (query?: Record<string, string | number | boolean | undefined>) =>
     ['tags', normalizeQuery(query)] as const,
-  adminUsersPrefix: (token?: string | null) =>
-    ['admin-users', authScope(token)] as const,
-  adminUsers: (token: string, query?: AdminUserListQuery) =>
-    ['admin-users', authScope(token), normalizeQuery(query)] as const,
-  adminPostsPrefix: (token?: string | null) =>
-    ['admin-posts', authScope(token)] as const,
-  adminPosts: (token: string, query?: AdminPostListQuery) =>
-    ['admin-posts', authScope(token), normalizeQuery(query)] as const,
-  adminCommentsPrefix: (token?: string | null) =>
-    ['admin-comments', authScope(token)] as const,
-  adminComments: (token: string, query?: AdminCommentListQuery) =>
-    ['admin-comments', authScope(token), normalizeQuery(query)] as const,
-  adminAttachmentsPrefix: (token?: string | null) =>
-    ['admin-attachments', authScope(token)] as const,
-  adminAttachments: (token: string, query?: AdminAttachmentListQuery) =>
-    ['admin-attachments', authScope(token), normalizeQuery(query)] as const,
-  adminSettingsPrefix: (token?: string | null) =>
-    ['admin-settings', authScope(token)] as const,
-  adminSettings: (token: string, query?: AdminSettingListQuery) =>
-    ['admin-settings', authScope(token), normalizeQuery(query)] as const,
+  adminUsersPrefix: () => ['admin-users'] as const,
+  adminUsers: (query?: AdminUserListQuery) =>
+    ['admin-users', normalizeQuery(query)] as const,
+  adminPostsPrefix: () => ['admin-posts'] as const,
+  adminPosts: (query?: AdminPostListQuery) =>
+    ['admin-posts', normalizeQuery(query)] as const,
+  adminCommentsPrefix: () => ['admin-comments'] as const,
+  adminComments: (query?: AdminCommentListQuery) =>
+    ['admin-comments', normalizeQuery(query)] as const,
+  adminAttachmentsPrefix: () => ['admin-attachments'] as const,
+  adminAttachments: (query?: AdminAttachmentListQuery) =>
+    ['admin-attachments', normalizeQuery(query)] as const,
+  adminSettingsPrefix: () => ['admin-settings'] as const,
+  adminSettings: (query?: AdminSettingListQuery) =>
+    ['admin-settings', normalizeQuery(query)] as const,
 }
 
 export function captchaConfigQueryOptions() {
@@ -150,10 +145,10 @@ export function captchaConfigQueryOptions() {
   })
 }
 
-export function currentUserQueryOptions(token: string) {
+export function currentUserQueryOptions() {
   return queryOptions<UserDTO>({
-    queryKey: queryKeys.currentUser(token),
-    queryFn: () => api.getCurrentUser(token),
+    queryKey: queryKeys.currentUser(),
+    queryFn: () => api.getCurrentUser(),
   })
 }
 
@@ -174,12 +169,11 @@ export function latestCommentsQueryOptions(
 }
 
 export function myCommentsQueryOptions(
-  token: string,
   query?: Record<string, string | number | boolean | undefined>,
 ) {
   return queryOptions<PagedResult<CommentDTO>>({
-    queryKey: queryKeys.myComments(token, query),
-    queryFn: () => api.getMyComments(token, query),
+    queryKey: queryKeys.myComments(query),
+    queryFn: () => api.getMyComments(undefined, query),
   })
 }
 
@@ -193,20 +187,20 @@ export function postCommentsQueryOptions(
   })
 }
 
-export function postQueryOptions(postId: number, token?: string | null) {
+export function postQueryOptions(postId: number, isAuthenticated?: boolean) {
   return queryOptions<PostDTO>({
-    queryKey: queryKeys.post(postId, token),
-    queryFn: () => api.getPost(postId, token),
+    queryKey: queryKeys.post(postId, isAuthenticated),
+    queryFn: () => api.getPost(postId),
   })
 }
 
 export function postsQueryOptions(
-  token?: string | null,
+  isAuthenticated?: boolean,
   query?: Record<string, string | number | boolean | undefined>,
 ) {
   return queryOptions<PublicPostListResult>({
-    queryKey: queryKeys.posts(token, query),
-    queryFn: () => api.getPosts(query, token),
+    queryKey: queryKeys.posts(isAuthenticated, query),
+    queryFn: () => api.getPosts(query),
   })
 }
 
@@ -241,52 +235,47 @@ export function tagsQueryOptions(
 }
 
 export function adminUsersQueryOptions(
-  token: string,
   query: AdminUserListQuery,
 ) {
   return queryOptions<PagedResult<UserDTO>>({
-    queryKey: queryKeys.adminUsers(token, query),
-    queryFn: () => api.getAdminUsers(query, token),
+    queryKey: queryKeys.adminUsers(query),
+    queryFn: () => api.getAdminUsers(query),
   })
 }
 
 export function adminPostsQueryOptions(
-  token: string,
   query: AdminPostListQuery,
 ) {
   return queryOptions<PagedResult<PostDTO>>({
-    queryKey: queryKeys.adminPosts(token, query),
-    queryFn: () => api.getAdminPosts(query, token),
+    queryKey: queryKeys.adminPosts(query),
+    queryFn: () => api.getAdminPosts(query),
   })
 }
 
 export function adminCommentsQueryOptions(
-  token: string,
   query: AdminCommentListQuery,
 ) {
   return queryOptions<PagedResult<CommentDTO>>({
-    queryKey: queryKeys.adminComments(token, query),
-    queryFn: () => api.getAdminComments(query, token),
+    queryKey: queryKeys.adminComments(query),
+    queryFn: () => api.getAdminComments(query),
   })
 }
 
 export function adminAttachmentsQueryOptions(
-  token: string,
   query: AdminAttachmentListQuery,
 ) {
   return queryOptions<PagedResult<AttachmentDTO>>({
-    queryKey: queryKeys.adminAttachments(token, query),
-    queryFn: () => api.getAdminAttachments(query, token),
+    queryKey: queryKeys.adminAttachments(query),
+    queryFn: () => api.getAdminAttachments(query),
   })
 }
 
 export function adminSettingsQueryOptions(
-  token: string,
   query: AdminSettingListQuery,
 ) {
   return queryOptions<PagedResult<SettingItem>>({
-    queryKey: queryKeys.adminSettings(token, query),
-    queryFn: () => api.getAdminSettings(query, token),
+    queryKey: queryKeys.adminSettings(query),
+    queryFn: () => api.getAdminSettings(query),
   })
 }
 

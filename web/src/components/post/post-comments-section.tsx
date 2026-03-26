@@ -86,13 +86,13 @@ export function PostCommentsSection({
   })
   const toggleCommentAvailabilityMutation = useMutation({
     mutationFn: (input: { disable_comment: boolean }) =>
-      api.updateAdminPost(post.id, input, auth.token!),
+      api.updateAdminPost(post.id, input),
   })
   const deleteCommentMutation = useMutation({
     mutationFn: (comment: CommentDTO) =>
       auth.isAdmin
-        ? api.deleteAdminComment(comment.id, auth.token!)
-        : api.deleteMyComment(comment.id, auth.token!),
+        ? api.deleteAdminComment(comment.id)
+        : api.deleteMyComment(comment.id),
   })
   const editCommentMutation = useMutation({
     mutationFn: (comment: CommentDTO) =>
@@ -102,14 +102,12 @@ export function PostCommentsSection({
             {
               content: normalizeMarkdownContent(editingCommentDraft),
             },
-            auth.token!,
           )
         : api.updateMyComment(
             comment.id,
             {
               content: normalizeMarkdownContent(editingCommentDraft),
             },
-            auth.token!,
           ),
   })
   const createCommentMutation = useMutation({
@@ -120,7 +118,6 @@ export function PostCommentsSection({
           content: normalizeMarkdownContent(commentDraft),
           parent_id: replyTarget?.id,
         },
-        auth.token!,
       ),
   })
 
@@ -169,7 +166,7 @@ export function PostCommentsSection({
 
   function handleUnauthorized(error: unknown) {
     if (error instanceof ApiError && error.status === 401) {
-      auth.logout()
+      void auth.logout()
       redirectToLogin()
       return true
     }
@@ -189,10 +186,10 @@ export function PostCommentsSection({
   async function invalidatePostQueries() {
     await Promise.all([
       queryClient.invalidateQueries({
-        queryKey: queryKeys.post(post.id, auth.token),
+        queryKey: queryKeys.postPrefix(),
       }),
       queryClient.invalidateQueries({
-        queryKey: queryKeys.postsPrefix(auth.token),
+        queryKey: queryKeys.postsPrefix(),
       }),
       queryClient.invalidateQueries({
         queryKey: queryKeys.latestCommentsPrefix(),
@@ -221,7 +218,7 @@ export function PostCommentsSection({
 
   async function toggleCommentAvailability() {
     if (
-      !auth.token ||
+      auth.status !== 'authenticated' ||
       !auth.isAdmin ||
       toggleCommentAvailabilityMutation.isPending
     ) {
@@ -267,7 +264,7 @@ export function PostCommentsSection({
       return
     }
 
-    if (auth.status !== 'authenticated' || !auth.token) {
+    if (auth.status !== 'authenticated') {
       redirectToLogin()
       return
     }
@@ -280,7 +277,7 @@ export function PostCommentsSection({
 
   function startEditComment(comment: CommentDTO) {
     if (
-      !auth.token ||
+      auth.status !== 'authenticated' ||
       !canManageComment(comment) ||
       editCommentMutation.isPending ||
       editingCommentId !== null
@@ -311,7 +308,7 @@ export function PostCommentsSection({
 
   function requestDeleteComment(comment: CommentDTO) {
     if (
-      !auth.token ||
+      auth.status !== 'authenticated' ||
       !canManageComment(comment) ||
       deleteCommentMutation.isPending ||
       editCommentMutation.isPending
@@ -324,7 +321,7 @@ export function PostCommentsSection({
 
   async function handleDeleteComment(comment: CommentDTO) {
     if (
-      !auth.token ||
+      auth.status !== 'authenticated' ||
       !canManageComment(comment) ||
       deleteCommentMutation.isPending ||
       editCommentMutation.isPending
@@ -367,7 +364,7 @@ export function PostCommentsSection({
     event.preventDefault()
 
     if (
-      !auth.token ||
+      auth.status !== 'authenticated' ||
       !canManageComment(comment) ||
       editCommentMutation.isPending ||
       editingCommentId !== comment.id
@@ -433,7 +430,7 @@ export function PostCommentsSection({
       return
     }
 
-    if (!auth.token) {
+    if (auth.status !== 'authenticated') {
       redirectToLogin()
       return
     }

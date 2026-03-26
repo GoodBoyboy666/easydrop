@@ -64,15 +64,15 @@ function MePage() {
 
   const updateProfileMutation = useMutation({
     mutationFn: (nextNickname: string) =>
-      api.updateMyProfile({ nickname: nextNickname }, auth.token!),
+      api.updateMyProfile({ nickname: nextNickname }),
   })
   const changePasswordMutation = useMutation({
     mutationFn: (input: { old_password: string; new_password: string }) =>
-      api.changeMyPassword(input, auth.token!),
+      api.changeMyPassword(input),
   })
   const changeEmailMutation = useMutation({
     mutationFn: (input: { current_password: string; new_email: string }) =>
-      api.requestMyEmailChange(input, auth.token!),
+      api.requestMyEmailChange(input),
   })
 
   useEffect(() => {
@@ -132,7 +132,7 @@ function MePage() {
   async function handleProfileSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (!auth.token || !auth.user || updateProfileMutation.isPending) {
+    if (auth.status !== 'authenticated' || !auth.user || updateProfileMutation.isPending) {
       return
     }
 
@@ -161,7 +161,7 @@ function MePage() {
   async function handlePasswordSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (!auth.token || changePasswordMutation.isPending) {
+    if (auth.status !== 'authenticated' || changePasswordMutation.isPending) {
       return
     }
 
@@ -199,7 +199,7 @@ function MePage() {
   async function handleEmailSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (!auth.token || changeEmailMutation.isPending) {
+    if (auth.status !== 'authenticated' || changeEmailMutation.isPending) {
       return
     }
 

@@ -76,13 +76,13 @@ function RegisterPage() {
     }
 
     try {
-      const result = await registerMutation.mutateAsync({
+      await registerMutation.mutateAsync({
         email: form.email.trim(),
         nickname: form.nickname.trim(),
         password: form.password,
         username: form.username.trim(),
       })
-      await auth.authenticateWithToken(result.access_token)
+      await auth.refreshUser()
       window.location.assign(safeRedirectPath(redirect))
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : '注册失败')

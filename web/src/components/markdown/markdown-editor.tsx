@@ -158,8 +158,7 @@ export function MarkdownEditor({
   valueRef.current = value
 
   const uploadAttachmentMutation = useMutation({
-    mutationFn: ({ file, token }: { file: File; token: string }) =>
-      api.uploadAttachment(file, token),
+    mutationFn: (file: File) => api.uploadAttachment(file),
   })
 
   useEffect(() => {
@@ -202,17 +201,14 @@ export function MarkdownEditor({
       return
     }
 
-    if (!auth.token) {
+    if (auth.status !== 'authenticated') {
       pendingInsertionRef.current = null
       toast.error('登录后才能上传附件')
       return
     }
 
     try {
-      const attachment = await uploadAttachmentMutation.mutateAsync({
-        file: selectedFile,
-        token: auth.token,
-      })
+      const attachment = await uploadAttachmentMutation.mutateAsync(selectedFile)
       insertAttachmentSnippet(
         buildAttachmentSnippet(attachment, selectedFile.name),
       )

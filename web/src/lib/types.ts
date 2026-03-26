@@ -259,7 +259,6 @@ export interface AdminSettingListQuery {
 
 export interface AuthState {
   status: 'anonymous' | 'loading' | 'authenticated'
-  token: string | null
   user: UserDTO | null
 }
 

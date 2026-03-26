@@ -72,7 +72,7 @@ export function AdminAttachmentsPage() {
   const [batchDeleteOpen, setBatchDeleteOpen] = useState(false)
 
   const attachmentsQuery = useQuery({
-    ...adminAttachmentsQueryOptions(auth.token ?? '', {
+    ...adminAttachmentsQueryOptions({
       biz_type: filters.bizType === 'all' ? undefined : Number(filters.bizType),
       created_from: toUnixSeconds(filters.createdFrom),
       created_to: toUnixSeconds(filters.createdTo),
@@ -82,16 +82,14 @@ export function AdminAttachmentsPage() {
       order: filters.order,
       user_id: parseOptionalInteger(filters.userId),
     }),
-    enabled: !!auth.token,
+    enabled: auth.status === 'authenticated',
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (attachment: AttachmentDTO) =>
-      api.deleteAdminAttachment(attachment.id, auth.token!),
+    mutationFn: (attachment: AttachmentDTO) => api.deleteAdminAttachment(attachment.id),
   })
   const batchDeleteMutation = useMutation({
-    mutationFn: (ids: number[]) =>
-      api.batchDeleteAdminAttachments(ids, auth.token!),
+    mutationFn: (ids: number[]) => api.batchDeleteAdminAttachments(ids),
   })
 
   const attachments = attachmentsQuery.data?.items ?? []
@@ -103,10 +101,10 @@ export function AdminAttachmentsPage() {
   async function invalidateAttachmentQueries() {
     await Promise.all([
       queryClient.invalidateQueries({
-        queryKey: queryKeys.adminAttachmentsPrefix(auth.token),
+        queryKey: queryKeys.adminAttachmentsPrefix(),
       }),
       queryClient.invalidateQueries({
-        queryKey: queryKeys.adminUsersPrefix(auth.token),
+        queryKey: queryKeys.adminUsersPrefix(),
       }),
     ])
   }
@@ -133,7 +131,7 @@ export function AdminAttachmentsPage() {
   }
 
   async function handleDeleteSingle() {
-    if (!auth.token || !pendingDelete) {
+    if (auth.status !== 'authenticated' || !pendingDelete) {
       return
     }
 
@@ -156,7 +154,7 @@ export function AdminAttachmentsPage() {
   }
 
   async function handleBatchDelete() {
-    if (!auth.token || selectedIds.length === 0) {
+    if (auth.status !== 'authenticated' || selectedIds.length === 0) {
       return
     }
 

@@ -141,10 +141,10 @@ export function AdminRoutePage() {
 
 function AdminOverviewPage() {
   const auth = useAuth()
-  const enabled = auth.status === 'authenticated' && auth.isAdmin && !!auth.token
+  const enabled = auth.status === 'authenticated' && auth.isAdmin
 
   const usersQuery = useQuery({
-    ...adminUsersQueryOptions(auth.token ?? '', {
+    ...adminUsersQueryOptions({
       limit: 1,
       offset: 0,
       order: 'created_at_desc',
@@ -152,7 +152,7 @@ function AdminOverviewPage() {
     enabled,
   })
   const postsQuery = useQuery({
-    ...adminPostsQueryOptions(auth.token ?? '', {
+    ...adminPostsQueryOptions({
       limit: 500,
       offset: 0,
       order: 'created_at_desc',
@@ -160,7 +160,7 @@ function AdminOverviewPage() {
     enabled,
   })
   const commentsQuery = useQuery({
-    ...adminCommentsQueryOptions(auth.token ?? '', {
+    ...adminCommentsQueryOptions({
       limit: 500,
       offset: 0,
       order: 'created_at_desc',
@@ -168,7 +168,7 @@ function AdminOverviewPage() {
     enabled,
   })
   const attachmentsQuery = useQuery({
-    ...adminAttachmentsQueryOptions(auth.token ?? '', {
+    ...adminAttachmentsQueryOptions({
       limit: 1,
       offset: 0,
       order: 'created_at_desc',
