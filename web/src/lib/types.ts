@@ -11,7 +11,7 @@ export interface UserDTO {
   id: number
   nickname: string
   status?: number
-  storage_quota?: number
+  storage_quota?: number | null
   storage_used?: number
   updated_at?: string
   username: string

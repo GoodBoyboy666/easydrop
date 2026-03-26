@@ -107,6 +107,14 @@ function toUserPayloadBase(formState: UserFormState) {
   }
 }
 
+function formatUserQuota(quota?: number | null) {
+  if (quota === null) {
+    return '系统默认配额'
+  }
+
+  return formatBytes(quota)
+}
+
 export function AdminUsersPage() {
   const queryClient = useQueryClient()
   const { auth, handleUnauthorized } = useAdminSession('/admin/users')
@@ -258,9 +266,8 @@ export function AdminUsersPage() {
 
       const updatedUser = await updateMutation.mutateAsync(updatePayload)
       toast.success(`用户 @${updatedUser.username} 已更新`)
-      setEditingUser(updatedUser)
-      setFormState(toUserFormState(updatedUser))
       await refreshUserQueries(updatedUser.id)
+      resetEditor()
     } catch (error) {
       if (handleUnauthorized(error)) {
         return
@@ -468,9 +475,7 @@ export function AdminUsersPage() {
       </AdminSection>
 
       {editorMode ? (
-        <AdminSection
-          title={isCreating ? '新建用户' : `编辑用户 #${editingUser?.id}`}
-        >
+        <AdminSection title={isCreating ? '新建用户' : `编辑用户`}>
           <form
             className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]"
             onSubmit={handleEditorSubmit}
@@ -743,7 +748,7 @@ export function AdminUsersPage() {
                             用户 ID: {user.id} · 邮箱:{' '}
                             {user.email_verified ? '已验证' : '未验证'} · 存储:{' '}
                             {formatBytes(user.storage_used)} /{' '}
-                            {formatBytes(user.storage_quota)} · 注册时间:{' '}
+                            {formatUserQuota(user.storage_quota)} · 注册时间:{' '}
                             {formatDateTime(user.created_at)}
                           </div>
                         </div>
