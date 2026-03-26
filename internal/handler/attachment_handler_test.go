@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -89,6 +90,11 @@ func TestAttachmentHandlerUploadPassesOriginalFilename(t *testing.T) {
 	var captured dto.AttachmentCreateInput
 	h := NewAttachmentHandler(&mockAttachmentService{
 		createFn: func(ctx context.Context, input dto.AttachmentCreateInput) (*dto.AttachmentDTO, error) {
+			content, err := io.ReadAll(input.Content)
+			if err != nil {
+				t.Fatalf("read attachment content failed: %v", err)
+			}
+			input.Content = bytes.NewReader(content)
 			captured = input
 			return &dto.AttachmentDTO{ID: 1, UserID: input.UserID}, nil
 		},
@@ -128,7 +134,17 @@ func TestAttachmentHandlerUploadPassesOriginalFilename(t *testing.T) {
 	if captured.OriginalFilename != "Report.Final.PNG" {
 		t.Fatalf("expected original filename to be passed through, got %q", captured.OriginalFilename)
 	}
-	if len(captured.Content) == 0 {
+	if captured.FileSize != int64(len("image-content")) {
+		t.Fatalf("expected file size to be populated, got %d", captured.FileSize)
+	}
+	if len(captured.ContentSample) == 0 {
+		t.Fatal("expected uploaded content sample to be passed through")
+	}
+	content, err := io.ReadAll(captured.Content)
+	if err != nil {
+		t.Fatalf("read captured content failed: %v", err)
+	}
+	if len(content) == 0 {
 		t.Fatal("expected uploaded content to be passed through")
 	}
 	if captured.ContentType == "" {

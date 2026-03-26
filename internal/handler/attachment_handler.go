@@ -2,8 +2,6 @@ package handler
 
 import (
 	"errors"
-	"io"
-	"mime/multipart"
 	"net/http"
 	"strconv"
 	"strings"
@@ -65,35 +63,30 @@ func (h *AttachmentHandler) Upload(c *gin.Context) {
 
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
+		if isRequestTooLargeError(err) {
+			c.JSON(http.StatusRequestEntityTooLarge, dto.ErrorResponse{Message: "请求体过大"})
+			return
+		}
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "file 不能为空"})
 		return
 	}
 
-	file, err := fileHeader.Open()
+	file, sample, contentType, err := openUploadFile(fileHeader)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "读取上传文件失败"})
 		return
 	}
-	defer func(file multipart.File) {
+	defer func() {
 		_ = file.Close()
-	}(file)
-
-	content, err := io.ReadAll(file)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "读取上传文件失败"})
-		return
-	}
-
-	contentType := strings.TrimSpace(fileHeader.Header.Get("Content-Type"))
-	if contentType == "" {
-		contentType = http.DetectContentType(content)
-	}
+	}()
 
 	result, err := h.attachmentService.Create(c.Request.Context(), dto.AttachmentCreateInput{
 		UserID:           userID,
 		OriginalFilename: fileHeader.Filename,
 		ContentType:      contentType,
-		Content:          content,
+		FileSize:         fileHeader.Size,
+		Content:          file,
+		ContentSample:    sample,
 	})
 	if err != nil {
 		status := mapAttachmentErrorStatus(err)

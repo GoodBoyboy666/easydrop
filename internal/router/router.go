@@ -9,6 +9,7 @@ import (
 	_ "easydrop/docs"
 	"easydrop/internal/config"
 	"easydrop/internal/di"
+	"easydrop/internal/middleware"
 	"easydrop/internal/pkg/storage"
 
 	"github.com/gin-gonic/gin"
@@ -27,6 +28,7 @@ func BuildEngine(app *di.App) *gin.Engine {
 	}
 
 	r := gin.New()
+	r.MaxMultipartMemory = middleware.OrdinaryMaxRequestBodyBytes
 	if err := r.SetTrustedProxies(nil); err != nil {
 		log.Printf("禁用可信代理失败: %v", err)
 	}
@@ -74,22 +76,31 @@ func BuildEngine(app *di.App) *gin.Engine {
 		requireAdmin = app.Middleware.RequireAdmin
 		optionalLogin = app.Middleware.OptionalLogin
 	}
+	ordinaryLimit := passthroughMiddleware()
+	uploadLimit := passthroughMiddleware()
+	if app.RequestBodyLimit != nil {
+		ordinaryLimit = app.RequestBodyLimit.Ordinary
+		uploadLimit = app.RequestBodyLimit.Upload
+	}
 
 	v1 := r.Group("/api/v1")
 	v1.Use(optionalLogin)
 	{
 		authGroup := v1.Group("/auth")
+		authGroup.Use(ordinaryLimit)
 		{
 			authGroup.POST("/register", authHandler.Register)
 			authGroup.POST("/login", authHandler.Login)
 		}
 
 		captchaGroup := v1.Group("/captcha")
+		captchaGroup.Use(ordinaryLimit)
 		{
 			captchaGroup.GET("/config", captchaHandler.GetConfig)
 		}
 
 		initGroup := v1.Group("/init")
+		initGroup.Use(ordinaryLimit)
 		{
 			initGroup.GET("/status", initHandler.Status)
 			initGroup.POST("", initHandler.Initialize)
@@ -99,12 +110,12 @@ func BuildEngine(app *di.App) *gin.Engine {
 		loginGroup.Use(requireLogin)
 		{
 			usersMe := loginGroup.Group("/users/me")
+			usersMe.Use(ordinaryLimit)
 			{
 				usersMe.GET("", userHandler.GetProfile)
 				usersMe.PATCH("/profile", userHandler.UpdateProfile)
 				usersMe.PATCH("/password", userHandler.ChangePassword)
 				usersMe.POST("/email-change", userHandler.RequestEmailChange)
-				usersMe.POST("/avatar", userHandler.UploadAvatar)
 				usersMe.DELETE("/avatar", userHandler.DeleteAvatar)
 
 				comments := usersMe.Group("/comments")
@@ -115,33 +126,47 @@ func BuildEngine(app *di.App) *gin.Engine {
 					comments.DELETE("/:id", commentHandler.Delete)
 				}
 			}
+			usersMeUpload := loginGroup.Group("/users/me")
+			usersMeUpload.Use(uploadLimit)
+			{
+				usersMeUpload.POST("/avatar", userHandler.UploadAvatar)
+			}
 
 			posts := loginGroup.Group("/posts")
+			posts.Use(ordinaryLimit)
 			{
 				posts.POST("/:id/comments", commentHandler.Create)
 			}
 
 			attachments := loginGroup.Group("/attachments")
+			attachments.Use(ordinaryLimit)
 			{
-				attachments.POST("", attachmentHandler.Upload)
 				attachments.GET("", attachmentHandler.List)
 				attachments.GET("/:id", attachmentHandler.Get)
 				attachments.DELETE("/:id", attachmentHandler.Delete)
+			}
+			attachmentUploads := loginGroup.Group("/attachments")
+			attachmentUploads.Use(uploadLimit)
+			{
+				attachmentUploads.POST("", attachmentHandler.Upload)
 			}
 
 		}
 
 		comments := v1.Group("/comments")
+		comments.Use(ordinaryLimit)
 		{
 			comments.GET("", commentHandler.ListPublic)
 		}
 
 		settings := v1.Group("/settings")
+		settings.Use(ordinaryLimit)
 		{
 			settings.GET("/public", settingAdminHandler.Public)
 		}
 
 		posts := v1.Group("/posts")
+		posts.Use(ordinaryLimit)
 		{
 			posts.GET("", postHandler.List)
 			posts.GET("/:id", postHandler.Get)
@@ -149,6 +174,7 @@ func BuildEngine(app *di.App) *gin.Engine {
 		}
 
 		tags := v1.Group("/tags")
+		tags.Use(ordinaryLimit)
 		{
 			tags.GET("", tagHandler.List)
 		}
@@ -157,16 +183,22 @@ func BuildEngine(app *di.App) *gin.Engine {
 		adminGroup.Use(requireAdmin)
 		{
 			users := adminGroup.Group("/users")
+			users.Use(ordinaryLimit)
 			{
 				users.GET("", userAdminHandler.List)
 				users.POST("", userAdminHandler.Create)
 				users.PATCH("/:id", userAdminHandler.Update)
 				users.DELETE("/:id", userAdminHandler.Delete)
-				users.POST("/:id/avatar", userAdminHandler.UploadAvatar)
 				users.DELETE("/:id/avatar", userAdminHandler.DeleteAvatar)
+			}
+			userAvatarUploads := adminGroup.Group("/users")
+			userAvatarUploads.Use(uploadLimit)
+			{
+				userAvatarUploads.POST("/:id/avatar", userAdminHandler.UploadAvatar)
 			}
 
 			posts := adminGroup.Group("/posts")
+			posts.Use(ordinaryLimit)
 			{
 				posts.GET("", postAdminHandler.List)
 				posts.GET("/:id", postAdminHandler.Get)
@@ -176,6 +208,7 @@ func BuildEngine(app *di.App) *gin.Engine {
 			}
 
 			attachments := adminGroup.Group("/attachments")
+			attachments.Use(ordinaryLimit)
 			{
 				attachments.GET("", attachmentAdminHandler.List)
 				attachments.DELETE("/:id", attachmentAdminHandler.Delete)
@@ -183,6 +216,7 @@ func BuildEngine(app *di.App) *gin.Engine {
 			}
 
 			comments := adminGroup.Group("/comments")
+			comments.Use(ordinaryLimit)
 			{
 				comments.GET("", commentAdminHandler.List)
 				comments.GET("/:id", commentAdminHandler.Get)
@@ -191,6 +225,7 @@ func BuildEngine(app *di.App) *gin.Engine {
 			}
 
 			settings := adminGroup.Group("/settings")
+			settings.Use(ordinaryLimit)
 			{
 				settings.GET("", settingAdminHandler.List)
 				settings.PATCH("/:key", settingAdminHandler.Update)

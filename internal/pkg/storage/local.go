@@ -1,9 +1,11 @@
 package storage
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -39,7 +41,11 @@ func NewLocalStorage(cfg LocalConfig) (Backend, error) {
 	}, nil
 }
 
-func (s *localStorage) Upload(_ context.Context, objectKey string, data []byte, _ string) error {
+func (s *localStorage) Upload(_ context.Context, objectKey string, data []byte, contentType string) error {
+	return s.UploadStream(context.Background(), objectKey, bytes.NewReader(data), int64(len(data)), contentType)
+}
+
+func (s *localStorage) UploadStream(_ context.Context, objectKey string, reader io.Reader, _ int64, _ string) error {
 	fullPath, err := s.resolvePath(objectKey)
 	if err != nil {
 		return err
@@ -49,7 +55,15 @@ func (s *localStorage) Upload(_ context.Context, objectKey string, data []byte, 
 		return fmt.Errorf("创建目录失败: %w", err)
 	}
 
-	if err := os.WriteFile(fullPath, data, 0o644); err != nil {
+	file, err := os.Create(fullPath)
+	if err != nil {
+		return fmt.Errorf("创建文件失败: %w", err)
+	}
+	defer func() {
+		_ = file.Close()
+	}()
+
+	if _, err := io.Copy(file, reader); err != nil {
 		return fmt.Errorf("写入文件失败: %w", err)
 	}
 

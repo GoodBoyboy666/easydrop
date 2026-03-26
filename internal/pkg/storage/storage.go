@@ -1,9 +1,11 @@
 package storage
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 )
@@ -24,6 +26,7 @@ var (
 // Backend 定义底层存储实现能力。
 type Backend interface {
 	Upload(ctx context.Context, objectKey string, data []byte, contentType string) error
+	UploadStream(ctx context.Context, objectKey string, reader io.Reader, size int64, contentType string) error
 	Download(ctx context.Context, objectKey string) ([]byte, error)
 	GetSize(ctx context.Context, objectKey string) (int64, error)
 	Delete(ctx context.Context, objectKey string) error
@@ -35,6 +38,7 @@ type Manager interface {
 	BackendType() string
 	NewObjectKey(category string, userID uint, originalFilename string) (string, error)
 	Upload(ctx context.Context, objectKey string, data []byte, contentType string) error
+	UploadStream(ctx context.Context, objectKey string, reader io.Reader, size int64, contentType string) error
 	Download(ctx context.Context, objectKey string) ([]byte, error)
 	GetSize(ctx context.Context, objectKey string) (int64, error)
 	Delete(ctx context.Context, objectKey string) error
@@ -92,13 +96,18 @@ func (m *manager) NewObjectKey(category string, userID uint, originalFilename st
 
 // Upload 上传对象内容。
 func (m *manager) Upload(ctx context.Context, objectKey string, data []byte, contentType string) error {
+	return m.UploadStream(ctx, objectKey, bytes.NewReader(data), int64(len(data)), contentType)
+}
+
+// UploadStream 以流式方式上传对象内容。
+func (m *manager) UploadStream(ctx context.Context, objectKey string, reader io.Reader, size int64, contentType string) error {
 	if strings.TrimSpace(objectKey) == "" {
 		return ErrEmptyObjectKey
 	}
-	if len(data) == 0 {
+	if reader == nil || size <= 0 {
 		return ErrEmptyObjectData
 	}
-	return m.svc.Upload(ctx, objectKey, data, contentType)
+	return m.svc.UploadStream(ctx, objectKey, reader, size, contentType)
 }
 
 // Download 下载对象内容。

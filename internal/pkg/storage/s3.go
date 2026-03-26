@@ -71,13 +71,20 @@ func NewS3Storage(cfg S3Config) (Backend, error) {
 }
 
 func (s *s3Storage) Upload(ctx context.Context, objectKey string, data []byte, contentType string) error {
+	return s.UploadStream(ctx, objectKey, bytes.NewReader(data), int64(len(data)), contentType)
+}
+
+func (s *s3Storage) UploadStream(ctx context.Context, objectKey string, reader io.Reader, size int64, contentType string) error {
 	input := &s3.PutObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(objectKey),
-		Body:   bytes.NewReader(data),
+		Body:   reader,
 	}
 	if strings.TrimSpace(contentType) != "" {
 		input.ContentType = aws.String(contentType)
+	}
+	if size > 0 {
+		input.ContentLength = aws.Int64(size)
 	}
 
 	if _, err := s.client.PutObject(ctx, input); err != nil {

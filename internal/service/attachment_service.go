@@ -66,21 +66,21 @@ func (s *attachmentService) Create(ctx context.Context, input dto.AttachmentCrea
 		return nil, err
 	}
 
-	if len(input.Content) == 0 {
+	if input.Content == nil || len(input.ContentSample) == 0 {
 		return nil, ErrEmptyAttachmentContent
 	}
 
-	if err := validateAttachmentUpload(ctx, s.settings, input.OriginalFilename, input.ContentType, input.Content); err != nil {
+	if err := validateAttachmentUpload(ctx, s.settings, input.OriginalFilename, input.ContentType, input.ContentSample); err != nil {
 		return nil, err
 	}
 
-	bizType := resolveAttachmentBizType(input.Content)
+	bizType := resolveAttachmentBizType(input.ContentSample)
 
 	if err := validateAttachmentBizType(bizType); err != nil {
 		return nil, err
 	}
 
-	fileSize := int64(len(input.Content))
+	fileSize := input.FileSize
 	if fileSize <= 0 {
 		return nil, ErrInvalidFileSize
 	}
@@ -96,7 +96,7 @@ func (s *attachmentService) Create(ctx context.Context, input dto.AttachmentCrea
 		return nil, ErrInternal
 	}
 
-	if err := s.storageManager.Upload(ctx, fileKey, input.Content, strings.TrimSpace(input.ContentType)); err != nil {
+	if err := s.storageManager.UploadStream(ctx, fileKey, input.Content, fileSize, strings.TrimSpace(input.ContentType)); err != nil {
 		log.Printf("上传附件失败: %v", err)
 		return nil, ErrInternal
 	}

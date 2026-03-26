@@ -10,6 +10,7 @@ import (
 type App struct {
 	Config                 *config.StaticConfig
 	Middleware             middleware.Auth
+	RequestBodyLimit       middleware.RequestBodyLimit
 	AuthHandler            *handler.AuthHandler
 	CaptchaHandler         *handler.CaptchaHandler
 	InitHandler            *handler.InitHandler
@@ -28,7 +29,8 @@ type App struct {
 // NewApp 构造 App 聚合对象。
 func NewApp(
 	cfg *config.StaticConfig,
-	middlewares middleware.Auth,
+	authMiddleware middleware.Auth,
+	requestBodyLimit middleware.RequestBodyLimit,
 	authHandler *handler.AuthHandler,
 	captchaHandler *handler.CaptchaHandler,
 	initHandler *handler.InitHandler,
@@ -46,7 +48,8 @@ func NewApp(
 ) *App {
 	return &App{
 		Config:                 cfg,
-		Middleware:             middlewares,
+		Middleware:             authMiddleware,
+		RequestBodyLimit:       requestBodyLimit,
 		AuthHandler:            authHandler,
 		CaptchaHandler:         captchaHandler,
 		InitHandler:            initHandler,

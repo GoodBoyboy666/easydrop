@@ -1,22 +1,51 @@
 package router
 
 import (
+	"bytes"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"easydrop/internal/config"
 	"easydrop/internal/di"
+	"easydrop/internal/dto"
 	"easydrop/internal/handler"
 	"easydrop/internal/middleware"
 	"easydrop/internal/pkg/storage"
+	"easydrop/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
 
 type fakeAuthMiddleware struct{}
+type allowAuthMiddleware struct{}
+
+type routerMockSettingService struct {
+	getValueFn func(ctx context.Context, key string) (string, bool, error)
+}
+
+func (m *routerMockSettingService) GetValue(ctx context.Context, key string) (string, bool, error) {
+	if m.getValueFn == nil {
+		return "", false, nil
+	}
+	return m.getValueFn(ctx, key)
+}
+
+func (m *routerMockSettingService) ListItems(context.Context, dto.SettingListInput) (*dto.SettingListResult, error) {
+	return nil, nil
+}
+
+func (m *routerMockSettingService) UpdateItem(context.Context, dto.SettingUpdateInput) error {
+	return nil
+}
+
+func (m *routerMockSettingService) GetPublicItems(context.Context) (*dto.SettingPublicResult, error) {
+	return nil, nil
+}
 
 func (fakeAuthMiddleware) OptionalLogin(c *gin.Context) {
 	c.Next()
@@ -28,6 +57,18 @@ func (fakeAuthMiddleware) RequireLogin(c *gin.Context) {
 
 func (fakeAuthMiddleware) RequireAdmin(c *gin.Context) {
 	c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"message": "admin required"})
+}
+
+func (allowAuthMiddleware) OptionalLogin(c *gin.Context) {
+	c.Next()
+}
+
+func (allowAuthMiddleware) RequireLogin(c *gin.Context) {
+	c.Next()
+}
+
+func (allowAuthMiddleware) RequireAdmin(c *gin.Context) {
+	c.Next()
 }
 
 func TestBuildEngineRegistersAllRoutes(t *testing.T) {
@@ -288,6 +329,48 @@ func TestBuildEngineServesLocalStorageFilesWithAPIURLPrefix(t *testing.T) {
 	}
 }
 
+func TestBuildEngineLimitsNormalRequestBodyToTwoMegabytes(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	r := BuildEngine(newTestApp(fakeAuthMiddleware{}))
+	body := `{"username":"` + strings.Repeat("a", int(middleware.OrdinaryMaxRequestBodyBytes)) + `"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/init", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("expected 413 for oversized normal request, got %d", w.Code)
+	}
+}
+
+func TestBuildEngineLimitsUploadRequestBodyUsingSetting(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	app := newTestApp(allowAuthMiddleware{})
+	app.RequestBodyLimit = middleware.NewRequestBodyLimit(&routerMockSettingService{
+		getValueFn: func(ctx context.Context, key string) (string, bool, error) {
+			if key != service.UploadMaxRequestBodySettingKey {
+				return "", false, nil
+			}
+			return "1024", true, nil
+		},
+	})
+
+	r := BuildEngine(app)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/attachments", bytes.NewReader(make([]byte, 2048)))
+	req.ContentLength = 2048
+	req.Header.Set("Content-Type", "multipart/form-data; boundary=limit")
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("expected 413 for oversized upload request, got %d", w.Code)
+	}
+}
+
 var _ middleware.Auth = (*fakeAuthMiddleware)(nil)
 
 func newTestApp(auth middleware.Auth) *di.App {
@@ -300,6 +383,7 @@ func newTestAppWithMode(auth middleware.Auth, mode string) *di.App {
 			Server: config.ServerConfig{Mode: mode},
 		},
 		Middleware:             auth,
+		RequestBodyLimit:       middleware.NewRequestBodyLimit(nil),
 		AuthHandler:            handler.NewAuthHandler(nil),
 		CaptchaHandler:         handler.NewCaptchaHandler(nil),
 		InitHandler:            handler.NewInitHandler(nil),

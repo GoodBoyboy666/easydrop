@@ -9,8 +9,6 @@ import (
 	"strings"
 )
 
-const attachmentAllowedExtensionsSettingKey = "storage.allowed_attachment_extensions"
-
 var (
 	ErrAttachmentExtensionsNotConfigured = errors.New("未配置允许上传的附件扩展名")
 	ErrAttachmentExtensionNotAllowed     = errors.New("附件扩展名不允许上传")

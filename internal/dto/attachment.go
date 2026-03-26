@@ -1,12 +1,17 @@
 package dto
 
-import "time"
+import (
+	"io"
+	"time"
+)
 
 type AttachmentCreateInput struct {
 	UserID           uint   `json:"user_id"`
 	OriginalFilename string `json:"original_filename"`
 	ContentType      string `json:"content_type"`
-	Content          []byte `json:"content"`
+	FileSize         int64  `json:"file_size"`
+	Content          io.Reader
+	ContentSample    []byte `json:"-"`
 }
 
 type AttachmentIDURIInput struct {

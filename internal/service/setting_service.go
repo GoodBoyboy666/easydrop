@@ -254,6 +254,13 @@ func initDefaultSettings(db *gorm.DB) error {
 			Public:   false,
 		},
 		{
+			Key:      UploadMaxRequestBodySettingKey,
+			Value:    "52428800",
+			Desc:     "上传接口最大请求体大小（字节，默认 50MB）",
+			Category: "storage",
+			Public:   false,
+		},
+		{
 			Key:      "system.initialized",
 			Value:    "false",
 			Desc:     "系统已初始化",

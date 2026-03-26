@@ -1,6 +1,9 @@
 package dto
 
-import "time"
+import (
+	"io"
+	"time"
+)
 
 type UserCreateInput struct {
 	Username      string  `json:"username"`
@@ -58,7 +61,9 @@ type UserAvatarUploadInput struct {
 	UserID           uint   `json:"-"`
 	OriginalFilename string `json:"original_filename"`
 	ContentType      string `json:"content_type"`
-	Content          []byte `json:"content"`
+	FileSize         int64  `json:"file_size"`
+	Content          io.Reader
+	ContentSample    []byte `json:"-"`
 }
 
 type UserListInput struct {

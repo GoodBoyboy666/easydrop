@@ -56,6 +56,7 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	requestBodyLimit := middleware.NewRequestBodyLimit(settingService)
 	allCaptchaConfig := config.ProvideCaptchaConfig(staticConfig)
 	httpClient := captcha.NewHttpClient()
 	verifier, err := captcha.NewVerifier(allCaptchaConfig, httpClient)
@@ -104,6 +105,6 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	settingAdminHandler := handler.NewSettingAdminHandler(settingService)
 	tagService := service.NewTagService(tagRepo)
 	tagHandler := handler.NewTagHandler(tagService)
-	app := NewApp(staticConfig, auth, authHandler, captchaHandler, initHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, postAdminHandler, postHandler, settingAdminHandler, tagHandler)
+	app := NewApp(staticConfig, auth, requestBodyLimit, authHandler, captchaHandler, initHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, postAdminHandler, postHandler, settingAdminHandler, tagHandler)
 	return app, nil
 }

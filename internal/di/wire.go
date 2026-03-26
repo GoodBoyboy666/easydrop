@@ -35,6 +35,7 @@ func Initialize(configDir string, strict bool) (*App, error) {
 		captcha.CaptchaSet,
 		repo.RepositorySet,
 		middleware.NewAuth,
+		middleware.NewRequestBodyLimit,
 		service.ServiceSet,
 		handler.HandlerSet,
 		NewApp,

@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"io"
 	"net/http"
 	"strings"
 
@@ -205,33 +204,30 @@ func (h *UserAdminHandler) UploadAvatar(c *gin.Context) {
 
 	fileHeader, err := c.FormFile("avatar")
 	if err != nil {
+		if isRequestTooLargeError(err) {
+			c.JSON(http.StatusRequestEntityTooLarge, dto.ErrorResponse{Message: "请求体过大"})
+			return
+		}
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "avatar 不能为空"})
 		return
 	}
 
-	file, err := fileHeader.Open()
+	file, sample, contentType, err := openUploadFile(fileHeader)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "读取上传文件失败"})
 		return
 	}
-	defer file.Close()
-
-	content, err := io.ReadAll(file)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "读取上传文件失败"})
-		return
-	}
-
-	contentType := strings.TrimSpace(fileHeader.Header.Get("Content-Type"))
-	if contentType == "" {
-		contentType = http.DetectContentType(content)
-	}
+	defer func() {
+		_ = file.Close()
+	}()
 
 	result, err := h.userService.UploadAvatar(c.Request.Context(), dto.UserAvatarUploadInput{
 		UserID:           req.ID,
 		OriginalFilename: fileHeader.Filename,
 		ContentType:      contentType,
-		Content:          content,
+		FileSize:         fileHeader.Size,
+		Content:          file,
+		ContentSample:    sample,
 	})
 	if err != nil {
 		c.JSON(mapUserErrorStatus(err), dto.ErrorResponse{Message: err.Error()})

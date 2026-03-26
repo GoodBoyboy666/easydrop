@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"context"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"testing"
@@ -212,7 +213,17 @@ func TestUserAdminHandlerUploadAvatarSuccess(t *testing.T) {
 			if input.OriginalFilename != "avatar.png" {
 				t.Fatalf("unexpected filename: %s", input.OriginalFilename)
 			}
-			if len(input.Content) == 0 {
+			if input.FileSize != int64(len("avatar-content")) {
+				t.Fatalf("unexpected file size: %d", input.FileSize)
+			}
+			if len(input.ContentSample) == 0 {
+				t.Fatal("expected avatar content sample")
+			}
+			content, err := io.ReadAll(input.Content)
+			if err != nil {
+				t.Fatalf("read avatar content failed: %v", err)
+			}
+			if len(content) == 0 {
 				t.Fatal("expected avatar content")
 			}
 			return &dto.UserDTO{ID: 33}, nil

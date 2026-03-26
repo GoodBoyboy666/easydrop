@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -242,7 +243,9 @@ func TestUserServiceUploadAvatarReplacesManagedAvatar(t *testing.T) {
 		UserID:           1,
 		OriginalFilename: "profile.JPG",
 		ContentType:      "image/jpeg",
-		Content:          sampleJPEGData(),
+		FileSize:         int64(len(sampleJPEGData())),
+		Content:          bytes.NewReader(sampleJPEGData()),
+		ContentSample:    sampleJPEGData(),
 	})
 	if err != nil {
 		t.Fatalf("UploadAvatar returned error: %v", err)
@@ -330,7 +333,9 @@ func TestUserServiceUploadAvatarQuotaExceededRollsBackObject(t *testing.T) {
 		UserID:           3,
 		OriginalFilename: "avatar.png",
 		ContentType:      "image/png",
-		Content:          samplePNGData(),
+		FileSize:         int64(len(samplePNGData())),
+		Content:          bytes.NewReader(samplePNGData()),
+		ContentSample:    samplePNGData(),
 	})
 	if !errors.Is(err, ErrStorageQuotaExceeded) {
 		t.Fatalf("expected ErrStorageQuotaExceeded, got %v", err)

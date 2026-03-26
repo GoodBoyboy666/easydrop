@@ -477,13 +477,13 @@ func (s *userService) UploadAvatar(ctx context.Context, input dto.UserAvatarUplo
 	if s.storageManager == nil {
 		return nil, ErrInternal
 	}
-	if len(input.Content) == 0 {
+	if input.Content == nil || len(input.ContentSample) == 0 || input.FileSize <= 0 {
 		return nil, ErrEmptyAvatarContent
 	}
 	if strings.TrimSpace(input.OriginalFilename) == "" {
 		return nil, ErrEmptyAvatarFilename
 	}
-	if err := validateAvatarUpload(input.OriginalFilename, input.ContentType, input.Content); err != nil {
+	if err := validateAvatarUpload(input.OriginalFilename, input.ContentType, input.ContentSample); err != nil {
 		return nil, err
 	}
 
@@ -514,13 +514,13 @@ func (s *userService) UploadAvatar(ctx context.Context, input dto.UserAvatarUplo
 		return nil, ErrInternal
 	}
 
-	if err := s.storageManager.Upload(ctx, newAvatarKey, input.Content, strings.TrimSpace(input.ContentType)); err != nil {
+	if err := s.storageManager.UploadStream(ctx, newAvatarKey, input.Content, input.FileSize, strings.TrimSpace(input.ContentType)); err != nil {
 		log.Printf("上传头像失败: %v", err)
 		return nil, ErrInternal
 	}
 
 	newAvatarValue := newAvatarKey
-	updatedUser, err := s.userRepo.UpdateAvatarWithStorageUsedTx(ctx, input.UserID, &newAvatarValue, int64(len(input.Content))-oldAvatarSize, defaultQuota)
+	updatedUser, err := s.userRepo.UpdateAvatarWithStorageUsedTx(ctx, input.UserID, &newAvatarValue, input.FileSize-oldAvatarSize, defaultQuota)
 	if err != nil {
 		if deleteErr := s.storageManager.Delete(ctx, newAvatarKey); deleteErr != nil {
 			log.Printf("回滚新头像对象失败: %v", deleteErr)

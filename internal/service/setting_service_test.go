@@ -106,6 +106,7 @@ func TestSettingServiceGetPublicItems(t *testing.T) {
 	hasQuota := false
 	hasSecret := false
 	hasAttachmentExtensions := false
+	hasUploadMaxBody := false
 	for i := range result.Items {
 		if result.Items[i].Key == "storage.quota" {
 			hasQuota = true
@@ -116,6 +117,9 @@ func TestSettingServiceGetPublicItems(t *testing.T) {
 		if result.Items[i].Key == attachmentAllowedExtensionsSettingKey {
 			hasAttachmentExtensions = true
 		}
+		if result.Items[i].Key == UploadMaxRequestBodySettingKey {
+			hasUploadMaxBody = true
+		}
 	}
 	if !hasQuota {
 		t.Fatal("expected storage.quota in public items")
@@ -125,6 +129,9 @@ func TestSettingServiceGetPublicItems(t *testing.T) {
 	}
 	if hasAttachmentExtensions {
 		t.Fatal("expected attachment extension whitelist setting to be excluded")
+	}
+	if hasUploadMaxBody {
+		t.Fatal("expected upload max body setting to be excluded")
 	}
 }
 
