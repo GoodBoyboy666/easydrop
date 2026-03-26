@@ -39,6 +39,8 @@ type CommentService interface {
 	ListByUser(ctx context.Context, input dto.CommentUserListInput) (*dto.CommentListResult, error)
 	// List 查询评论列表（管理端）。
 	List(ctx context.Context, input dto.CommentAdminListInput) (*dto.CommentListResult, error)
+	// ListPublic 查询公开评论列表。
+	ListPublic(ctx context.Context, input dto.CommentPublicListInput) (*dto.CommentListResult, error)
 }
 
 type commentService struct {
@@ -79,6 +81,9 @@ func (s *commentService) Create(ctx context.Context, input dto.CommentCreateInpu
 		}
 		log.Printf("查询说说失败: %v", err)
 		return nil, ErrInternal
+	}
+	if post.Hide && !input.CanViewHidden {
+		return nil, ErrPostNotFound
 	}
 	if post.DisableComment {
 		return nil, ErrPostCommentDisabled
@@ -234,7 +239,7 @@ func (s *commentService) ListByPost(ctx context.Context, input dto.CommentListIn
 	if input.PostID == 0 {
 		return nil, ErrInvalidCommentPost
 	}
-	if err := s.ensurePostExists(ctx, input.PostID); err != nil {
+	if err := s.ensurePostVisible(ctx, input.PostID, input.CanViewHidden); err != nil {
 		return nil, err
 	}
 
@@ -277,6 +282,30 @@ func (s *commentService) List(ctx context.Context, input dto.CommentAdminListInp
 	return s.list(ctx, repo.CommentFilter{PostID: input.PostID, UserID: input.UserID}, input.Limit, input.Offset, input.Order)
 }
 
+// ListPublic 查询公开评论列表。
+func (s *commentService) ListPublic(ctx context.Context, input dto.CommentPublicListInput) (*dto.CommentListResult, error) {
+	comments, total, err := s.commentRepo.ListPublic(ctx, input.CanViewHidden, repo.ListOptions{
+		Limit:  normalizeServiceListLimit(input.Limit),
+		Offset: normalizeServiceListOffset(input.Offset),
+		Order:  normalizeCommentListOrder(input.Order),
+	})
+	if err != nil {
+		log.Printf("查询公开评论列表失败: %v", err)
+		return nil, ErrInternal
+	}
+
+	items, err := toCommentDTOs(ctx, comments, s.storageManager)
+	if err != nil {
+		log.Printf("解析公开评论列表头像失败: %v", err)
+		return nil, ErrInternal
+	}
+
+	return &dto.CommentListResult{
+		Items: items,
+		Total: total,
+	}, nil
+}
+
 func (s *commentService) list(ctx context.Context, filter repo.CommentFilter, limit, offset int, order string) (*dto.CommentListResult, error) {
 	comments, total, err := s.commentRepo.List(ctx, repo.CommentFilter{
 		PostID:   filter.PostID,
@@ -313,6 +342,22 @@ func (s *commentService) ensurePostExists(ctx context.Context, postID uint) erro
 		}
 		log.Printf("查询说说失败: %v", err)
 		return ErrInternal
+	}
+	return nil
+}
+
+// ensurePostVisible 确保评论操作绑定的说说对当前调用方可见。
+func (s *commentService) ensurePostVisible(ctx context.Context, postID uint, canViewHidden bool) error {
+	post, err := s.postRepo.GetByID(ctx, postID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrPostNotFound
+		}
+		log.Printf("查询说说失败: %v", err)
+		return ErrInternal
+	}
+	if post.Hide && !canViewHidden {
+		return ErrPostNotFound
 	}
 	return nil
 }

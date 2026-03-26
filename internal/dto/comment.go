@@ -3,10 +3,11 @@ package dto
 import "time"
 
 type CommentCreateInput struct {
-	PostID   uint   `json:"-"`
-	UserID   uint   `json:"-"`
-	Content  string `json:"content"`
-	ParentID *uint  `json:"parent_id"`
+	PostID        uint   `json:"-"`
+	UserID        uint   `json:"-"`
+	CanViewHidden bool   `json:"-"`
+	Content       string `json:"content"`
+	ParentID      *uint  `json:"parent_id"`
 }
 
 type CommentIDURIInput struct {
@@ -19,10 +20,11 @@ type CommentUpdateInput struct {
 }
 
 type CommentListInput struct {
-	PostID uint   `json:"post_id"`
-	Limit  int    `json:"limit"`
-	Offset int    `json:"offset"`
-	Order  string `json:"order"`
+	PostID        uint   `json:"post_id"`
+	CanViewHidden bool   `json:"-"`
+	Limit         int    `json:"limit"`
+	Offset        int    `json:"offset"`
+	Order         string `json:"order"`
 }
 
 type CommentPostListQueryInput struct {
@@ -35,6 +37,13 @@ type CommentPublicListQueryInput struct {
 	Limit  int    `json:"limit" form:"limit"`
 	Offset int    `json:"offset" form:"offset"`
 	Order  string `json:"order" form:"order"`
+}
+
+type CommentPublicListInput struct {
+	CanViewHidden bool   `json:"-"`
+	Limit         int    `json:"limit"`
+	Offset        int    `json:"offset"`
+	Order         string `json:"order"`
 }
 
 type CommentUserListInput struct {

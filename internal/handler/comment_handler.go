@@ -62,6 +62,7 @@ func (h *CommentHandler) Create(c *gin.Context) {
 	}
 	input.UserID = userID
 	input.PostID = uriReq.ID
+	input.CanViewHidden = canViewHiddenPost(c)
 
 	result, err := h.commentService.Create(c.Request.Context(), input)
 	if err != nil {
@@ -294,10 +295,11 @@ func (h *CommentHandler) ListPublic(c *gin.Context) {
 	}
 	req.Order = strings.TrimSpace(req.Order)
 
-	result, err := h.commentService.List(c.Request.Context(), dto.CommentAdminListInput{
-		Limit:  req.Limit,
-		Offset: req.Offset,
-		Order:  req.Order,
+	result, err := h.commentService.ListPublic(c.Request.Context(), dto.CommentPublicListInput{
+		CanViewHidden: canViewHiddenPost(c),
+		Limit:         req.Limit,
+		Offset:        req.Offset,
+		Order:         req.Order,
 	})
 	if err != nil {
 		c.JSON(mapCommentErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
@@ -340,10 +342,11 @@ func (h *CommentHandler) ListByPost(c *gin.Context) {
 	}
 
 	result, err := h.commentService.ListByPost(c.Request.Context(), dto.CommentListInput{
-		PostID: uriReq.ID,
-		Limit:  queryReq.Limit,
-		Offset: queryReq.Offset,
-		Order:  strings.TrimSpace(queryReq.Order),
+		PostID:        uriReq.ID,
+		CanViewHidden: canViewHiddenPost(c),
+		Limit:         queryReq.Limit,
+		Offset:        queryReq.Offset,
+		Order:         strings.TrimSpace(queryReq.Order),
 	})
 	if err != nil {
 		c.JSON(mapCommentErrorStatus(err), dto.ErrorResponse{Message: err.Error()})

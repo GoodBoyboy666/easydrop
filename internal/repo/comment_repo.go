@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"strings"
 
 	"easydrop/internal/model"
 
@@ -17,6 +18,7 @@ type CommentRepo interface {
 	DeleteByPostID(ctx context.Context, postID uint) error
 	DeleteRootWithChildren(ctx context.Context, rootID uint) error
 	List(ctx context.Context, filter CommentFilter, opts ListOptions) ([]model.Comment, int64, error)
+	ListPublic(ctx context.Context, includeHidden bool, opts ListOptions) ([]model.Comment, int64, error)
 }
 
 // CommentFilter 评论查询过滤条件。
@@ -96,4 +98,38 @@ func (r *GormCommentRepo) List(ctx context.Context, filter CommentFilter, opts L
 		return nil, 0, err
 	}
 	return comments, total, nil
+}
+
+func (r *GormCommentRepo) ListPublic(ctx context.Context, includeHidden bool, opts ListOptions) ([]model.Comment, int64, error) {
+	db := r.db.WithContext(withContext(ctx)).Model(&model.Comment{})
+	if !includeHidden {
+		db = db.Joins("JOIN posts ON posts.id = comments.post_id").Where("posts.hide = ?", false)
+	}
+
+	var total int64
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var comments []model.Comment
+	db = applyListOptions(db, ListOptions{
+		Limit:  opts.Limit,
+		Offset: opts.Offset,
+		Order:  qualifyCommentOrder(opts.Order),
+	}, "comments.created_at asc")
+	if err := db.Preload("User").Preload("ReplyToUser").Find(&comments).Error; err != nil {
+		return nil, 0, err
+	}
+	return comments, total, nil
+}
+
+func qualifyCommentOrder(order string) string {
+	switch strings.TrimSpace(order) {
+	case "created_at asc":
+		return "comments.created_at asc"
+	case "created_at desc":
+		return "comments.created_at desc"
+	default:
+		return order
+	}
 }

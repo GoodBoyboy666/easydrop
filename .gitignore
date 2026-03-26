@@ -3,3 +3,4 @@ data/*
 AGENTS.md
 *.exe
 Caddyfile
+.gocache/*
