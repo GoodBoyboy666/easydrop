@@ -21,6 +21,7 @@ import {
   FieldTitle,
 } from '#/components/ui/field'
 import { Input } from '#/components/ui/input'
+import { Separator } from '#/components/ui/separator'
 import { Switch } from '#/components/ui/switch'
 import { Textarea } from '#/components/ui/textarea'
 
@@ -71,10 +72,13 @@ export function AdminSettingsPage() {
   const settings = settingsQuery.data?.items ?? []
 
   useEffect(() => {
-    const nextDrafts = settings.reduce<Record<string, string>>((acc, setting) => {
-      acc[setting.key] = setting.value
-      return acc
-    }, {})
+    const nextDrafts = settings.reduce<Record<string, string>>(
+      (acc, setting) => {
+        acc[setting.key] = setting.value
+        return acc
+      },
+      {},
+    )
 
     setDraftValues(nextDrafts)
   }, [settings])
@@ -120,23 +124,21 @@ export function AdminSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
-        title="设置管理"
-      />
+      <AdminPageHeader title="设置管理" />
 
-      <AdminSection
-        title="配置面板"
-      >
+      <AdminSection title="配置面板">
         {settingsQuery.isPending ? (
           <div className="rounded-2xl border border-border/70 bg-transparent">
             {Array.from({ length: 6 }).map((_, index) => (
-              <div
-                key={index}
-                className="border-b border-border/60 p-4 last:border-b-0"
-              >
-                <div className="h-4 w-24 rounded bg-muted/40" />
-                <div className="mt-3 h-4 w-full rounded bg-muted/30" />
-                <div className="mt-2 h-4 w-9/12 rounded bg-muted/30" />
+              <div key={index}>
+                <div className="p-4">
+                  <div className="h-4 w-24 rounded bg-muted/40" />
+                  <div className="mt-3 h-4 w-full rounded bg-muted/30" />
+                  <div className="mt-2 h-4 w-9/12 rounded bg-muted/30" />
+                </div>
+                {index < 5 ? (
+                  <Separator className="bg-border/80 data-horizontal:h-0.5" />
+                ) : null}
               </div>
             ))}
           </div>
@@ -149,14 +151,18 @@ export function AdminSettingsPage() {
           />
         ) : null}
 
-        {!settingsQuery.isPending && !settingsQuery.error && settings.length === 0 ? (
+        {!settingsQuery.isPending &&
+        !settingsQuery.error &&
+        settings.length === 0 ? (
           <AdminEmptyState
             description="可以调整分类或 key 前缀筛选条件。"
             title="没有找到符合条件的配置"
           />
         ) : null}
 
-        {!settingsQuery.isPending && !settingsQuery.error && settings.length > 0 ? (
+        {!settingsQuery.isPending &&
+        !settingsQuery.error &&
+        settings.length > 0 ? (
           <div className="overflow-hidden bg-transparent">
             {settings.map((setting, index) => {
               const currentValue = draftValues[setting.key] ?? ''
@@ -167,78 +173,93 @@ export function AdminSettingsPage() {
               const useTextarea = shouldUseTextarea(setting, currentValue)
 
               return (
-                <AdminMotionItem
-                  key={setting.key}
-                  className="border-b border-border/60 p-5 last:border-b-0"
-                  delay={index * 0.02}
-                >
-                  <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_220px]">
-                    <div className="min-w-0 space-y-4">
-                      <div className="min-w-0">
-                        <div className="font-medium">
-                          {setting.desc || setting.key}
+                <div key={setting.key}>
+                  <AdminMotionItem className="p-5" delay={index * 0.02}>
+                    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_220px]">
+                      <div className="min-w-0 space-y-4">
+                        <div className="min-w-0">
+                          <div className="font-medium">
+                            {setting.desc || setting.key}
+                          </div>
+                        </div>
+
+                        {isBooleanSetting ? (
+                          <Field orientation="horizontal">
+                            <Switch
+                              checked={asBooleanValue(currentValue)}
+                              id={`setting-${setting.key}`}
+                              onCheckedChange={(checked) =>
+                                handleDraftChange(
+                                  setting.key,
+                                  checked ? 'true' : 'false',
+                                )
+                              }
+                            />
+                            <FieldContent>
+                              <FieldLabel htmlFor={`setting-${setting.key}`}>
+                                <FieldTitle>启用</FieldTitle>
+                              </FieldLabel>
+                            </FieldContent>
+                          </Field>
+                        ) : useTextarea ? (
+                          <Field>
+                            <FieldLabel htmlFor={`setting-${setting.key}`}>
+                              配置值
+                            </FieldLabel>
+                            <Textarea
+                              id={`setting-${setting.key}`}
+                              onChange={(event) =>
+                                handleDraftChange(
+                                  setting.key,
+                                  event.target.value,
+                                )
+                              }
+                              placeholder="请输入新的配置值"
+                              rows={6}
+                              value={currentValue}
+                            />
+                          </Field>
+                        ) : (
+                          <Field>
+                            <FieldLabel htmlFor={`setting-${setting.key}`}>
+                              配置值
+                            </FieldLabel>
+                            <Input
+                              id={`setting-${setting.key}`}
+                              onChange={(event) =>
+                                handleDraftChange(
+                                  setting.key,
+                                  event.target.value,
+                                )
+                              }
+                              placeholder="请输入新的配置值"
+                              type={setting.sensitive ? 'password' : 'text'}
+                              value={currentValue}
+                            />
+                          </Field>
+                        )}
+                      </div>
+
+                      <div className="flex items-end justify-end">
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <Button
+                            disabled={savingCurrent}
+                            onClick={() => void handleSaveSetting(setting)}
+                            size="sm"
+                            type="button"
+                          >
+                            <SaveIcon data-icon="inline-start" />
+                            {savingCurrent ? '保存中…' : '保存'}
+                          </Button>
                         </div>
                       </div>
-
-                      {isBooleanSetting ? (
-                        <Field orientation="horizontal">
-                          <Switch
-                            checked={asBooleanValue(currentValue)}
-                            id={`setting-${setting.key}`}
-                            onCheckedChange={(checked) =>
-                              handleDraftChange(setting.key, checked ? 'true' : 'false')
-                            }
-                          />
-                          <FieldContent>
-                            <FieldLabel htmlFor={`setting-${setting.key}`}>
-                              <FieldTitle>启用</FieldTitle>
-                            </FieldLabel>
-                          </FieldContent>
-                        </Field>
-                      ) : useTextarea ? (
-                        <Field>
-                          <FieldLabel htmlFor={`setting-${setting.key}`}>配置值</FieldLabel>
-                          <Textarea
-                            id={`setting-${setting.key}`}
-                            onChange={(event) =>
-                              handleDraftChange(setting.key, event.target.value)
-                            }
-                            placeholder="请输入新的配置值"
-                            rows={6}
-                            value={currentValue}
-                          />
-                        </Field>
-                      ) : (
-                        <Field>
-                          <FieldLabel htmlFor={`setting-${setting.key}`}>配置值</FieldLabel>
-                          <Input
-                            id={`setting-${setting.key}`}
-                            onChange={(event) =>
-                              handleDraftChange(setting.key, event.target.value)
-                            }
-                            placeholder="请输入新的配置值"
-                            type={setting.sensitive ? 'password' : 'text'}
-                            value={currentValue}
-                          />
-                        </Field>
-                      )}
                     </div>
+                  </AdminMotionItem>
 
-                    <div className="flex items-end justify-end">
-                      <div className="flex flex-wrap justify-end gap-2">
-                        <Button
-                          disabled={savingCurrent}
-                          onClick={() => void handleSaveSetting(setting)}
-                          size="sm"
-                          type="button"
-                        >
-                          <SaveIcon data-icon="inline-start" />
-                          {savingCurrent ? '保存中…' : '保存'}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </AdminMotionItem>
+                  {index < settings.length - 1 ? (
+                    <Separator className="bg-border/80 data-horizontal:h-0.5" />
+                  ) : null}
+                </div>
               )
             })}
           </div>

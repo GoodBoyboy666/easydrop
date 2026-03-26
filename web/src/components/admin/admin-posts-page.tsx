@@ -29,6 +29,7 @@ import { Badge } from '#/components/ui/badge'
 import { Button } from '#/components/ui/button'
 import { Field, FieldLabel } from '#/components/ui/field'
 import { Input } from '#/components/ui/input'
+import { Separator } from '#/components/ui/separator'
 
 interface PostFilterState {
   content: string
@@ -49,7 +50,8 @@ const EMPTY_FILTERS: PostFilterState = {
 export function AdminPostsPage() {
   const queryClient = useQueryClient()
   const { auth, handleUnauthorized } = useAdminSession('/admin/posts')
-  const [draftFilters, setDraftFilters] = useState<PostFilterState>(EMPTY_FILTERS)
+  const [draftFilters, setDraftFilters] =
+    useState<PostFilterState>(EMPTY_FILTERS)
   const [filters, setFilters] = useState<PostFilterState>(EMPTY_FILTERS)
   const [page, setPage] = useState(0)
   const [pendingDelete, setPendingDelete] = useState<PostDTO | null>(null)
@@ -142,9 +144,7 @@ export function AdminPostsPage() {
         title="删除这篇日志？"
       />
 
-      <AdminPageHeader
-        title="日志管理"
-      />
+      <AdminPageHeader title="日志管理" />
 
       <AdminSection title="筛选日志">
         <form
@@ -275,67 +275,80 @@ export function AdminPostsPage() {
           <>
             <div className="overflow-hidden bg-transparent">
               {posts.map((post, index) => (
-                <AdminMotionItem
-                  key={post.id}
-                  className="border-b border-border/60 p-4 last:border-b-0"
-                  delay={index * 0.03}
-                >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="font-medium">日志 #{post.id}</div>
-                        {post.hide ? <Badge variant="outline">已隐藏</Badge> : null}
-                        {post.disable_comment ? (
-                          <Badge variant="outline">已禁评</Badge>
-                        ) : null}
-                        {typeof post.pin === 'number' ? (
-                          <Badge>
-                            <PinIcon data-icon="inline-start" />
-                            置顶 {post.pin}
+                <div key={post.id}>
+                  <AdminMotionItem className="p-4" delay={index * 0.03}>
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="font-medium">日志 #{post.id}</div>
+                          {post.hide ? (
+                            <Badge variant="outline">已隐藏</Badge>
+                          ) : null}
+                          {post.disable_comment ? (
+                            <Badge variant="outline">已禁评</Badge>
+                          ) : null}
+                          {typeof post.pin === 'number' ? (
+                            <Badge>
+                              <PinIcon data-icon="inline-start" />
+                              置顶 {post.pin}
+                            </Badge>
+                          ) : null}
+                        </div>
+                        <div className="mt-1 text-sm text-muted-foreground">
+                          {post.author.nickname}（ID: {post.author.id}） ·
+                          创建于 {formatDateTime(post.created_at)}
+                          {post.updated_at &&
+                          post.updated_at !== post.created_at ? (
+                            <> · 更新于 {formatDateTime(post.updated_at)}</>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          asChild
+                          size="sm"
+                          type="button"
+                          variant="outline"
+                        >
+                          <Link
+                            params={{ id: String(post.id) }}
+                            to="/posts/$id"
+                          >
+                            预览
+                          </Link>
+                        </Button>
+                        <Button
+                          onClick={() => setPendingDelete(post)}
+                          size="sm"
+                          type="button"
+                          variant="destructive"
+                        >
+                          <Trash2Icon data-icon="inline-start" />
+                          删除
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <MarkdownContent content={post.content} />
+                    </div>
+
+                    {post.tags && post.tags.length > 0 ? (
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {post.tags.map((tag) => (
+                          <Badge key={tag.id} variant="outline">
+                            #{tag.name}
                           </Badge>
-                        ) : null}
+                        ))}
                       </div>
-                      <div className="mt-1 text-sm text-muted-foreground">
-                        {post.author.nickname}（ID: {post.author.id}） · 创建于{' '}
-                        {formatDateTime(post.created_at)}
-                        {post.updated_at && post.updated_at !== post.created_at ? (
-                          <> · 更新于 {formatDateTime(post.updated_at)}</>
-                        ) : null}
-                      </div>
-                    </div>
+                    ) : null}
+                  </AdminMotionItem>
 
-                    <div className="flex flex-wrap gap-2">
-                      <Button asChild size="sm" type="button" variant="outline">
-                        <Link params={{ id: String(post.id) }} to="/posts/$id">
-                          预览
-                        </Link>
-                      </Button>
-                      <Button
-                        onClick={() => setPendingDelete(post)}
-                        size="sm"
-                        type="button"
-                        variant="destructive"
-                      >
-                        <Trash2Icon data-icon="inline-start" />
-                        删除
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="mt-4">
-                    <MarkdownContent content={post.content} />
-                  </div>
-
-                  {post.tags && post.tags.length > 0 ? (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {post.tags.map((tag) => (
-                        <Badge key={tag.id} variant="outline">
-                          #{tag.name}
-                        </Badge>
-                      ))}
-                    </div>
+                  {index < posts.length - 1 ? (
+                    <Separator className="bg-border/80 data-horizontal:h-0.5" />
                   ) : null}
-                </AdminMotionItem>
+                </div>
               ))}
             </div>
 

@@ -30,6 +30,7 @@ import { Badge } from '#/components/ui/badge'
 import { Button } from '#/components/ui/button'
 import { Field, FieldGroup, FieldLabel } from '#/components/ui/field'
 import { Input } from '#/components/ui/input'
+import { Separator } from '#/components/ui/separator'
 
 interface CommentFilterState {
   order: string
@@ -174,9 +175,7 @@ export function AdminCommentsPage() {
         title="删除这条评论？"
       />
 
-      <AdminPageHeader
-        title="评论管理"
-      />
+      <AdminPageHeader title="评论管理" />
 
       <AdminSection title="筛选评论">
         <form
@@ -255,9 +254,7 @@ export function AdminCommentsPage() {
       </AdminSection>
 
       {editingComment ? (
-        <AdminSection
-          title={`编辑评论 #${editingComment.id}`}
-        >
+        <AdminSection title={`编辑评论 #${editingComment.id}`}>
           <form className="space-y-4" onSubmit={handleSaveComment}>
             <FieldGroup>
               <Field>
@@ -291,83 +288,100 @@ export function AdminCommentsPage() {
             title="评论列表读取失败"
           />
         ) : null}
-        {!commentsQuery.isPending && !commentsQuery.error && comments.length === 0 ? (
+        {!commentsQuery.isPending &&
+        !commentsQuery.error &&
+        comments.length === 0 ? (
           <AdminEmptyState
             description="可以调整筛选条件，或等待用户产生新的评论。"
             title="没有找到符合条件的评论"
           />
         ) : null}
 
-        {!commentsQuery.isPending && !commentsQuery.error && comments.length > 0 ? (
+        {!commentsQuery.isPending &&
+        !commentsQuery.error &&
+        comments.length > 0 ? (
           <>
             <div className="overflow-hidden bg-transparent">
               {comments.map((comment, index) => (
-                <AdminMotionItem
-                  key={comment.id}
-                  className="border-b border-border/60 p-4 last:border-b-0"
-                  delay={index * 0.03}
-                >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="font-medium">{comment.author.nickname}</div>
-                        {comment.author.admin ? <Badge>管理员</Badge> : null}
-                      </div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        评论ID: {comment.id} · 用户ID: {comment.author.id} · 日志 #{comment.post_id} · 创建于{' '}
-                        {formatDateTime(comment.created_at)}
-                        {comment.updated_at &&
-                        comment.updated_at !== comment.created_at
-                          ? ` · 更新于 ${formatDateTime(comment.updated_at)}`
-                          : ''}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      <Button asChild size="sm" type="button" variant="outline">
-                        <Link params={{ id: String(comment.post_id) }} to="/posts/$id">
-                          查看日志
-                        </Link>
-                      </Button>
-                      <Button
-                        onClick={() => startEdit(comment)}
-                        size="sm"
-                        type="button"
-                        variant="outline"
-                      >
-                        <PencilLineIcon data-icon="inline-start" />
-                        编辑
-                      </Button>
-                      <Button
-                        onClick={() => setPendingDelete(comment)}
-                        size="sm"
-                        type="button"
-                        variant="destructive"
-                      >
-                        <Trash2Icon data-icon="inline-start" />
-                        删除
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="mt-4">
-                    {comment.reply_to_user ? (
-                      <div className="flex items-baseline gap-2">
-                        <span className="shrink-0 text-sm text-muted-foreground">
-                          回复 @{comment.reply_to_user.nickname}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <MarkdownContent
-                            className="[&_.markdown-body]:inline [&_.markdown-body>p:first-child]:inline [&_.markdown-body>p:first-child]:m-0"
-                            content={comment.content}
-                          />
+                <div key={comment.id}>
+                  <AdminMotionItem className="p-4" delay={index * 0.03}>
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="font-medium">
+                            {comment.author.nickname}
+                          </div>
+                          {comment.author.admin ? <Badge>管理员</Badge> : null}
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          评论ID: {comment.id} · 用户ID: {comment.author.id} ·
+                          日志 #{comment.post_id} · 创建于{' '}
+                          {formatDateTime(comment.created_at)}
+                          {comment.updated_at &&
+                          comment.updated_at !== comment.created_at
+                            ? ` · 更新于 ${formatDateTime(comment.updated_at)}`
+                            : ''}
                         </div>
                       </div>
-                    ) : (
-                      <MarkdownContent content={comment.content} />
-                    )}
-                  </div>
-                </AdminMotionItem>
+
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          asChild
+                          size="sm"
+                          type="button"
+                          variant="outline"
+                        >
+                          <Link
+                            params={{ id: String(comment.post_id) }}
+                            to="/posts/$id"
+                          >
+                            查看日志
+                          </Link>
+                        </Button>
+                        <Button
+                          onClick={() => startEdit(comment)}
+                          size="sm"
+                          type="button"
+                          variant="outline"
+                        >
+                          <PencilLineIcon data-icon="inline-start" />
+                          编辑
+                        </Button>
+                        <Button
+                          onClick={() => setPendingDelete(comment)}
+                          size="sm"
+                          type="button"
+                          variant="destructive"
+                        >
+                          <Trash2Icon data-icon="inline-start" />
+                          删除
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      {comment.reply_to_user ? (
+                        <div className="flex items-baseline gap-2">
+                          <span className="shrink-0 text-sm text-muted-foreground">
+                            回复 @{comment.reply_to_user.nickname}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <MarkdownContent
+                              className="[&_.markdown-body]:inline [&_.markdown-body>p:first-child]:inline [&_.markdown-body>p:first-child]:m-0"
+                              content={comment.content}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <MarkdownContent content={comment.content} />
+                      )}
+                    </div>
+                  </AdminMotionItem>
+
+                  {index < comments.length - 1 ? (
+                    <Separator className="bg-border/80 data-horizontal:h-0.5" />
+                  ) : null}
+                </div>
               ))}
             </div>
 

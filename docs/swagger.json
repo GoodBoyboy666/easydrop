@@ -2021,6 +2021,53 @@
                 }
             }
         },
+        "/posts/{id}": {
+            "get": {
+                "description": "根据说说 ID 查询公开说说详情",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "post"
+                ],
+                "summary": "前端查询说说详情",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "说说ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.PostDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "参数校验失败",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "说说不存在",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/posts/{id}/comments": {
             "get": {
                 "description": "分页查询指定说说下的评论（扁平）",

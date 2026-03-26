@@ -28,6 +28,7 @@ import { Badge } from '#/components/ui/badge'
 import { Button } from '#/components/ui/button'
 import { Field, FieldGroup, FieldLabel } from '#/components/ui/field'
 import { Input } from '#/components/ui/input'
+import { Separator } from '#/components/ui/separator'
 import { Switch } from '#/components/ui/switch'
 
 const USER_ORDER_OPTIONS = [
@@ -717,62 +718,64 @@ export function AdminUsersPage() {
           <>
             <div className="overflow-hidden bg-transparent">
               {users.map((user, index) => (
-                <AdminMotionItem
-                  key={user.id}
-                  className="border-b border-border/60 p-4 last:border-b-0"
-                  delay={index * 0.03}
-                >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <Avatar size="lg">
-                        <AvatarImage alt={user.nickname} src={user.avatar} />
-                        <AvatarFallback>
-                          {getInitials(user.nickname)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="font-medium">{user.nickname}</div>
-                          {user.admin ? <Badge>管理员</Badge> : null}
-                          <Badge variant="outline">
-                            {formatUserStatus(user.status)}
-                          </Badge>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          @{user.username} · {user.email}
-                        </div>
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          用户 ID: {user.id} · 邮箱:{' '}
-                          {user.email_verified ? '已验证' : '未验证'} · 存储:{' '}
-                          {formatBytes(user.storage_used)} /{' '}
-                          {formatBytes(user.storage_quota)} · 注册时间:{' '}
-                          {formatDateTime(user.created_at)}
+                <div key={user.id}>
+                  <AdminMotionItem className="p-4" delay={index * 0.03}>
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <Avatar size="lg">
+                          <AvatarImage alt={user.nickname} src={user.avatar} />
+                          <AvatarFallback>
+                            {getInitials(user.nickname)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="font-medium">{user.nickname}</div>
+                            {user.admin ? <Badge>管理员</Badge> : null}
+                            <Badge variant="outline">
+                              {formatUserStatus(user.status)}
+                            </Badge>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            @{user.username} · {user.email}
+                          </div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            用户 ID: {user.id} · 邮箱:{' '}
+                            {user.email_verified ? '已验证' : '未验证'} · 存储:{' '}
+                            {formatBytes(user.storage_used)} /{' '}
+                            {formatBytes(user.storage_quota)} · 注册时间:{' '}
+                            {formatDateTime(user.created_at)}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        onClick={() => startEdit(user)}
-                        size="sm"
-                        type="button"
-                        variant="outline"
-                      >
-                        <PencilLineIcon data-icon="inline-start" />
-                        编辑
-                      </Button>
-                      <Button
-                        onClick={() => setPendingDelete(user)}
-                        size="sm"
-                        type="button"
-                        variant="destructive"
-                      >
-                        <Trash2Icon data-icon="inline-start" />
-                        删除
-                      </Button>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          onClick={() => startEdit(user)}
+                          size="sm"
+                          type="button"
+                          variant="outline"
+                        >
+                          <PencilLineIcon data-icon="inline-start" />
+                          编辑
+                        </Button>
+                        <Button
+                          onClick={() => setPendingDelete(user)}
+                          size="sm"
+                          type="button"
+                          variant="destructive"
+                        >
+                          <Trash2Icon data-icon="inline-start" />
+                          删除
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </AdminMotionItem>
+                  </AdminMotionItem>
+
+                  {index < users.length - 1 ? (
+                    <Separator className="bg-border/80 data-horizontal:h-0.5" />
+                  ) : null}
+                </div>
               ))}
             </div>
 
