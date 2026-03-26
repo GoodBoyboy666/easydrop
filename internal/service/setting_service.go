@@ -247,6 +247,13 @@ func initDefaultSettings(db *gorm.DB) error {
 			Public:   true,
 		},
 		{
+			Key:      attachmentAllowedExtensionsSettingKey,
+			Value:    "",
+			Desc:     "允许上传的附件扩展名，英文逗号分隔且不带点",
+			Category: "storage",
+			Public:   false,
+		},
+		{
 			Key:      "system.initialized",
 			Value:    "false",
 			Desc:     "系统已初始化",

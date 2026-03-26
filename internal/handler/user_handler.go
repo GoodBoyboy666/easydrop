@@ -284,7 +284,9 @@ func mapUserErrorStatus(err error) int {
 		errors.Is(err, validator.ErrInvalidEmailFormat),
 		errors.Is(err, service.ErrInvalidEmailChange),
 		errors.Is(err, service.ErrEmptyAvatarContent),
-		errors.Is(err, service.ErrEmptyAvatarFilename):
+		errors.Is(err, service.ErrEmptyAvatarFilename),
+		errors.Is(err, service.ErrAvatarExtensionNotAllowed),
+		errors.Is(err, service.ErrAvatarMIMETypeNotAllowed):
 		return http.StatusBadRequest
 	case errors.Is(err, service.ErrUserNotFound),
 		errors.Is(err, service.ErrInvalidPassword):

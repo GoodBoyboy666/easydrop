@@ -70,6 +70,10 @@ func (s *attachmentService) Create(ctx context.Context, input dto.AttachmentCrea
 		return nil, ErrEmptyAttachmentContent
 	}
 
+	if err := validateAttachmentUpload(ctx, s.settings, input.OriginalFilename, input.ContentType, input.Content); err != nil {
+		return nil, err
+	}
+
 	bizType := resolveAttachmentBizType(input.Content)
 
 	if err := validateAttachmentBizType(bizType); err != nil {

@@ -483,6 +483,9 @@ func (s *userService) UploadAvatar(ctx context.Context, input dto.UserAvatarUplo
 	if strings.TrimSpace(input.OriginalFilename) == "" {
 		return nil, ErrEmptyAvatarFilename
 	}
+	if err := validateAvatarUpload(input.OriginalFilename, input.ContentType, input.Content); err != nil {
+		return nil, err
+	}
 
 	user, err := s.userRepo.GetByID(ctx, input.UserID)
 	if err != nil {

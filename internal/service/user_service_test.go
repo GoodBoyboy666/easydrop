@@ -242,7 +242,7 @@ func TestUserServiceUploadAvatarReplacesManagedAvatar(t *testing.T) {
 		UserID:           1,
 		OriginalFilename: "profile.JPG",
 		ContentType:      "image/jpeg",
-		Content:          []byte("new-avatar-content"),
+		Content:          sampleJPEGData(),
 	})
 	if err != nil {
 		t.Fatalf("UploadAvatar returned error: %v", err)
@@ -260,7 +260,7 @@ func TestUserServiceUploadAvatarReplacesManagedAvatar(t *testing.T) {
 	if filepath.Ext(*repo.users[1].Avatar) != ".jpg" {
 		t.Fatalf("expected normalized extension, got %s", *repo.users[1].Avatar)
 	}
-	if repo.users[1].StorageUsed != int64(len("new-avatar-content")) {
+	if repo.users[1].StorageUsed != int64(len(sampleJPEGData())) {
 		t.Fatalf("expected storage used to equal new avatar size, got %d", repo.users[1].StorageUsed)
 	}
 	if _, err := os.Stat(filepath.Join(basePath, filepath.FromSlash(oldKey))); !errors.Is(err, os.ErrNotExist) {
@@ -330,7 +330,7 @@ func TestUserServiceUploadAvatarQuotaExceededRollsBackObject(t *testing.T) {
 		UserID:           3,
 		OriginalFilename: "avatar.png",
 		ContentType:      "image/png",
-		Content:          []byte("too-large"),
+		Content:          samplePNGData(),
 	})
 	if !errors.Is(err, ErrStorageQuotaExceeded) {
 		t.Fatalf("expected ErrStorageQuotaExceeded, got %v", err)

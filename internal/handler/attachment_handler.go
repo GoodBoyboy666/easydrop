@@ -252,7 +252,10 @@ func mapAttachmentErrorStatus(err error) int {
 	switch {
 	case errors.Is(err, service.ErrInvalidAttachmentBizType),
 		errors.Is(err, service.ErrInvalidFileSize),
-		errors.Is(err, service.ErrEmptyAttachmentContent):
+		errors.Is(err, service.ErrEmptyAttachmentContent),
+		errors.Is(err, service.ErrAttachmentExtensionsNotConfigured),
+		errors.Is(err, service.ErrAttachmentExtensionNotAllowed),
+		errors.Is(err, service.ErrAttachmentMIMETypeNotAllowed):
 		return http.StatusBadRequest
 	case errors.Is(err, service.ErrStorageQuotaExceeded):
 		return http.StatusForbidden

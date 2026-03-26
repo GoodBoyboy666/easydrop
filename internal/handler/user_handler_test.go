@@ -309,3 +309,36 @@ func TestUserHandlerResponseBodyFormat(t *testing.T) {
 		t.Fatalf("expected message ok, got %q", resp.Message)
 	}
 }
+
+func TestUserHandlerUploadAvatarValidationError(t *testing.T) {
+	h := NewUserHandler(&mockUserServiceForHandler{
+		uploadAvatarFn: func(_ context.Context, input dto.UserAvatarUploadInput) (*dto.UserDTO, error) {
+			return nil, service.ErrAvatarExtensionNotAllowed
+		},
+	})
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("avatar", "avatar.gif")
+	if err != nil {
+		t.Fatalf("create form file failed: %v", err)
+	}
+	if _, err := part.Write([]byte("avatar-content")); err != nil {
+		t.Fatalf("write form file failed: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close writer failed: %v", err)
+	}
+
+	c, w := newTestContext(http.MethodPost, "/api/v1/users/me/avatar")
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/users/me/avatar", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	c.Request = req
+	c.Set(middleware.ContextUserIDKey, uint(18))
+
+	h.UploadAvatar(c)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", w.Code)
+	}
+}

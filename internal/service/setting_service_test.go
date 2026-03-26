@@ -105,6 +105,7 @@ func TestSettingServiceGetPublicItems(t *testing.T) {
 	}
 	hasQuota := false
 	hasSecret := false
+	hasAttachmentExtensions := false
 	for i := range result.Items {
 		if result.Items[i].Key == "storage.quota" {
 			hasQuota = true
@@ -112,12 +113,18 @@ func TestSettingServiceGetPublicItems(t *testing.T) {
 		if result.Items[i].Key == "site.secret" {
 			hasSecret = true
 		}
+		if result.Items[i].Key == attachmentAllowedExtensionsSettingKey {
+			hasAttachmentExtensions = true
+		}
 	}
 	if !hasQuota {
 		t.Fatal("expected storage.quota in public items")
 	}
 	if hasSecret {
 		t.Fatal("expected non-public setting to be excluded")
+	}
+	if hasAttachmentExtensions {
+		t.Fatal("expected attachment extension whitelist setting to be excluded")
 	}
 }
 

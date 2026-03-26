@@ -472,3 +472,42 @@ func TestAttachmentHandlerUploadAllowedForAdminWhenStorageUploadDisabled(t *test
 		t.Fatal("create should be called for admin when upload is disabled")
 	}
 }
+
+func TestAttachmentHandlerUploadValidationErrorReturnsBadRequest(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	h := NewAttachmentHandler(&mockAttachmentService{
+		createFn: func(ctx context.Context, input dto.AttachmentCreateInput) (*dto.AttachmentDTO, error) {
+			return nil, service.ErrAttachmentExtensionNotAllowed
+		},
+	}, nil)
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "blocked.txt")
+	if err != nil {
+		t.Fatalf("create form file failed: %v", err)
+	}
+	if _, err := part.Write([]byte("blocked")); err != nil {
+		t.Fatalf("write form file failed: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close multipart writer failed: %v", err)
+	}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	req, err := http.NewRequest(http.MethodPost, "/api/v1/attachments", body)
+	if err != nil {
+		t.Fatalf("create request failed: %v", err)
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	c.Request = req
+	c.Set(middleware.ContextUserIDKey, uint(100))
+
+	h.Upload(c)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", w.Code)
+	}
+}
