@@ -66,6 +66,9 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	authHandler := handler.NewAuthHandler(authService)
 	captchaConfigService := service.NewCaptchaConfigService(allCaptchaConfig)
 	captchaHandler := handler.NewCaptchaHandler(captchaConfigService)
+	initRepo := repo.NewInitRepo(db)
+	initService := service.NewInitService(userRepo, initRepo, settingService, cacheCache)
+	initHandler := handler.NewInitHandler(initService)
 	storageConfig := config.ProvideStorageConfig(staticConfig)
 	storageManager, err := storage.NewManager(storageConfig)
 	if err != nil {
@@ -83,8 +86,6 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	}
 	emailService := service.NewEmailService(emailClient, settingService)
 	userService := service.NewUserService(userRepo, storageManager, settingService, tokenManager, emailService)
-	initService := service.NewInitService(userService, settingService)
-	initHandler := handler.NewInitHandler(initService)
 	userHandler := handler.NewUserHandler(userService)
 	userAdminHandler := handler.NewUserAdminHandler(userService)
 	attachmentRepo := repo.NewAttachmentRepo(db)

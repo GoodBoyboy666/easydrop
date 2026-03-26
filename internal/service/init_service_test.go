@@ -4,13 +4,18 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"easydrop/internal/dto"
+	"easydrop/internal/model"
+	"easydrop/internal/repo"
+
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type mockInitSettingService struct {
-	values  map[string]string
-	updates []dto.SettingUpdateInput
+	values map[string]string
 }
 
 func (m *mockInitSettingService) GetValue(_ context.Context, key string) (string, bool, error) {
@@ -22,14 +27,7 @@ func (m *mockInitSettingService) ListItems(context.Context, dto.SettingListInput
 	return nil, nil
 }
 
-func (m *mockInitSettingService) UpdateItem(_ context.Context, input dto.SettingUpdateInput) error {
-	m.updates = append(m.updates, input)
-	if input.Value != nil {
-		if m.values == nil {
-			m.values = make(map[string]string)
-		}
-		m.values[input.Key] = *input.Value
-	}
+func (m *mockInitSettingService) UpdateItem(context.Context, dto.SettingUpdateInput) error {
 	return nil
 }
 
@@ -37,64 +35,103 @@ func (m *mockInitSettingService) GetPublicItems(context.Context) (*dto.SettingPu
 	return nil, nil
 }
 
-type mockInitUserService struct {
-	created []dto.UserCreateInput
-	err     error
+type mockInitRepo struct {
+	lastInput repo.SystemInitInput
+	err       error
+	called    bool
 }
 
-func (m *mockInitUserService) Create(_ context.Context, input dto.UserCreateInput) (*dto.UserDTO, error) {
-	if m.err != nil {
-		return nil, m.err
+func (m *mockInitRepo) Initialize(_ context.Context, input repo.SystemInitInput) error {
+	m.called = true
+	m.lastInput = input
+	return m.err
+}
+
+type mockInitUserRepo struct {
+	usersByUsername map[string]*model.User
+	usersByEmail    map[string]*model.User
+}
+
+func (m *mockInitUserRepo) Create(context.Context, *model.User) error {
+	return nil
+}
+
+func (m *mockInitUserRepo) GetByID(context.Context, uint) (*model.User, error) {
+	return nil, gorm.ErrRecordNotFound
+}
+
+func (m *mockInitUserRepo) GetByUsername(_ context.Context, username string) (*model.User, error) {
+	if user, ok := m.usersByUsername[username]; ok {
+		clone := *user
+		return &clone, nil
 	}
-	m.created = append(m.created, input)
-	return &dto.UserDTO{ID: 1, Username: input.Username}, nil
+	return nil, gorm.ErrRecordNotFound
 }
 
-func (m *mockInitUserService) Get(context.Context, uint) (*dto.UserDTO, error) {
+func (m *mockInitUserRepo) GetByEmail(_ context.Context, email string) (*model.User, error) {
+	if user, ok := m.usersByEmail[email]; ok {
+		clone := *user
+		return &clone, nil
+	}
+	return nil, gorm.ErrRecordNotFound
+}
+
+func (m *mockInitUserRepo) GetByUsernameOrEmail(context.Context, string) (*model.User, error) {
+	return nil, gorm.ErrRecordNotFound
+}
+
+func (m *mockInitUserRepo) UpdateAvatarWithStorageUsedTx(context.Context, uint, *string, int64, int64) (*model.User, error) {
 	return nil, nil
 }
 
-func (m *mockInitUserService) UpdateProfile(context.Context, dto.UserProfileUpdateInput) (*dto.UserDTO, error) {
-	return nil, nil
-}
-
-func (m *mockInitUserService) ChangePassword(context.Context, dto.UserChangePasswordInput) error {
+func (m *mockInitUserRepo) Update(context.Context, *model.User) error {
 	return nil
 }
 
-func (m *mockInitUserService) RequestEmailChange(context.Context, dto.UserChangeEmailInput) error {
+func (m *mockInitUserRepo) Delete(context.Context, uint) error {
 	return nil
 }
 
-func (m *mockInitUserService) ConfirmEmailChange(context.Context, dto.UserChangeEmailConfirmInput) (*dto.UserDTO, error) {
-	return nil, nil
+func (m *mockInitUserRepo) List(context.Context, repo.UserFilter, repo.ListOptions) ([]model.User, int64, error) {
+	return nil, 0, nil
 }
 
-func (m *mockInitUserService) Update(context.Context, dto.UserUpdateInput) (*dto.UserDTO, error) {
-	return nil, nil
+type mockInitCache struct {
+	values map[string]string
 }
 
-func (m *mockInitUserService) UploadAvatar(context.Context, dto.UserAvatarUploadInput) (*dto.UserDTO, error) {
-	return nil, nil
+func (m *mockInitCache) Backend() string {
+	return "memory"
 }
 
-func (m *mockInitUserService) DeleteAvatar(context.Context, uint) error {
+func (m *mockInitCache) Get(_ context.Context, key string) (string, bool, error) {
+	v, ok := m.values[key]
+	return v, ok, nil
+}
+
+func (m *mockInitCache) Set(_ context.Context, key, value string, _ time.Duration) error {
+	if m.values == nil {
+		m.values = make(map[string]string)
+	}
+	m.values[key] = value
 	return nil
 }
 
-func (m *mockInitUserService) Delete(context.Context, uint) error {
+func (m *mockInitCache) Delete(_ context.Context, key string) error {
+	delete(m.values, key)
 	return nil
 }
 
-func (m *mockInitUserService) List(context.Context, dto.UserListInput) (*dto.UserListResult, error) {
-	return nil, nil
+func (m *mockInitCache) Clear(context.Context) error {
+	m.values = make(map[string]string)
+	return nil
 }
 
 func TestInitServiceGetStatusNotInitialized(t *testing.T) {
 	t.Parallel()
 
 	settingSvc := &mockInitSettingService{values: map[string]string{}}
-	svc := NewInitService(&mockInitUserService{}, settingSvc)
+	svc := NewInitService(&mockInitUserRepo{}, &mockInitRepo{}, settingSvc, &mockInitCache{})
 
 	res, err := svc.GetStatus(context.Background())
 	if err != nil {
@@ -108,9 +145,10 @@ func TestInitServiceGetStatusNotInitialized(t *testing.T) {
 func TestInitServiceInitializeSuccess(t *testing.T) {
 	t.Parallel()
 
-	userSvc := &mockInitUserService{}
+	initRepo := &mockInitRepo{}
+	cache := &mockInitCache{}
 	settingSvc := &mockInitSettingService{values: map[string]string{}}
-	svc := NewInitService(userSvc, settingSvc)
+	svc := NewInitService(&mockInitUserRepo{}, initRepo, settingSvc, cache)
 
 	allowRegister := false
 	err := svc.Initialize(context.Background(), dto.InitInput{
@@ -127,45 +165,80 @@ func TestInitServiceInitializeSuccess(t *testing.T) {
 		t.Fatalf("Initialize error: %v", err)
 	}
 
-	if len(userSvc.created) != 1 {
-		t.Fatalf("expected one created user, got %d", len(userSvc.created))
+	if !initRepo.called {
+		t.Fatal("expected init repo to be called")
 	}
-	if !userSvc.created[0].Admin {
-		t.Fatal("expected created user to be admin")
+	if !initRepo.lastInput.AdminUser.Admin {
+		t.Fatal("expected created admin user")
 	}
-	if settingSvc.values[initSettingKey] != "true" {
-		t.Fatalf("expected init flag true, got %q", settingSvc.values[initSettingKey])
+	if !initRepo.lastInput.AdminUser.EmailVerified {
+		t.Fatal("expected initialized admin email to be verified")
 	}
-	if settingSvc.values["site.allow_register"] != "false" {
-		t.Fatalf("expected allow_register false, got %q", settingSvc.values["site.allow_register"])
+	if initRepo.lastInput.AdminUser.Status != 1 {
+		t.Fatalf("expected status=1, got %d", initRepo.lastInput.AdminUser.Status)
+	}
+	if initRepo.lastInput.AllowRegister != "false" {
+		t.Fatalf("expected allow_register=false, got %q", initRepo.lastInput.AllowRegister)
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(initRepo.lastInput.AdminUser.Password), []byte("Pass1234")); err != nil {
+		t.Fatalf("expected password to be hashed, compare failed: %v", err)
+	}
+	if got := cache.values[settingCacheKey(initSettingKey)]; got != "true" {
+		t.Fatalf("expected init cache true, got %q", got)
+	}
+	if got := cache.values[settingCacheKey("site.allow_register")]; got != "false" {
+		t.Fatalf("expected allow_register cache false, got %q", got)
 	}
 }
 
 func TestInitServiceInitializeAlreadyInitialized(t *testing.T) {
 	t.Parallel()
 
-	userSvc := &mockInitUserService{}
+	initRepo := &mockInitRepo{}
 	settingSvc := &mockInitSettingService{values: map[string]string{initSettingKey: "true"}}
-	svc := NewInitService(userSvc, settingSvc)
+	svc := NewInitService(&mockInitUserRepo{}, initRepo, settingSvc, &mockInitCache{})
 
 	err := svc.Initialize(context.Background(), dto.InitInput{})
 	if !errors.Is(err, ErrAlreadyInitialized) {
 		t.Fatalf("expected ErrAlreadyInitialized, got %v", err)
 	}
-	if len(userSvc.created) != 0 {
-		t.Fatalf("expected no user created, got %d", len(userSvc.created))
+	if initRepo.called {
+		t.Fatal("expected init repo not to be called")
 	}
 }
 
-func TestInitServiceInitializeCreateUserError(t *testing.T) {
+func TestInitServiceInitializeUsernameExists(t *testing.T) {
 	t.Parallel()
 
-	userSvc := &mockInitUserService{err: ErrUsernameExists}
-	settingSvc := &mockInitSettingService{values: map[string]string{}}
-	svc := NewInitService(userSvc, settingSvc)
+	userRepo := &mockInitUserRepo{
+		usersByUsername: map[string]*model.User{
+			"admin": {ID: 1, Username: "admin"},
+		},
+	}
+	svc := NewInitService(userRepo, &mockInitRepo{}, &mockInitSettingService{values: map[string]string{}}, &mockInitCache{})
 
-	err := svc.Initialize(context.Background(), dto.InitInput{Username: "admin"})
+	err := svc.Initialize(context.Background(), dto.InitInput{
+		Username: "admin",
+		Email:    "admin@example.com",
+		Password: "Pass1234",
+	})
 	if !errors.Is(err, ErrUsernameExists) {
 		t.Fatalf("expected ErrUsernameExists, got %v", err)
+	}
+}
+
+func TestInitServiceInitializeInitRepoAlreadyInitialized(t *testing.T) {
+	t.Parallel()
+
+	initRepo := &mockInitRepo{err: repo.ErrInitAlreadyInitialized}
+	svc := NewInitService(&mockInitUserRepo{}, initRepo, &mockInitSettingService{values: map[string]string{}}, &mockInitCache{})
+
+	err := svc.Initialize(context.Background(), dto.InitInput{
+		Username: "admin",
+		Email:    "admin@example.com",
+		Password: "Pass1234",
+	})
+	if !errors.Is(err, ErrAlreadyInitialized) {
+		t.Fatalf("expected ErrAlreadyInitialized, got %v", err)
 	}
 }
