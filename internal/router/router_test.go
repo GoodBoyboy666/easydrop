@@ -305,7 +305,7 @@ func newTestAppWithMode(auth middleware.Auth, mode string) *di.App {
 		InitHandler:            handler.NewInitHandler(nil),
 		UserHandler:            handler.NewUserHandler(nil),
 		UserAdminHandler:       handler.NewUserAdminHandler(nil),
-		AttachmentHandler:      handler.NewAttachmentHandler(nil),
+		AttachmentHandler:      handler.NewAttachmentHandler(nil, nil),
 		AttachmentAdminHandler: handler.NewAttachmentAdminHandler(nil),
 		CommentHandler:         handler.NewCommentHandler(nil),
 		CommentAdminHandler:    handler.NewCommentAdminHandler(nil),

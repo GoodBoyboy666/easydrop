@@ -25,6 +25,29 @@ type mockAttachmentService struct {
 	listByUserFn func(ctx context.Context, input dto.AttachmentListInput) (*dto.AttachmentListResult, error)
 }
 
+type mockSettingService struct {
+	getValueFn func(ctx context.Context, key string) (string, bool, error)
+}
+
+func (m *mockSettingService) GetValue(ctx context.Context, key string) (string, bool, error) {
+	if m.getValueFn == nil {
+		return "", false, nil
+	}
+	return m.getValueFn(ctx, key)
+}
+
+func (m *mockSettingService) ListItems(_ context.Context, _ dto.SettingListInput) (*dto.SettingListResult, error) {
+	return nil, nil
+}
+
+func (m *mockSettingService) UpdateItem(_ context.Context, _ dto.SettingUpdateInput) error {
+	return nil
+}
+
+func (m *mockSettingService) GetPublicItems(_ context.Context) (*dto.SettingPublicResult, error) {
+	return nil, nil
+}
+
 func (m *mockAttachmentService) Create(ctx context.Context, input dto.AttachmentCreateInput) (*dto.AttachmentDTO, error) {
 	if m.createFn == nil {
 		return nil, nil
@@ -69,7 +92,7 @@ func TestAttachmentHandlerUploadPassesOriginalFilename(t *testing.T) {
 			captured = input
 			return &dto.AttachmentDTO{ID: 1, UserID: input.UserID}, nil
 		},
-	})
+	}, nil)
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -123,7 +146,7 @@ func TestAttachmentHandlerGetSuccess(t *testing.T) {
 			}
 			return &dto.AttachmentDTO{ID: 12, UserID: 100, CreatedAt: time.Now()}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/attachments/12")
 	c.Params = gin.Params{{Key: "id", Value: "12"}}
@@ -147,7 +170,7 @@ func TestAttachmentHandlerGetSuccess(t *testing.T) {
 func TestAttachmentHandlerGetUnauthorized(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewAttachmentHandler(&mockAttachmentService{})
+	h := NewAttachmentHandler(&mockAttachmentService{}, nil)
 	c, w := newTestContext(http.MethodGet, "/api/v1/attachments/12")
 	c.Params = gin.Params{{Key: "id", Value: "12"}}
 
@@ -161,7 +184,7 @@ func TestAttachmentHandlerGetUnauthorized(t *testing.T) {
 func TestAttachmentHandlerGetInvalidID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewAttachmentHandler(&mockAttachmentService{})
+	h := NewAttachmentHandler(&mockAttachmentService{}, nil)
 	c, w := newTestContext(http.MethodGet, "/api/v1/attachments/invalid")
 	c.Params = gin.Params{{Key: "id", Value: "invalid"}}
 	c.Set(middleware.ContextUserIDKey, uint(100))
@@ -180,7 +203,7 @@ func TestAttachmentHandlerGetForbiddenByOwnerCheck(t *testing.T) {
 		getFn: func(ctx context.Context, id uint) (*dto.AttachmentDTO, error) {
 			return &dto.AttachmentDTO{ID: id, UserID: 200}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/attachments/12")
 	c.Params = gin.Params{{Key: "id", Value: "12"}}
@@ -214,7 +237,7 @@ func TestAttachmentHandlerListSuccess(t *testing.T) {
 			}
 			return &dto.AttachmentListResult{Items: []dto.AttachmentDTO{}, Total: 0}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/attachments?id=12&biz_type=2&limit=10&offset=20&order=created_at%20asc")
 	c.Set(middleware.ContextUserIDKey, uint(100))
@@ -244,7 +267,7 @@ func TestAttachmentHandlerDeleteSuccess(t *testing.T) {
 			}
 			return nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodDelete, "/api/v1/attachments/9")
 	c.Params = gin.Params{{Key: "id", Value: "9"}}
@@ -272,7 +295,7 @@ func TestAttachmentHandlerDeleteNotOwner(t *testing.T) {
 			deleteCalled = true
 			return nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodDelete, "/api/v1/attachments/9")
 	c.Params = gin.Params{{Key: "id", Value: "9"}}
@@ -291,7 +314,7 @@ func TestAttachmentHandlerDeleteNotOwner(t *testing.T) {
 func TestAttachmentHandlerListInvalidBizType(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewAttachmentHandler(&mockAttachmentService{})
+	h := NewAttachmentHandler(&mockAttachmentService{}, nil)
 	c, w := newTestContext(http.MethodGet, "/api/v1/attachments?biz_type=abc")
 	c.Set(middleware.ContextUserIDKey, uint(100))
 
@@ -305,7 +328,7 @@ func TestAttachmentHandlerListInvalidBizType(t *testing.T) {
 func TestAttachmentHandlerListInvalidID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewAttachmentHandler(&mockAttachmentService{})
+	h := NewAttachmentHandler(&mockAttachmentService{}, nil)
 	c, w := newTestContext(http.MethodGet, "/api/v1/attachments?id=0")
 	c.Set(middleware.ContextUserIDKey, uint(100))
 
@@ -326,7 +349,7 @@ func TestAttachmentHandlerDeleteServiceError(t *testing.T) {
 		deleteFn: func(ctx context.Context, id uint) error {
 			return service.ErrInternal
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodDelete, "/api/v1/attachments/9")
 	c.Params = gin.Params{{Key: "id", Value: "9"}}
@@ -345,4 +368,107 @@ func newTestContext(method, target string) (*gin.Context, *httptest.ResponseReco
 	req, _ := http.NewRequest(method, target, nil)
 	c.Request = req
 	return c, w
+}
+
+func TestAttachmentHandlerUploadBlockedForNonAdminWhenStorageUploadDisabled(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	createCalled := false
+	h := NewAttachmentHandler(&mockAttachmentService{
+		createFn: func(ctx context.Context, input dto.AttachmentCreateInput) (*dto.AttachmentDTO, error) {
+			createCalled = true
+			return &dto.AttachmentDTO{ID: 1, UserID: input.UserID}, nil
+		},
+	}, &mockSettingService{
+		getValueFn: func(ctx context.Context, key string) (string, bool, error) {
+			if key != "storage.upload" {
+				t.Fatalf("unexpected setting key: %s", key)
+			}
+			return "false", true, nil
+		},
+	})
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "blocked.txt")
+	if err != nil {
+		t.Fatalf("create form file failed: %v", err)
+	}
+	if _, err := part.Write([]byte("blocked")); err != nil {
+		t.Fatalf("write form file failed: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close multipart writer failed: %v", err)
+	}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	req, err := http.NewRequest(http.MethodPost, "/api/v1/attachments", body)
+	if err != nil {
+		t.Fatalf("create request failed: %v", err)
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	c.Request = req
+	c.Set(middleware.ContextUserIDKey, uint(100))
+
+	h.Upload(c)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected status 403, got %d", w.Code)
+	}
+	if createCalled {
+		t.Fatal("create should not be called when upload is disabled for non-admin")
+	}
+}
+
+func TestAttachmentHandlerUploadAllowedForAdminWhenStorageUploadDisabled(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	createCalled := false
+	h := NewAttachmentHandler(&mockAttachmentService{
+		createFn: func(ctx context.Context, input dto.AttachmentCreateInput) (*dto.AttachmentDTO, error) {
+			createCalled = true
+			return &dto.AttachmentDTO{ID: 1, UserID: input.UserID}, nil
+		},
+	}, &mockSettingService{
+		getValueFn: func(ctx context.Context, key string) (string, bool, error) {
+			if key != "storage.upload" {
+				t.Fatalf("unexpected setting key: %s", key)
+			}
+			return "false", true, nil
+		},
+	})
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "allowed.txt")
+	if err != nil {
+		t.Fatalf("create form file failed: %v", err)
+	}
+	if _, err := part.Write([]byte("allowed")); err != nil {
+		t.Fatalf("write form file failed: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close multipart writer failed: %v", err)
+	}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	req, err := http.NewRequest(http.MethodPost, "/api/v1/attachments", body)
+	if err != nil {
+		t.Fatalf("create request failed: %v", err)
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	c.Request = req
+	c.Set(middleware.ContextUserIDKey, uint(100))
+	c.Set(middleware.ContextUserAdminKey, true)
+
+	h.Upload(c)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected status 201, got %d", w.Code)
+	}
+	if !createCalled {
+		t.Fatal("create should be called for admin when upload is disabled")
+	}
 }

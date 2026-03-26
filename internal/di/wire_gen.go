@@ -89,7 +89,7 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	userAdminHandler := handler.NewUserAdminHandler(userService)
 	attachmentRepo := repo.NewAttachmentRepo(db)
 	attachmentService := service.NewAttachmentService(attachmentRepo, userRepo, storageManager, settingService)
-	attachmentHandler := handler.NewAttachmentHandler(attachmentService)
+	attachmentHandler := handler.NewAttachmentHandler(attachmentService, settingService)
 	attachmentAdminHandler := handler.NewAttachmentAdminHandler(attachmentService)
 	commentRepo := repo.NewCommentRepo(db)
 	postRepo := repo.NewPostRepo(db)

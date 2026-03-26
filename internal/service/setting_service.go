@@ -240,6 +240,13 @@ func initDefaultSettings(db *gorm.DB) error {
 			Public:   true,
 		},
 		{
+			Key:      "storage.upload",
+			Value:    "true",
+			Desc:     "允许普通用户上传附件",
+			Category: "storage",
+			Public:   true,
+		},
+		{
 			Key:      "system.initialized",
 			Value:    "false",
 			Desc:     "系统已初始化",

@@ -5,6 +5,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"easydrop/internal/dto"
@@ -17,11 +18,12 @@ import (
 // AttachmentHandler 处理附件相关请求。
 type AttachmentHandler struct {
 	attachmentService service.AttachmentService
+	settingService    service.SettingService
 }
 
 // NewAttachmentHandler 创建附件处理器。
-func NewAttachmentHandler(attachmentService service.AttachmentService) *AttachmentHandler {
-	return &AttachmentHandler{attachmentService: attachmentService}
+func NewAttachmentHandler(attachmentService service.AttachmentService, settingService service.SettingService) *AttachmentHandler {
+	return &AttachmentHandler{attachmentService: attachmentService, settingService: settingService}
 }
 
 // Upload 上传附件
@@ -48,6 +50,16 @@ func (h *AttachmentHandler) Upload(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok || userID == 0 {
 		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{Message: "未登录或登录已失效"})
+		return
+	}
+
+	allowUpload, err := h.isUserUploadAllowed(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+		return
+	}
+	if !allowUpload {
+		c.JSON(http.StatusForbidden, dto.ErrorResponse{Message: "已关闭用户上传附件"})
 		return
 	}
 
@@ -252,4 +264,29 @@ func mapAttachmentErrorStatus(err error) int {
 	default:
 		return http.StatusInternalServerError
 	}
+}
+
+func (h *AttachmentHandler) isUserUploadAllowed(c *gin.Context) (bool, error) {
+	if h == nil || h.settingService == nil {
+		return true, nil
+	}
+
+	value, found, err := h.settingService.GetValue(c.Request.Context(), "storage.upload")
+	if err != nil {
+		return false, err
+	}
+	if !found {
+		return true, nil
+	}
+
+	uploadEnabled, err := strconv.ParseBool(strings.TrimSpace(value))
+	if err != nil {
+		return false, err
+	}
+	if uploadEnabled {
+		return true, nil
+	}
+
+	isAdmin, _ := middleware.GetUserAdmin(c)
+	return isAdmin, nil
 }
