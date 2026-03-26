@@ -270,7 +270,7 @@ function MePage() {
         transition={getEntranceTransition(0.04)}
         {...GPU_ACCELERATED_MOTION_PROPS}
       >
-        <Card className="border border-border/70 bg-card/95 shadow-sm">
+        <Card className="border border-border/70 bg-card/50 shadow-sm">
           <CardHeader>
             <CardTitle>个人信息</CardTitle>
           </CardHeader>
@@ -338,7 +338,7 @@ function MePage() {
                 transition={getEntranceTransition(0.12)}
                 {...GPU_ACCELERATED_MOTION_PROPS}
               >
-                <Card>
+                <Card className='bg-card/50'>
                   <CardHeader>
                     <CardTitle className="text-base">修改昵称</CardTitle>
                     <CardDescription>
@@ -378,7 +378,7 @@ function MePage() {
                 transition={getEntranceTransition(0.16)}
                 {...GPU_ACCELERATED_MOTION_PROPS}
               >
-                <Card>
+                <Card className='bg-card/50'>
                   <CardHeader>
                     <CardTitle className="text-base">修改密码</CardTitle>
                     <CardDescription>
@@ -447,7 +447,7 @@ function MePage() {
               transition={getEntranceTransition(0.2)}
               {...GPU_ACCELERATED_MOTION_PROPS}
             >
-              <Card>
+              <Card className='bg-card/50'>
                 <CardHeader>
                   <CardTitle className="text-base">修改邮箱</CardTitle>
                   <CardDescription>
