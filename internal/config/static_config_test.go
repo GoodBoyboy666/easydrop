@@ -37,6 +37,15 @@ func TestLoadDefaultsWithoutConfigFile(t *testing.T) {
 	if cfg.Email.Enable {
 		t.Fatalf("expected email.enable default false, got true")
 	}
+	if cfg.AuthCookie.Name != "easydrop_access_token" {
+		t.Fatalf("expected default auth cookie name easydrop_access_token, got %q", cfg.AuthCookie.Name)
+	}
+	if cfg.AuthCookie.Path != "/" {
+		t.Fatalf("expected default auth cookie path /, got %q", cfg.AuthCookie.Path)
+	}
+	if cfg.AuthCookie.SameSite != "lax" {
+		t.Fatalf("expected default auth cookie same_site lax, got %q", cfg.AuthCookie.SameSite)
+	}
 }
 
 func TestLoadModeFromEnv(t *testing.T) {

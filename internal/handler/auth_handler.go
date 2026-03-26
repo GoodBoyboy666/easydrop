@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"easydrop/internal/dto"
+	cookiepkg "easydrop/internal/pkg/cookie"
 	"easydrop/internal/pkg/validator"
 	"easydrop/internal/service"
 
@@ -14,11 +15,15 @@ import (
 // AuthHandler 处理认证相关请求。
 type AuthHandler struct {
 	authService service.AuthService
+	authCookie  cookiepkg.AuthCookie
 }
 
 // NewAuthHandler 创建认证处理器。
-func NewAuthHandler(authService service.AuthService) *AuthHandler {
-	return &AuthHandler{authService: authService}
+func NewAuthHandler(authService service.AuthService, authCookie cookiepkg.AuthCookie) *AuthHandler {
+	return &AuthHandler{
+		authService: authService,
+		authCookie:  authCookie,
+	}
 }
 
 // Register 用户注册
@@ -56,6 +61,9 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
+	if h.authCookie != nil {
+		h.authCookie.Set(c, result.AccessToken)
+	}
 	c.JSON(http.StatusCreated, result)
 }
 
@@ -94,7 +102,25 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	if h.authCookie != nil {
+		h.authCookie.Set(c, result.AccessToken)
+	}
 	c.JSON(http.StatusOK, result)
+}
+
+// Logout 用户登出
+// @Summary 用户登出
+// @Description 清除认证 Cookie
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Success 200 {object} dto.MessageResponse
+// @Router /auth/logout [post]
+func (h *AuthHandler) Logout(c *gin.Context) {
+	if h.authCookie != nil {
+		h.authCookie.Clear(c)
+	}
+	c.JSON(http.StatusOK, dto.MessageResponse{Message: "已退出登录"})
 }
 
 func mapAuthErrorStatus(err error) int {

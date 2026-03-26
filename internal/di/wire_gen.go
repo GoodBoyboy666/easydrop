@@ -12,6 +12,7 @@ import (
 	"easydrop/internal/middleware"
 	"easydrop/internal/pkg/cache"
 	"easydrop/internal/pkg/captcha"
+	"easydrop/internal/pkg/cookie"
 	"easydrop/internal/pkg/database"
 	"easydrop/internal/pkg/email"
 	"easydrop/internal/pkg/jwt"
@@ -41,7 +42,9 @@ func Initialize(configDir string, strict bool) (*App, error) {
 		return nil, err
 	}
 	userRepo := repo.NewUserRepo(db)
-	auth := middleware.NewAuth(manager, userRepo)
+	cookieConfig := config.ProvideAuthCookieConfig(staticConfig)
+	authCookie := cookie.NewAuthCookie(cookieConfig)
+	auth := middleware.NewAuth(manager, userRepo, authCookie)
 	settingRepo := repo.NewSettingRepo(db)
 	redisConfig := config.ProvideRedisConfig(staticConfig)
 	client, err := redis.NewOptionalClient(redisConfig)
@@ -64,7 +67,7 @@ func Initialize(configDir string, strict bool) (*App, error) {
 		return nil, err
 	}
 	authService := service.NewAuthService(userRepo, settingService, manager, verifier)
-	authHandler := handler.NewAuthHandler(authService)
+	authHandler := handler.NewAuthHandler(authService, authCookie)
 	captchaConfigService := service.NewCaptchaConfigService(allCaptchaConfig)
 	captchaHandler := handler.NewCaptchaHandler(captchaConfigService)
 	initRepo := repo.NewInitRepo(db)

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"easydrop/internal/model"
+	cookiepkg "easydrop/internal/pkg/cookie"
 	"easydrop/internal/pkg/jwt"
 	"easydrop/internal/repo"
 
@@ -26,13 +27,15 @@ type Auth interface {
 type auth struct {
 	jwtManager jwt.Manager
 	userRepo   repo.UserRepo
+	authCookie cookiepkg.AuthCookie
 }
 
 // NewAuth 构造认证中间件对象。
-func NewAuth(jwtManager jwt.Manager, userRepo repo.UserRepo) Auth {
+func NewAuth(jwtManager jwt.Manager, userRepo repo.UserRepo, authCookie cookiepkg.AuthCookie) Auth {
 	return &auth{
 		jwtManager: jwtManager,
 		userRepo:   userRepo,
+		authCookie: authCookie,
 	}
 }
 
@@ -105,6 +108,9 @@ func (a *auth) authenticateUser(c *gin.Context, strict bool) (*model.User, bool)
 
 	token, ok := extractBearerToken(c.GetHeader("Authorization"))
 	if !ok {
+		token, ok = a.extractCookieToken(c)
+	}
+	if !ok {
 		authFail(c, strict, http.StatusUnauthorized, "未登录或登录已失效")
 		return nil, false
 	}
@@ -162,6 +168,13 @@ func extractBearerToken(header string) (string, bool) {
 	}
 
 	return token, true
+}
+
+func (a *auth) extractCookieToken(c *gin.Context) (string, bool) {
+	if a == nil || a.authCookie == nil || c == nil {
+		return "", false
+	}
+	return a.authCookie.Get(c)
 }
 
 func abortWithMessage(c *gin.Context, status int, message string) {

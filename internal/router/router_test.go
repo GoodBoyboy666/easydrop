@@ -15,6 +15,7 @@ import (
 	"easydrop/internal/dto"
 	"easydrop/internal/handler"
 	"easydrop/internal/middleware"
+	cookiepkg "easydrop/internal/pkg/cookie"
 	"easydrop/internal/pkg/storage"
 	"easydrop/internal/service"
 
@@ -80,6 +81,7 @@ func TestBuildEngineRegistersAllRoutes(t *testing.T) {
 	expected := map[string]struct{}{
 		"POST /api/v1/auth/register":                  {},
 		"POST /api/v1/auth/login":                     {},
+		"POST /api/v1/auth/logout":                    {},
 		"GET /api/v1/captcha/config":                  {},
 		"GET /api/v1/init/status":                     {},
 		"POST /api/v1/init":                           {},
@@ -384,7 +386,7 @@ func newTestAppWithMode(auth middleware.Auth, mode string) *di.App {
 		},
 		Middleware:             auth,
 		RequestBodyLimit:       middleware.NewRequestBodyLimit(nil),
-		AuthHandler:            handler.NewAuthHandler(nil),
+		AuthHandler:            handler.NewAuthHandler(nil, cookiepkg.NewAuthCookie(nil)),
 		CaptchaHandler:         handler.NewCaptchaHandler(nil),
 		InitHandler:            handler.NewInitHandler(nil),
 		UserHandler:            handler.NewUserHandler(nil),

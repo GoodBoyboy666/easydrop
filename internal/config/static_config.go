@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/viper"
 
 	"easydrop/internal/pkg/captcha"
+	cookiepkg "easydrop/internal/pkg/cookie"
 	"easydrop/internal/pkg/database"
 	"easydrop/internal/pkg/email"
 	"easydrop/internal/pkg/jwt"
@@ -41,18 +42,19 @@ type ServerConfig struct {
 
 // StaticConfig 是应用的根配置结构。
 type StaticConfig struct {
-	Server  ServerConfig             `mapstructure:"server" yaml:"server"`
-	DB      database.Config          `mapstructure:"db" yaml:"db"`
-	Redis   redis.Config             `mapstructure:"redis" yaml:"redis"`
-	Email   email.Config             `mapstructure:"email" yaml:"email"`
-	JWT     jwt.Config               `mapstructure:"jwt" yaml:"jwt"`
-	Captcha captcha.AllCaptchaConfig `mapstructure:"captcha" yaml:"captcha"`
-	Storage storage.Config           `mapstructure:"storage" yaml:"storage"`
-	Token   token.Config             `mapstructure:"token" yaml:"token"`
+	Server     ServerConfig             `mapstructure:"server" yaml:"server"`
+	AuthCookie cookiepkg.Config         `mapstructure:"auth_cookie" yaml:"auth_cookie"`
+	DB         database.Config          `mapstructure:"db" yaml:"db"`
+	Redis      redis.Config             `mapstructure:"redis" yaml:"redis"`
+	Email      email.Config             `mapstructure:"email" yaml:"email"`
+	JWT        jwt.Config               `mapstructure:"jwt" yaml:"jwt"`
+	Captcha    captcha.AllCaptchaConfig `mapstructure:"captcha" yaml:"captcha"`
+	Storage    storage.Config           `mapstructure:"storage" yaml:"storage"`
+	Token      token.Config             `mapstructure:"token" yaml:"token"`
 }
 
 // StaticProviderSet 提供配置加载的 Wire 注入入口。
-var StaticProviderSet = wire.NewSet(Load, ProvideDBConfig, ProvideRedisConfig, ProvideEmailConfig, ProvideJWTConfig, ProvideCaptchaConfig, ProvideStorageConfig, ProvideTokenConfig)
+var StaticProviderSet = wire.NewSet(Load, ProvideDBConfig, ProvideRedisConfig, ProvideEmailConfig, ProvideJWTConfig, ProvideAuthCookieConfig, ProvideCaptchaConfig, ProvideStorageConfig, ProvideTokenConfig)
 
 // Load 从 configDir/config.yaml 读取配置，并支持环境变量覆盖。
 // 配置文件缺失时会回退到默认值与环境变量。
@@ -82,6 +84,10 @@ func Load(configDir string, strict bool) (*StaticConfig, error) {
 	v.SetDefault("server.read_timeout", 10*time.Second)
 	v.SetDefault("server.write_timeout", 15*time.Second)
 	v.SetDefault("server.shutdown_timeout", 5*time.Second)
+	v.SetDefault("auth_cookie.name", "easydrop_access_token")
+	v.SetDefault("auth_cookie.path", "/")
+	v.SetDefault("auth_cookie.domain", "")
+	v.SetDefault("auth_cookie.same_site", "lax")
 	v.SetDefault("db.driver", database.DriverSQLite)
 	v.SetDefault("db.sqlite_path", "data/easydrop.db")
 	v.SetDefault("jwt.private_key_path", "data/jwt/private.pem")
@@ -129,6 +135,20 @@ func ProvideEmailConfig(cfg *StaticConfig) *email.Config {
 // ProvideJWTConfig 提供 JWT 配置。
 func ProvideJWTConfig(cfg *StaticConfig) *jwt.Config {
 	return &cfg.JWT
+}
+
+// ProvideAuthCookieConfig 提供认证 Cookie 配置。
+func ProvideAuthCookieConfig(cfg *StaticConfig) *cookiepkg.Config {
+	if cfg == nil {
+		return &cookiepkg.Config{}
+	}
+
+	authCookie := cfg.AuthCookie
+	authCookie.Secure = cfg.Server.Mode == ServerModeProduction
+	if cfg.JWT.Expire > 0 {
+		authCookie.MaxAge = cfg.JWT.Expire
+	}
+	return &authCookie
 }
 
 // ProvideCaptchaConfig 提供验证码配置。

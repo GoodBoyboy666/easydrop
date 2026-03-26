@@ -91,6 +91,7 @@ func BuildEngine(app *di.App) *gin.Engine {
 		{
 			authGroup.POST("/register", authHandler.Register)
 			authGroup.POST("/login", authHandler.Login)
+			authGroup.POST("/logout", authHandler.Logout)
 		}
 
 		captchaGroup := v1.Group("/captcha")

@@ -9,6 +9,7 @@ import (
 	"easydrop/internal/middleware"
 	"easydrop/internal/pkg/cache"
 	"easydrop/internal/pkg/captcha"
+	"easydrop/internal/pkg/cookie"
 	"easydrop/internal/pkg/database"
 	"easydrop/internal/pkg/email"
 	"easydrop/internal/pkg/jwt"
@@ -34,6 +35,7 @@ func Initialize(configDir string, strict bool) (*App, error) {
 		token.NewManager,
 		captcha.CaptchaSet,
 		repo.RepositorySet,
+		cookie.NewAuthCookie,
 		middleware.NewAuth,
 		middleware.NewRequestBodyLimit,
 		service.ServiceSet,

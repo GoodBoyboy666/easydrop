@@ -16,6 +16,16 @@ server:
   write_timeout: 15s
   shutdown_timeout: 5s
 
+auth_cookie:
+  # 认证 Cookie 名称
+  name: "easydrop_access_token"
+  # 认证 Cookie 作用路径
+  path: "/"
+  # 认证 Cookie 域名；留空表示当前域
+  domain: ""
+  # SameSite: lax / strict / none / default
+  same_site: "lax"
+
 db:
   driver: sqlite
   sqlite_path: data/easydrop.db
