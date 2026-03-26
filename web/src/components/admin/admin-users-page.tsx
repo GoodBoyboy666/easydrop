@@ -260,6 +260,10 @@ export function AdminUsersPage() {
         ...payloadBase,
       }
 
+      if (formState.storageQuota.trim() === '') {
+        updatePayload.use_default_storage_quota = true
+      }
+
       if (formState.password.trim() !== '') {
         updatePayload.password = formState.password
       }

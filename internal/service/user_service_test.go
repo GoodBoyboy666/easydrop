@@ -462,6 +462,38 @@ func TestUserServiceUpdateProfile(t *testing.T) {
 	}
 }
 
+func TestUserServiceUpdateClearsStorageQuotaWhenUseDefaultStorageQuotaIsTrue(t *testing.T) {
+	quota := int64(1024)
+	repo := &mockUserRepo{
+		users: map[uint]*model.User{
+			13: {
+				ID:           13,
+				Username:     "switch",
+				Nickname:     "switch",
+				Email:        "switch@example.com",
+				Status:       1,
+				StorageQuota: &quota,
+			},
+		},
+	}
+	svc := NewUserService(repo, nil, nil, nil, nil)
+	useDefault := true
+
+	result, err := svc.Update(context.Background(), dto.UserUpdateInput{
+		ID:                     13,
+		UseDefaultStorageQuota: &useDefault,
+	})
+	if err != nil {
+		t.Fatalf("Update returned error: %v", err)
+	}
+	if repo.users[13].StorageQuota != nil {
+		t.Fatalf("expected repo storage quota cleared, got %#v", repo.users[13].StorageQuota)
+	}
+	if result.StorageQuota != nil {
+		t.Fatalf("expected dto storage quota cleared, got %#v", result.StorageQuota)
+	}
+}
+
 func TestUserServiceChangePassword(t *testing.T) {
 	hash, err := bcrypt.GenerateFromPassword([]byte("OldPass123"), bcrypt.DefaultCost)
 	if err != nil {

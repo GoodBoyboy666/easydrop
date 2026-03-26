@@ -159,6 +159,30 @@ func TestUserAdminHandlerUpdateBindsPathID(t *testing.T) {
 	}
 }
 
+func TestUserAdminHandlerUpdateBindsUseDefaultStorageQuota(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	h := NewUserAdminHandler(&mockUserAdminService{
+		updateFn: func(_ context.Context, input dto.UserUpdateInput) (*dto.UserDTO, error) {
+			if input.ID != 8 {
+				t.Fatalf("expected id from path 8, got %d", input.ID)
+			}
+			if input.UseDefaultStorageQuota == nil || !*input.UseDefaultStorageQuota {
+				t.Fatalf("expected use_default_storage_quota=true, got %#v", input.UseDefaultStorageQuota)
+			}
+			return &dto.UserDTO{ID: 8, Nickname: "Trinity"}, nil
+		},
+	})
+
+	c, w := newTestContextWithBody(http.MethodPatch, "/api/v1/admin/users/8", `{"use_default_storage_quota":true}`)
+	c.Params = gin.Params{{Key: "id", Value: "8"}}
+	h.Update(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+}
+
 func TestUserAdminHandlerDeleteUserNotFound(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

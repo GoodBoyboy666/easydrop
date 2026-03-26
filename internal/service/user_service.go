@@ -446,7 +446,9 @@ func (s *userService) Update(ctx context.Context, input dto.UserUpdateInput) (*d
 		user.EmailVerified = *input.EmailVerified
 	}
 
-	if input.StorageQuota != nil {
+	if input.UseDefaultStorageQuota != nil && *input.UseDefaultStorageQuota {
+		user.StorageQuota = nil
+	} else if input.StorageQuota != nil {
 		storageQuota, err := normalizeStorageQuota(input.StorageQuota)
 		if err != nil {
 			return nil, err

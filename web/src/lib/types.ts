@@ -203,6 +203,7 @@ export interface UpdateUserInput {
   password?: string
   status?: number
   storage_quota?: number | null
+  use_default_storage_quota?: boolean
   username?: string
 }
 

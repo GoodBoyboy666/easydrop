@@ -19,16 +19,17 @@ type UserIDURIInput struct {
 }
 
 type UserUpdateInput struct {
-	ID            uint    `json:"-"`
-	Username      *string `json:"username"`
-	Nickname      *string `json:"nickname"`
-	Email         *string `json:"email"`
-	Password      *string `json:"password"`
-	Admin         *bool   `json:"admin"`
-	Status        *int    `json:"status"`
-	Avatar        *string `json:"avatar"`
-	EmailVerified *bool   `json:"email_verified"`
-	StorageQuota  *int64  `json:"storage_quota"`
+	ID                     uint    `json:"-"`
+	Username               *string `json:"username"`
+	Nickname               *string `json:"nickname"`
+	Email                  *string `json:"email"`
+	Password               *string `json:"password"`
+	Admin                  *bool   `json:"admin"`
+	Status                 *int    `json:"status"`
+	Avatar                 *string `json:"avatar"`
+	EmailVerified          *bool   `json:"email_verified"`
+	StorageQuota           *int64  `json:"storage_quota"`
+	UseDefaultStorageQuota *bool   `json:"use_default_storage_quota"`
 }
 
 type UserProfileUpdateInput struct {
