@@ -28,12 +28,6 @@ import { Badge } from '#/components/ui/badge'
 import { Button } from '#/components/ui/button'
 import { Field, FieldGroup, FieldLabel } from '#/components/ui/field'
 import { Input } from '#/components/ui/input'
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '#/components/ui/alert-dialog'
 import { Switch } from '#/components/ui/switch'
 
 const USER_ORDER_OPTIONS = [
@@ -62,6 +56,8 @@ interface UserFormState {
   storageQuota: string
   username: string
 }
+
+type UserEditorMode = 'create' | 'edit'
 
 const EMPTY_FILTERS: UserFilterState = {
   email: '',
@@ -113,11 +109,11 @@ function toUserPayloadBase(formState: UserFormState) {
 export function AdminUsersPage() {
   const queryClient = useQueryClient()
   const { auth, handleUnauthorized } = useAdminSession('/admin/users')
-  const [draftFilters, setDraftFilters] = useState<UserFilterState>(EMPTY_FILTERS)
+  const [draftFilters, setDraftFilters] =
+    useState<UserFilterState>(EMPTY_FILTERS)
   const [filters, setFilters] = useState<UserFilterState>(EMPTY_FILTERS)
   const [page, setPage] = useState(0)
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const [createFormState, setCreateFormState] = useState<UserFormState>(EMPTY_FORM)
+  const [editorMode, setEditorMode] = useState<UserEditorMode | null>(null)
   const [editingUser, setEditingUser] = useState<UserDTO | null>(null)
   const [formState, setFormState] = useState<UserFormState>(EMPTY_FORM)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
@@ -136,7 +132,8 @@ export function AdminUsersPage() {
   })
 
   const createMutation = useMutation({
-    mutationFn: (input: CreateUserInput) => api.createAdminUser(input, auth.token!),
+    mutationFn: (input: CreateUserInput) =>
+      api.createAdminUser(input, auth.token!),
   })
   const updateMutation = useMutation({
     mutationFn: (input: UpdateUserInput) =>
@@ -154,22 +151,28 @@ export function AdminUsersPage() {
   })
 
   const users = usersQuery.data?.items ?? []
+  const isCreating = editorMode === 'create'
+  const editorBusy = createMutation.isPending || updateMutation.isPending
 
   function resetEditor() {
+    setEditorMode(null)
     setEditingUser(null)
     setFormState(EMPTY_FORM)
     setAvatarFile(null)
   }
 
   function startEdit(user: UserDTO) {
+    setEditorMode('edit')
     setEditingUser(user)
     setFormState(toUserFormState(user))
     setAvatarFile(null)
   }
 
   function startCreate() {
-    setCreateFormState(EMPTY_FORM)
-    setCreateDialogOpen(true)
+    setEditorMode('create')
+    setEditingUser(null)
+    setFormState(EMPTY_FORM)
+    setAvatarFile(null)
   }
 
   async function refreshUserQueries(targetUserId?: number) {
@@ -199,21 +202,20 @@ export function AdminUsersPage() {
       return
     }
 
-    const payloadBase = toUserPayloadBase(createFormState)
+    const payloadBase = toUserPayloadBase(formState)
 
     try {
-      if (createFormState.password.trim() === '') {
+      if (formState.password.trim() === '') {
         toast.error('创建用户时必须填写密码')
         return
       }
 
       const createdUser = await createMutation.mutateAsync({
         ...payloadBase,
-        password: createFormState.password,
+        password: formState.password,
       })
       toast.success(`用户 @${createdUser.username} 已创建`)
-      setCreateDialogOpen(false)
-      setCreateFormState(EMPTY_FORM)
+      setEditorMode('edit')
       setEditingUser(createdUser)
       setFormState(toUserFormState(createdUser))
       await refreshUserQueries(createdUser.id)
@@ -224,6 +226,15 @@ export function AdminUsersPage() {
 
       toast.error(error instanceof Error ? error.message : '创建用户失败')
     }
+  }
+
+  async function handleEditorSubmit(event: React.FormEvent<HTMLFormElement>) {
+    if (isCreating) {
+      await handleCreateSubmit(event)
+      return
+    }
+
+    await handleUpdateSubmit(event)
   }
 
   async function handleUpdateSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -351,181 +362,12 @@ export function AdminUsersPage() {
       <AdminPageHeader
         title="用户管理"
         actions={
-          <Button onClick={startCreate} type="button" variant="outline">
+          <Button onClick={startCreate} type="button" variant="default">
             <PlusIcon data-icon="inline-start" />
             新建用户
           </Button>
         }
       />
-
-      <AlertDialog
-        open={createDialogOpen}
-        onOpenChange={(open) => {
-          if (!open && createMutation.isPending) {
-            return
-          }
-          setCreateDialogOpen(open)
-          if (!open) {
-            setCreateFormState(EMPTY_FORM)
-          }
-        }}
-      >
-        <AlertDialogContent
-          className="max-w-[760px] rounded-2xl border border-border/70 bg-background p-0"
-        >
-          <AlertDialogHeader className="px-4 pt-4 text-left sm:place-items-start sm:text-left">
-            <AlertDialogTitle>创建用户</AlertDialogTitle>
-          </AlertDialogHeader>
-
-          <form className="space-y-4 px-4 pb-4" onSubmit={handleCreateSubmit}>
-            <FieldGroup className="grid gap-4 md:grid-cols-2 px-3 ">
-              <Field>
-                <FieldLabel htmlFor="admin-create-user-username">用户名</FieldLabel>
-                <Input
-                  id="admin-create-user-username"
-                  onChange={(event) =>
-                    setCreateFormState((current) => ({
-                      ...current,
-                      username: event.target.value,
-                    }))
-                  }
-                  placeholder="登录用户名"
-                  value={createFormState.username}
-                />
-              </Field>
-
-              <Field>
-                <FieldLabel htmlFor="admin-create-user-nickname">昵称</FieldLabel>
-                <Input
-                  id="admin-create-user-nickname"
-                  onChange={(event) =>
-                    setCreateFormState((current) => ({
-                      ...current,
-                      nickname: event.target.value,
-                    }))
-                  }
-                  placeholder="站内显示昵称"
-                  value={createFormState.nickname}
-                />
-              </Field>
-
-              <Field>
-                <FieldLabel htmlFor="admin-create-user-email">邮箱</FieldLabel>
-                <Input
-                  id="admin-create-user-email"
-                  onChange={(event) =>
-                    setCreateFormState((current) => ({
-                      ...current,
-                      email: event.target.value,
-                    }))
-                  }
-                  placeholder="example@example.com"
-                  type="email"
-                  value={createFormState.email}
-                />
-              </Field>
-
-              <Field>
-                <FieldLabel htmlFor="admin-create-user-password">密码</FieldLabel>
-                <Input
-                  id="admin-create-user-password"
-                  onChange={(event) =>
-                    setCreateFormState((current) => ({
-                      ...current,
-                      password: event.target.value,
-                    }))
-                  }
-                  placeholder="设置登录密码"
-                  type="password"
-                  value={createFormState.password}
-                />
-              </Field>
-
-              <Field>
-                <FieldLabel htmlFor="admin-create-user-status">状态</FieldLabel>
-                <select
-                  className={ADMIN_SELECT_CLASSNAME}
-                  id="admin-create-user-status"
-                  onChange={(event) =>
-                    setCreateFormState((current) => ({
-                      ...current,
-                      status: event.target.value,
-                    }))
-                  }
-                  value={createFormState.status}
-                >
-                  <option value="1">正常</option>
-                  <option value="2">封禁</option>
-                  <option value="3">停用</option>
-                </select>
-              </Field>
-
-              <Field>
-                <FieldLabel htmlFor="admin-create-user-storage">
-                  存储配额（字节）
-                </FieldLabel>
-                <Input
-                  id="admin-create-user-storage"
-                  onChange={(event) =>
-                    setCreateFormState((current) => ({
-                      ...current,
-                      storageQuota: event.target.value,
-                    }))
-                  }
-                  placeholder="留空表示使用默认配额"
-                  type="number"
-                  value={createFormState.storageQuota}
-                />
-              </Field>
-            </FieldGroup>
-
-            <div className="grid gap-4 sm:grid-cols-2 px-3">
-              <label className="flex items-center justify-between gap-3 py-1">
-                <div>
-                  <div className="font-medium">管理员</div>
-                </div>
-                <Switch
-                  checked={createFormState.admin}
-                  onCheckedChange={(checked) =>
-                    setCreateFormState((current) => ({ ...current, admin: checked }))
-                  }
-                />
-              </label>
-
-              <label className="flex items-center justify-between gap-3 py-1">
-                <div>
-                  <div className="font-medium">邮箱已验证</div>
-                </div>
-                <Switch
-                  checked={createFormState.emailVerified}
-                  onCheckedChange={(checked) =>
-                    setCreateFormState((current) => ({
-                      ...current,
-                      emailVerified: checked,
-                    }))
-                  }
-                />
-              </label>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <Button disabled={createMutation.isPending} type="submit">
-                {createMutation.isPending ? '创建中…' : '创建用户'}
-              </Button>
-              <Button
-                onClick={() => {
-                  setCreateDialogOpen(false)
-                  setCreateFormState(EMPTY_FORM)
-                }}
-                type="button"
-                variant="outline"
-              >
-                取消
-              </Button>
-            </div>
-          </form>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <AdminSection title="筛选用户">
         <form
@@ -624,218 +466,239 @@ export function AdminUsersPage() {
         </form>
       </AdminSection>
 
-      {editingUser ? (
+      {editorMode ? (
         <AdminSection
-          title={`编辑用户 #${editingUser.id}`}
+          title={isCreating ? '新建用户' : `编辑用户 #${editingUser?.id}`}
         >
           <form
             className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]"
-            onSubmit={handleUpdateSubmit}
+            onSubmit={handleEditorSubmit}
           >
-          <div className="space-y-4">
-            <FieldGroup className="grid gap-4 md:grid-cols-2">
-              <Field>
-                <FieldLabel htmlFor="admin-user-form-username">用户名</FieldLabel>
-                <Input
-                  id="admin-user-form-username"
-                  onChange={(event) =>
-                    setFormState((current) => ({
-                      ...current,
-                      username: event.target.value,
-                    }))
-                  }
-                  placeholder="登录用户名"
-                  value={formState.username}
-                />
-              </Field>
+            <div className="space-y-4">
+              <FieldGroup className="grid gap-4 md:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="admin-user-form-username">
+                    用户名
+                  </FieldLabel>
+                  <Input
+                    id="admin-user-form-username"
+                    onChange={(event) =>
+                      setFormState((current) => ({
+                        ...current,
+                        username: event.target.value,
+                      }))
+                    }
+                    placeholder="登录用户名"
+                    value={formState.username}
+                  />
+                </Field>
 
-              <Field>
-                <FieldLabel htmlFor="admin-user-form-nickname">昵称</FieldLabel>
-                <Input
-                  id="admin-user-form-nickname"
-                  onChange={(event) =>
-                    setFormState((current) => ({
-                      ...current,
-                      nickname: event.target.value,
-                    }))
-                  }
-                  placeholder="站内显示昵称"
-                  value={formState.nickname}
-                />
-              </Field>
+                <Field>
+                  <FieldLabel htmlFor="admin-user-form-nickname">
+                    昵称
+                  </FieldLabel>
+                  <Input
+                    id="admin-user-form-nickname"
+                    onChange={(event) =>
+                      setFormState((current) => ({
+                        ...current,
+                        nickname: event.target.value,
+                      }))
+                    }
+                    placeholder="站内显示昵称"
+                    value={formState.nickname}
+                  />
+                </Field>
 
-              <Field>
-                <FieldLabel htmlFor="admin-user-form-email">邮箱</FieldLabel>
-                <Input
-                  id="admin-user-form-email"
-                  onChange={(event) =>
-                    setFormState((current) => ({
-                      ...current,
-                      email: event.target.value,
-                    }))
-                  }
-                  placeholder="example@example.com"
-                  type="email"
-                  value={formState.email}
-                />
-              </Field>
+                <Field>
+                  <FieldLabel htmlFor="admin-user-form-email">邮箱</FieldLabel>
+                  <Input
+                    id="admin-user-form-email"
+                    onChange={(event) =>
+                      setFormState((current) => ({
+                        ...current,
+                        email: event.target.value,
+                      }))
+                    }
+                    placeholder="example@example.com"
+                    type="email"
+                    value={formState.email}
+                  />
+                </Field>
 
-              <Field>
-                <FieldLabel htmlFor="admin-user-form-password">
-                  新密码（留空不改）
-                </FieldLabel>
-                <Input
-                  id="admin-user-form-password"
-                  onChange={(event) =>
-                    setFormState((current) => ({
-                      ...current,
-                      password: event.target.value,
-                    }))
-                  }
-                  placeholder="如需重置密码再填写"
-                  type="password"
-                  value={formState.password}
-                />
-              </Field>
+                <Field>
+                  <FieldLabel htmlFor="admin-user-form-password">
+                    {isCreating ? '密码' : '新密码（留空不改）'}
+                  </FieldLabel>
+                  <Input
+                    id="admin-user-form-password"
+                    onChange={(event) =>
+                      setFormState((current) => ({
+                        ...current,
+                        password: event.target.value,
+                      }))
+                    }
+                    placeholder={
+                      isCreating ? '设置登录密码' : '如需重置密码再填写'
+                    }
+                    type="password"
+                    value={formState.password}
+                  />
+                </Field>
 
-              <Field>
-                <FieldLabel htmlFor="admin-user-form-status">状态</FieldLabel>
-                <select
-                  className={ADMIN_SELECT_CLASSNAME}
-                  id="admin-user-form-status"
-                  onChange={(event) =>
-                    setFormState((current) => ({
-                      ...current,
-                      status: event.target.value,
-                    }))
-                  }
-                  value={formState.status}
-                >
-                  <option value="1">正常</option>
-                  <option value="2">封禁</option>
-                  <option value="3">停用</option>
-                </select>
-              </Field>
+                <Field>
+                  <FieldLabel htmlFor="admin-user-form-status">状态</FieldLabel>
+                  <select
+                    className={ADMIN_SELECT_CLASSNAME}
+                    id="admin-user-form-status"
+                    onChange={(event) =>
+                      setFormState((current) => ({
+                        ...current,
+                        status: event.target.value,
+                      }))
+                    }
+                    value={formState.status}
+                  >
+                    <option value="1">正常</option>
+                    <option value="2">封禁</option>
+                    <option value="3">停用</option>
+                  </select>
+                </Field>
 
-              <Field>
-                <FieldLabel htmlFor="admin-user-form-storage">
-                  存储配额（字节）
-                </FieldLabel>
-                <Input
-                  id="admin-user-form-storage"
-                  onChange={(event) =>
-                    setFormState((current) => ({
-                      ...current,
-                      storageQuota: event.target.value,
-                    }))
-                  }
-                  placeholder="留空表示使用默认配额"
-                  type="number"
-                  value={formState.storageQuota}
-                />
-              </Field>
-            </FieldGroup>
+                <Field>
+                  <FieldLabel htmlFor="admin-user-form-storage">
+                    存储配额（字节）
+                  </FieldLabel>
+                  <Input
+                    id="admin-user-form-storage"
+                    onChange={(event) =>
+                      setFormState((current) => ({
+                        ...current,
+                        storageQuota: event.target.value,
+                      }))
+                    }
+                    placeholder="留空表示使用默认配额"
+                    type="number"
+                    value={formState.storageQuota}
+                  />
+                </Field>
+              </FieldGroup>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="flex items-center justify-between gap-3 py-1">
-                <div>
-                  <div className="font-medium">管理员</div>
-                </div>
-                <Switch
-                  checked={formState.admin}
-                  onCheckedChange={(checked) =>
-                    setFormState((current) => ({ ...current, admin: checked }))
-                  }
-                />
-              </label>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="flex items-center justify-between gap-3 py-1">
+                  <div>
+                    <div className="font-medium">管理员</div>
+                  </div>
+                  <Switch
+                    checked={formState.admin}
+                    onCheckedChange={(checked) =>
+                      setFormState((current) => ({
+                        ...current,
+                        admin: checked,
+                      }))
+                    }
+                  />
+                </label>
 
-              <label className="flex items-center justify-between gap-3 py-1">
-                <div>
-                  <div className="font-medium">邮箱已验证</div>
-                </div>
-                <Switch
-                  checked={formState.emailVerified}
-                  onCheckedChange={(checked) =>
-                    setFormState((current) => ({
-                      ...current,
-                      emailVerified: checked,
-                    }))
-                  }
-                />
-              </label>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <Button disabled={updateMutation.isPending} type="submit">
-                {updateMutation.isPending ? '保存中…' : '保存用户'}
-              </Button>
-              <Button onClick={resetEditor} type="button" variant="outline">
-                结束编辑
-              </Button>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
-            <div className="mb-3 flex items-center gap-3">
-              <Avatar size="lg">
-                <AvatarImage
-                  alt={formState.nickname || formState.username}
-                  src={editingUser.avatar}
-                />
-                <AvatarFallback>
-                  {getInitials(formState.nickname || formState.username || '用户')}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <div className="font-medium">
-                  {formState.nickname || formState.username || '未命名用户'}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  用户 #{editingUser.id}
-                </div>
+                <label className="flex items-center justify-between gap-3 py-1">
+                  <div>
+                    <div className="font-medium">邮箱已验证</div>
+                  </div>
+                  <Switch
+                    checked={formState.emailVerified}
+                    onCheckedChange={(checked) =>
+                      setFormState((current) => ({
+                        ...current,
+                        emailVerified: checked,
+                      }))
+                    }
+                  />
+                </label>
               </div>
-            </div>
 
-            <div className="space-y-3">
-              <Field>
-                <FieldLabel htmlFor="admin-user-avatar">上传头像</FieldLabel>
-                <Input
-                  id="admin-user-avatar"
-                  onChange={(event) =>
-                    setAvatarFile(event.target.files?.[0] ?? null)
-                  }
-                  type="file"
-                />
-              </Field>
               <div className="flex flex-wrap gap-2">
-                <Button
-                  disabled={!avatarFile || uploadAvatarMutation.isPending}
-                  onClick={() => void handleUploadAvatar()}
-                  type="button"
-                  variant="outline"
-                >
-                  <ImageUpIcon data-icon="inline-start" />
-                  {uploadAvatarMutation.isPending ? '上传中…' : '上传头像'}
+                <Button disabled={editorBusy} type="submit">
+                  {isCreating
+                    ? createMutation.isPending
+                      ? '创建中…'
+                      : '创建用户'
+                    : updateMutation.isPending
+                      ? '保存中…'
+                      : '保存用户'}
                 </Button>
-                <Button
-                  disabled={!editingUser.avatar || deleteAvatarMutation.isPending}
-                  onClick={() => void handleDeleteAvatar()}
-                  type="button"
-                  variant="destructive"
-                >
-                  <Trash2Icon data-icon="inline-start" />
-                  {deleteAvatarMutation.isPending ? '删除中…' : '删除头像'}
+                <Button onClick={resetEditor} type="button" variant="outline">
+                  {isCreating ? '取消创建' : '结束编辑'}
                 </Button>
               </div>
             </div>
-          </div>
+
+            {editingUser ? (
+              <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
+                <div className="mb-3 flex items-center gap-3">
+                  <Avatar size="lg">
+                    <AvatarImage
+                      alt={formState.nickname || formState.username}
+                      src={editingUser.avatar}
+                    />
+                    <AvatarFallback>
+                      {getInitials(
+                        formState.nickname || formState.username || '用户',
+                      )}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <div className="font-medium">
+                      {formState.nickname || formState.username || '未命名用户'}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      用户 #{editingUser.id}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Field>
+                    <FieldLabel htmlFor="admin-user-avatar">
+                      上传头像
+                    </FieldLabel>
+                    <Input
+                      id="admin-user-avatar"
+                      onChange={(event) =>
+                        setAvatarFile(event.target.files?.[0] ?? null)
+                      }
+                      type="file"
+                    />
+                  </Field>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      disabled={!avatarFile || uploadAvatarMutation.isPending}
+                      onClick={() => void handleUploadAvatar()}
+                      type="button"
+                      variant="outline"
+                    >
+                      <ImageUpIcon data-icon="inline-start" />
+                      {uploadAvatarMutation.isPending ? '上传中…' : '上传头像'}
+                    </Button>
+                    <Button
+                      disabled={
+                        !editingUser.avatar || deleteAvatarMutation.isPending
+                      }
+                      onClick={() => void handleDeleteAvatar()}
+                      type="button"
+                      variant="destructive"
+                    >
+                      <Trash2Icon data-icon="inline-start" />
+                      {deleteAvatarMutation.isPending ? '删除中…' : '删除头像'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </form>
         </AdminSection>
       ) : null}
 
-      <AdminSection
-        title="用户列表"
-      >
+      <AdminSection title="用户列表">
         {usersQuery.isPending ? <AdminListSkeleton /> : null}
         {usersQuery.error instanceof Error ? (
           <AdminErrorAlert
@@ -863,13 +726,17 @@ export function AdminUsersPage() {
                     <div className="flex min-w-0 items-center gap-3">
                       <Avatar size="lg">
                         <AvatarImage alt={user.nickname} src={user.avatar} />
-                        <AvatarFallback>{getInitials(user.nickname)}</AvatarFallback>
+                        <AvatarFallback>
+                          {getInitials(user.nickname)}
+                        </AvatarFallback>
                       </Avatar>
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <div className="font-medium">{user.nickname}</div>
                           {user.admin ? <Badge>管理员</Badge> : null}
-                          <Badge variant="outline">{formatUserStatus(user.status)}</Badge>
+                          <Badge variant="outline">
+                            {formatUserStatus(user.status)}
+                          </Badge>
                         </div>
                         <div className="text-sm text-muted-foreground">
                           @{user.username} · {user.email}
