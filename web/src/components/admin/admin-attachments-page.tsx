@@ -17,7 +17,6 @@ import {
   AdminDangerDialog,
   AdminEmptyState,
   AdminErrorAlert,
-  AdminItemMeta,
   AdminListSkeleton,
   AdminMotionItem,
   AdminPageHeader,
@@ -28,6 +27,7 @@ import { useAdminSession } from '#/components/admin/use-admin-session'
 import { Button } from '#/components/ui/button'
 import { Field, FieldLabel } from '#/components/ui/field'
 import { Input } from '#/components/ui/input'
+import { Separator } from '#/components/ui/separator'
 
 interface AttachmentFilterState {
   attachmentId: string
@@ -90,7 +90,8 @@ export function AdminAttachmentsPage() {
       api.deleteAdminAttachment(attachment.id, auth.token!),
   })
   const batchDeleteMutation = useMutation({
-    mutationFn: (ids: number[]) => api.batchDeleteAdminAttachments(ids, auth.token!),
+    mutationFn: (ids: number[]) =>
+      api.batchDeleteAdminAttachments(ids, auth.token!),
   })
 
   const attachments = attachmentsQuery.data?.items ?? []
@@ -139,7 +140,9 @@ export function AdminAttachmentsPage() {
     try {
       await deleteMutation.mutateAsync(pendingDelete)
       toast.success(`附件 #${pendingDelete.id} 已删除`)
-      setSelectedIds((current) => current.filter((id) => id !== pendingDelete.id))
+      setSelectedIds((current) =>
+        current.filter((id) => id !== pendingDelete.id),
+      )
       setPendingDelete(null)
       await invalidateAttachmentQueries()
     } catch (error) {
@@ -232,7 +235,10 @@ export function AdminAttachmentsPage() {
         }
       />
 
-      <AdminSection title="筛选附件" description="时间筛选使用本地时间，提交时会转换为 Unix 秒时间戳。">
+      <AdminSection
+        title="筛选附件"
+        description="时间筛选使用本地时间，提交时会转换为 Unix 秒时间戳。"
+      >
         <form
           className="grid gap-4 lg:grid-cols-6"
           onSubmit={(event) => {
@@ -312,7 +318,9 @@ export function AdminAttachmentsPage() {
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="admin-attachments-created-to">结束时间</FieldLabel>
+            <FieldLabel htmlFor="admin-attachments-created-to">
+              结束时间
+            </FieldLabel>
             <Input
               id="admin-attachments-created-to"
               onChange={(event) =>
@@ -364,7 +372,12 @@ export function AdminAttachmentsPage() {
 
       <AdminSection title="附件列表" description={summaryText}>
         <div className="mb-4 flex flex-wrap gap-2">
-          <Button onClick={toggleSelectAll} size="sm" type="button" variant="outline">
+          <Button
+            onClick={toggleSelectAll}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
             {allVisibleSelected ? '取消当前页全选' : '选中当前页'}
           </Button>
           <Button
@@ -398,72 +411,76 @@ export function AdminAttachmentsPage() {
         !attachmentsQuery.error &&
         attachments.length > 0 ? (
           <>
-            <div className="flex flex-col gap-3">
+            <div className="overflow-hidden bg-transparent">
               {attachments.map((attachment, index) => (
-                <AdminMotionItem
-                  key={attachment.id}
-                  className="rounded-2xl border border-border/70 bg-transparent p-4"
-                  delay={index * 0.03}
-                >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="flex items-start gap-3">
-                      <input
-                        checked={selectedIds.includes(attachment.id)}
-                        className="mt-1 size-4 rounded border-border"
-                        onChange={() => toggleSelected(attachment.id)}
-                        type="checkbox"
-                      />
-                      <div className="min-w-0">
-                        <div className="font-medium">附件 #{attachment.id}</div>
-                        <div className="mt-1 text-sm text-muted-foreground">
-                          用户 #{attachment.user_id} · {formatAttachmentBizType(attachment.biz_type)} ·{' '}
-                          {formatDateTime(attachment.created_at)}
+                <div key={attachment.id}>
+                  <AdminMotionItem className="p-4" delay={index * 0.03}>
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <input
+                          checked={selectedIds.includes(attachment.id)}
+                          className="mt-1 size-4 rounded border-border"
+                          onChange={() => toggleSelected(attachment.id)}
+                          type="checkbox"
+                        />
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="font-medium">
+                              附件ID: {attachment.id}
+                            </div>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            
+                          </div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            用户ID: {attachment.user_id} ·{' '}
+                            {formatAttachmentBizType(attachment.biz_type)} ·
+                            文件大小: {formatBytes(attachment.file_size)} ·
+                            存储类型: {attachment.storage_type} · 上传时间:{' '}
+                            {formatDateTime(attachment.created_at)}
+                          </div>
+                          <div className="mt-2 text-xs text-muted-foreground break-all">
+                            对象键: {attachment.file_key}
+                          </div>
+                          <div className="mt-1 text-xs text-muted-foreground break-all">
+                            访问地址: {attachment.url}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex flex-wrap gap-2">
-                      <Button asChild size="sm" type="button" variant="outline">
-                        <a href={attachment.url} rel="noreferrer" target="_blank">
-                          <ExternalLinkIcon data-icon="inline-start" />
-                          打开文件
-                        </a>
-                      </Button>
-                      <Button
-                        onClick={() => setPendingDelete(attachment)}
-                        size="sm"
-                        type="button"
-                        variant="destructive"
-                      >
-                        <Trash2Icon data-icon="inline-start" />
-                        删除
-                      </Button>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          asChild
+                          size="sm"
+                          type="button"
+                          variant="outline"
+                        >
+                          <a
+                            href={attachment.url}
+                            rel="noreferrer"
+                            target="_blank"
+                          >
+                            <ExternalLinkIcon data-icon="inline-start" />
+                            打开文件
+                          </a>
+                        </Button>
+                        <Button
+                          onClick={() => setPendingDelete(attachment)}
+                          size="sm"
+                          type="button"
+                          variant="destructive"
+                        >
+                          <Trash2Icon data-icon="inline-start" />
+                          删除
+                        </Button>
+                      </div>
                     </div>
-                  </div>
+                  </AdminMotionItem>
 
-                  <div className="mt-4">
-                    <AdminItemMeta
-                      items={[
-                        {
-                          label: '文件大小',
-                          value: formatBytes(attachment.file_size),
-                        },
-                        {
-                          label: '存储类型',
-                          value: attachment.storage_type,
-                        },
-                        {
-                          label: '对象键',
-                          value: attachment.file_key,
-                        },
-                        {
-                          label: '访问地址',
-                          value: attachment.url,
-                        },
-                      ]}
-                    />
-                  </div>
-                </AdminMotionItem>
+                  {index < attachments.length - 1 ? (
+                    <Separator className="bg-border/80 data-horizontal:h-0.5" />
+                  ) : null}
+                </div>
               ))}
             </div>
 
