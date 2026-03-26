@@ -3,10 +3,13 @@ package router
 import (
 	"log"
 	"net/http"
+	"path/filepath"
+	"strings"
 
 	_ "easydrop/docs"
 	"easydrop/internal/config"
 	"easydrop/internal/di"
+	"easydrop/internal/pkg/storage"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -46,6 +49,8 @@ func BuildEngine(app *di.App) *gin.Engine {
 	if app == nil {
 		return r
 	}
+
+	registerLocalStorageStaticRoutes(r, app.Config)
 
 	authHandler := app.AuthHandler
 	captchaHandler := app.CaptchaHandler
@@ -206,4 +211,52 @@ func passthroughMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next()
 	}
+}
+
+func registerLocalStorageStaticRoutes(r *gin.Engine, cfg *config.StaticConfig) {
+	if r == nil || cfg == nil {
+		return
+	}
+
+	if strings.TrimSpace(cfg.Storage.Backend) != storage.BackendLocal {
+		return
+	}
+
+	basePath := strings.TrimSpace(cfg.Storage.Local.BasePath)
+	baseURL := normalizeLocalStorageRoutePrefix(cfg.Storage.Local.URLPrefix)
+	if basePath == "" || baseURL == "" {
+		return
+	}
+
+	absBasePath, err := filepath.Abs(basePath)
+	if err != nil {
+		log.Printf("解析本地存储目录失败: %v", err)
+		return
+	}
+
+	registerLocalStorageCategoryRoute(r, baseURL, storage.CategoryFile, filepath.Join(absBasePath, storage.CategoryFile))
+	registerLocalStorageCategoryRoute(r, baseURL, storage.CategoryAvatar, filepath.Join(absBasePath, storage.CategoryAvatar))
+}
+
+func normalizeLocalStorageRoutePrefix(value string) string {
+	trimmed := strings.Trim(strings.TrimSpace(value), "/")
+	if trimmed == "" {
+		return "/api"
+	}
+	return "/api/" + trimmed
+}
+
+func registerLocalStorageCategoryRoute(r *gin.Engine, baseURL string, category string, categoryPath string) {
+	if r == nil {
+		return
+	}
+
+	absCategoryPath, err := filepath.Abs(categoryPath)
+	if err != nil {
+		log.Printf("解析本地存储分类目录失败: %v", err)
+		return
+	}
+
+	mountPath := strings.TrimRight(baseURL, "/") + "/" + strings.Trim(category, "/")
+	r.StaticFS(mountPath, gin.Dir(absCategoryPath, false))
 }

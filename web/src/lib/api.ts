@@ -95,10 +95,7 @@ function isQueryParamValue(value: unknown): value is string | number | boolean {
   )
 }
 
-function buildUrl(
-  path: string,
-  query?: object,
-) {
+function buildUrl(path: string, query?: object) {
   const pathname = path.startsWith('/') ? path : `/${path}`
   const url = new URL(`${API_BASE_URL}${pathname}`, 'http://localhost')
 
@@ -283,6 +280,15 @@ export const api = {
       token,
     })
   },
+  uploadAttachment(file: File, token: string) {
+    const body = new FormData()
+    body.set('file', file)
+    return request<AttachmentDTO>('/attachments', {
+      method: 'POST',
+      body,
+      token,
+    })
+  },
   updateAdminComment(
     commentId: number,
     input: UpdateCommentInput,
@@ -384,11 +390,14 @@ export const api = {
     })
   },
   batchDeleteAdminAttachments(ids: number[], token: string) {
-    return request<AttachmentBatchDeleteResult>('/admin/attachments/batch-delete', {
-      method: 'POST',
-      body: JSON.stringify({ ids }),
-      token,
-    })
+    return request<AttachmentBatchDeleteResult>(
+      '/admin/attachments/batch-delete',
+      {
+        method: 'POST',
+        body: JSON.stringify({ ids }),
+        token,
+      },
+    )
   },
   getAdminSettings(query: AdminSettingListQuery, token: string) {
     return request<PagedResult<SettingItem>>('/admin/settings', {
@@ -396,11 +405,7 @@ export const api = {
       token,
     }).then(normalizePagedResult)
   },
-  updateAdminSetting(
-    key: string,
-    input: UpdateSettingInput,
-    token: string,
-  ) {
+  updateAdminSetting(key: string, input: UpdateSettingInput, token: string) {
     return request<{ message?: string }>(
       `/admin/settings/${encodeURIComponent(key)}`,
       {

@@ -16,8 +16,8 @@ type Config struct {
 
 // LocalConfig 定义本地文件存储配置。
 type LocalConfig struct {
-	BasePath string `mapstructure:"base_path" yaml:"base_path"`
-	BaseURL  string `mapstructure:"base_url" yaml:"base_url"`
+	BasePath  string `mapstructure:"base_path" yaml:"base_path"`
+	URLPrefix string `mapstructure:"url_prefix" yaml:"url_prefix"`
 }
 
 // S3Config 定义 S3 存储配置。

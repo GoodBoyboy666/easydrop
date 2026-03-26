@@ -3,12 +3,15 @@ package router
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"easydrop/internal/config"
 	"easydrop/internal/di"
 	"easydrop/internal/handler"
 	"easydrop/internal/middleware"
+	"easydrop/internal/pkg/storage"
 
 	"github.com/gin-gonic/gin"
 )
@@ -241,6 +244,47 @@ func TestBuildEngineAppliesGinModeFromConfig(t *testing.T) {
 	_ = BuildEngine(newTestAppWithMode(fakeAuthMiddleware{}, config.ServerModeDevelopment))
 	if got := gin.Mode(); got != gin.DebugMode {
 		t.Fatalf("expected gin mode %s, got %s", gin.DebugMode, got)
+	}
+}
+
+func TestBuildEngineServesLocalStorageFilesWithAPIURLPrefix(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	basePath := t.TempDir()
+	filePath := filepath.Join(basePath, storage.CategoryFile, "2026", "03", "hello.txt")
+	if err := os.MkdirAll(filepath.Dir(filePath), 0o755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	if err := os.WriteFile(filePath, []byte("hello attachment"), 0o644); err != nil {
+		t.Fatalf("write file failed: %v", err)
+	}
+
+	app := newTestApp(fakeAuthMiddleware{})
+	app.Config.Storage = storage.Config{
+		Backend: storage.BackendLocal,
+		Local: storage.LocalConfig{
+			BasePath:  basePath,
+			URLPrefix: "",
+		},
+	}
+
+	r := BuildEngine(app)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/file/2026/03/hello.txt", nil)
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 for local storage file, got %d", w.Code)
+	}
+	if body := w.Body.String(); body != "hello attachment" {
+		t.Fatalf("expected file content, got %q", body)
+	}
+
+	apiRecorder := httptest.NewRecorder()
+	apiReq := httptest.NewRequest(http.MethodGet, "/api/v1/posts", nil)
+	r.ServeHTTP(apiRecorder, apiReq)
+	if apiRecorder.Code == http.StatusNotFound {
+		t.Fatalf("expected /api/v1 routes to remain reachable, got 404")
 	}
 }
 

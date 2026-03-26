@@ -13,8 +13,8 @@ import (
 var ErrInvalidLocalObjectKey = errors.New("local object key 非法")
 
 type localStorage struct {
-	basePath string
-	baseURL  string
+	basePath  string
+	urlPrefix string
 }
 
 // NewLocalStorage 创建本地存储实现。
@@ -34,8 +34,8 @@ func NewLocalStorage(cfg LocalConfig) (Backend, error) {
 	}
 
 	return &localStorage{
-		basePath: absBasePath,
-		baseURL:  strings.TrimSpace(cfg.BaseURL),
+		basePath:  absBasePath,
+		urlPrefix: normalizeLocalURLPrefix(cfg.URLPrefix),
 	}, nil
 }
 
@@ -102,10 +102,15 @@ func (s *localStorage) Delete(_ context.Context, objectKey string) error {
 }
 
 func (s *localStorage) URL(_ context.Context, objectKey string) (string, error) {
-	if strings.TrimSpace(s.baseURL) == "" {
-		return objectKey, nil
+	return strings.TrimRight(s.urlPrefix, "/") + "/" + strings.TrimLeft(objectKey, "/"), nil
+}
+
+func normalizeLocalURLPrefix(value string) string {
+	trimmed := strings.Trim(strings.TrimSpace(value), "/")
+	if trimmed == "" {
+		return "/api"
 	}
-	return strings.TrimRight(s.baseURL, "/") + "/" + strings.TrimLeft(objectKey, "/"), nil
+	return "/api/" + trimmed
 }
 
 func (s *localStorage) resolvePath(objectKey string) (string, error) {

@@ -88,7 +88,7 @@ storage:
   backend: "local" # local 或 s3
   local:
     base_path: "data/uploads"
-    base_url: ""
+    url_prefix: "" # /api 后面的可选前缀；留空时文件地址为 /api/file/... 和 /api/avatar/...
   s3:
     bucket: ""
     region: ""

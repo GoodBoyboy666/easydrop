@@ -383,8 +383,8 @@ func newTestStorageManager(t *testing.T) (storage.Manager, string) {
 	manager, err := storage.NewManager(&storage.Config{
 		Backend: storage.BackendLocal,
 		Local: storage.LocalConfig{
-			BasePath: basePath,
-			BaseURL:  "https://cdn.example.com",
+			BasePath:  basePath,
+			URLPrefix: "",
 		},
 	})
 	if err != nil {
