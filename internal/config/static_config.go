@@ -14,6 +14,7 @@ import (
 	"easydrop/internal/pkg/database"
 	"easydrop/internal/pkg/email"
 	"easydrop/internal/pkg/jwt"
+	"easydrop/internal/pkg/ratelimit"
 	"easydrop/internal/pkg/redis"
 	"easydrop/internal/pkg/storage"
 	"easydrop/internal/pkg/token"
@@ -46,6 +47,7 @@ type StaticConfig struct {
 	AuthCookie cookiepkg.Config         `mapstructure:"auth_cookie" yaml:"auth_cookie"`
 	DB         database.Config          `mapstructure:"db" yaml:"db"`
 	Redis      redis.Config             `mapstructure:"redis" yaml:"redis"`
+	RateLimit  ratelimit.Config         `mapstructure:"rate_limit" yaml:"rate_limit"`
 	Email      email.Config             `mapstructure:"email" yaml:"email"`
 	JWT        jwt.Config               `mapstructure:"jwt" yaml:"jwt"`
 	Captcha    captcha.AllCaptchaConfig `mapstructure:"captcha" yaml:"captcha"`
@@ -54,7 +56,7 @@ type StaticConfig struct {
 }
 
 // StaticProviderSet 提供配置加载的 Wire 注入入口。
-var StaticProviderSet = wire.NewSet(Load, ProvideDBConfig, ProvideRedisConfig, ProvideEmailConfig, ProvideJWTConfig, ProvideAuthCookieConfig, ProvideCaptchaConfig, ProvideStorageConfig, ProvideTokenConfig)
+var StaticProviderSet = wire.NewSet(Load, ProvideDBConfig, ProvideRedisConfig, ProvideRateLimitConfig, ProvideEmailConfig, ProvideJWTConfig, ProvideAuthCookieConfig, ProvideCaptchaConfig, ProvideStorageConfig, ProvideTokenConfig)
 
 // Load 从 configDir/config.yaml 读取配置，并支持环境变量覆盖。
 // 配置文件缺失时会回退到默认值与环境变量。
@@ -90,6 +92,8 @@ func Load(configDir string, strict bool) (*StaticConfig, error) {
 	v.SetDefault("auth_cookie.same_site", "lax")
 	v.SetDefault("db.driver", database.DriverSQLite)
 	v.SetDefault("db.sqlite_path", "data/easydrop.db")
+	v.SetDefault("rate_limit.enabled", false)
+	v.SetDefault("rate_limit.key_prefix", "ratelimit")
 	v.SetDefault("jwt.private_key_path", "data/jwt/private.pem")
 	v.SetDefault("jwt.public_key_path", "data/jwt/public.pem")
 	v.SetDefault("jwt.issuer", "easydrop")
@@ -125,6 +129,11 @@ func ProvideDBConfig(cfg *StaticConfig) *database.Config {
 // ProvideRedisConfig 提供 Redis 配置。
 func ProvideRedisConfig(cfg *StaticConfig) *redis.Config {
 	return &cfg.Redis
+}
+
+// ProvideRateLimitConfig 提供限流配置。
+func ProvideRateLimitConfig(cfg *StaticConfig) *ratelimit.Config {
+	return &cfg.RateLimit
 }
 
 // ProvideEmailConfig 提供邮件配置。

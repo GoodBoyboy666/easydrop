@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"easydrop/internal/config"
 	"easydrop/internal/di"
@@ -16,6 +17,7 @@ import (
 	"easydrop/internal/handler"
 	"easydrop/internal/middleware"
 	cookiepkg "easydrop/internal/pkg/cookie"
+	"easydrop/internal/pkg/ratelimit"
 	"easydrop/internal/pkg/storage"
 	"easydrop/internal/service"
 
@@ -24,6 +26,10 @@ import (
 
 type fakeAuthMiddleware struct{}
 type allowAuthMiddleware struct{}
+type fakeRateLimitMiddleware struct {
+	windowRuleNames   map[string]struct{}
+	cooldownRuleNames map[string]struct{}
+}
 
 type routerMockSettingService struct {
 	getValueFn func(ctx context.Context, key string) (string, bool, error)
@@ -70,6 +76,26 @@ func (allowAuthMiddleware) RequireLogin(c *gin.Context) {
 
 func (allowAuthMiddleware) RequireAdmin(c *gin.Context) {
 	c.Next()
+}
+
+func (m fakeRateLimitMiddleware) Window(name string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if _, ok := m.windowRuleNames[name]; ok {
+			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{"message": "rate limited"})
+			return
+		}
+		c.Next()
+	}
+}
+
+func (m fakeRateLimitMiddleware) Cooldown(name string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if _, ok := m.cooldownRuleNames[name]; ok {
+			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{"message": "rate limited"})
+			return
+		}
+		c.Next()
+	}
 }
 
 func TestBuildEngineRegistersAllRoutes(t *testing.T) {
@@ -373,7 +399,141 @@ func TestBuildEngineLimitsUploadRequestBodyUsingSetting(t *testing.T) {
 	}
 }
 
+func TestBuildEngineAppliesRateLimitOnlyToWriteRoutes(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	app := newTestApp(allowAuthMiddleware{})
+	app.Config.RateLimit = ratelimit.Config{
+		Enabled: true,
+		Rules: map[string]ratelimit.RuleConfig{
+			middleware.RuleNameProfileWrite: {
+				Interval: time.Minute,
+				Limit:    1,
+			},
+		},
+	}
+	app.RateLimit = fakeRateLimitMiddleware{
+		windowRuleNames: map[string]struct{}{
+			middleware.RuleNameProfileWrite: {},
+		},
+	}
+
+	r := BuildEngine(app)
+
+	writeReq := httptest.NewRequest(http.MethodPatch, "/api/v1/users/me/profile", strings.NewReader(`{"nickname":"x"}`))
+	writeReq.Header.Set("Content-Type", "application/json")
+	writeResp := httptest.NewRecorder()
+	r.ServeHTTP(writeResp, writeReq)
+	if writeResp.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected 429 for write route, got %d", writeResp.Code)
+	}
+
+	readReq := httptest.NewRequest(http.MethodGet, "/api/v1/posts", nil)
+	readResp := httptest.NewRecorder()
+	r.ServeHTTP(readResp, readReq)
+	if readResp.Code == http.StatusTooManyRequests {
+		t.Fatalf("expected read route not to be rate limited")
+	}
+}
+
+func TestBuildEngineAppliesBusinessRateLimitRules(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	app := newTestApp(allowAuthMiddleware{})
+	app.Config.RateLimit = ratelimit.Config{
+		Enabled: true,
+		Rules: map[string]ratelimit.RuleConfig{
+			middleware.RuleNameAuthWrite: {
+				Interval: time.Second,
+			},
+			middleware.RuleNameInitWrite: {
+				Interval: 10 * time.Second,
+			},
+			middleware.RuleNameUserSecurityWrite: {
+				Interval: 30 * time.Second,
+			},
+			middleware.RuleNameCommentWrite: {
+				Interval: 30 * time.Second,
+				Limit:    5,
+			},
+			middleware.RuleNameAttachmentWrite: {
+				Interval: time.Minute,
+				Limit:    20,
+			},
+		},
+	}
+	app.RateLimit = fakeRateLimitMiddleware{
+		windowRuleNames: map[string]struct{}{
+			middleware.RuleNameCommentWrite:    {},
+			middleware.RuleNameAttachmentWrite: {},
+		},
+		cooldownRuleNames: map[string]struct{}{
+			middleware.RuleNameAuthWrite:         {},
+			middleware.RuleNameInitWrite:         {},
+			middleware.RuleNameUserSecurityWrite: {},
+		},
+	}
+
+	r := BuildEngine(app)
+
+	authReq := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader(`{}`))
+	authReq.Header.Set("Content-Type", "application/json")
+	authResp := httptest.NewRecorder()
+	r.ServeHTTP(authResp, authReq)
+	if authResp.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected 429 for auth write route, got %d", authResp.Code)
+	}
+
+	postReq := httptest.NewRequest(http.MethodPost, "/api/v1/init", strings.NewReader(`{}`))
+	postReq.Header.Set("Content-Type", "application/json")
+	postResp := httptest.NewRecorder()
+	r.ServeHTTP(postResp, postReq)
+	if postResp.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected 429 for init post, got %d", postResp.Code)
+	}
+
+	securityReq := httptest.NewRequest(http.MethodPatch, "/api/v1/users/me/password", strings.NewReader(`{"oldPassword":"a","newPassword":"b"}`))
+	securityReq.Header.Set("Content-Type", "application/json")
+	securityResp := httptest.NewRecorder()
+	r.ServeHTTP(securityResp, securityReq)
+	if securityResp.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected 429 for user security route, got %d", securityResp.Code)
+	}
+
+	commentReq := httptest.NewRequest(http.MethodPost, "/api/v1/posts/1/comments", strings.NewReader(`{"content":"x"}`))
+	commentReq.Header.Set("Content-Type", "application/json")
+	commentResp := httptest.NewRecorder()
+	r.ServeHTTP(commentResp, commentReq)
+	if commentResp.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected 429 for comment write route, got %d", commentResp.Code)
+	}
+
+	attachmentReq := httptest.NewRequest(http.MethodPost, "/api/v1/attachments", strings.NewReader("file"))
+	attachmentReq.Header.Set("Content-Type", "multipart/form-data; boundary=test")
+	attachmentResp := httptest.NewRecorder()
+	r.ServeHTTP(attachmentResp, attachmentReq)
+	if attachmentResp.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected 429 for attachment write route, got %d", attachmentResp.Code)
+	}
+
+	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/init/status", nil)
+	getResp := httptest.NewRecorder()
+	r.ServeHTTP(getResp, getReq)
+	if getResp.Code == http.StatusTooManyRequests {
+		t.Fatalf("expected init status not to be rate limited")
+	}
+
+	adminReq := httptest.NewRequest(http.MethodPost, "/api/v1/admin/posts", strings.NewReader(`{"title":"x"}`))
+	adminReq.Header.Set("Content-Type", "application/json")
+	adminResp := httptest.NewRecorder()
+	r.ServeHTTP(adminResp, adminReq)
+	if adminResp.Code == http.StatusTooManyRequests {
+		t.Fatalf("expected admin write route not to be rate limited")
+	}
+}
+
 var _ middleware.Auth = (*fakeAuthMiddleware)(nil)
+var _ middleware.RateLimit = (*fakeRateLimitMiddleware)(nil)
 
 func newTestApp(auth middleware.Auth) *di.App {
 	return newTestAppWithMode(auth, config.ServerModeDevelopment)
@@ -385,6 +545,7 @@ func newTestAppWithMode(auth middleware.Auth, mode string) *di.App {
 			Server: config.ServerConfig{Mode: mode},
 		},
 		Middleware:             auth,
+		RateLimit:              nil,
 		RequestBodyLimit:       middleware.NewRequestBodyLimit(nil),
 		AuthHandler:            handler.NewAuthHandler(nil, cookiepkg.NewAuthCookie(nil)),
 		CaptchaHandler:         handler.NewCaptchaHandler(nil),

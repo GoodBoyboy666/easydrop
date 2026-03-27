@@ -78,16 +78,30 @@ func BuildEngine(app *di.App) *gin.Engine {
 	}
 	ordinaryLimit := passthroughMiddleware()
 	uploadLimit := passthroughMiddleware()
+	authWriteLimit := passthroughMiddleware()
+	initWriteLimit := passthroughMiddleware()
+	profileWriteLimit := passthroughMiddleware()
+	userSecurityWriteLimit := passthroughMiddleware()
+	commentWriteLimit := passthroughMiddleware()
+	attachmentWriteLimit := passthroughMiddleware()
 	if app.RequestBodyLimit != nil {
 		ordinaryLimit = app.RequestBodyLimit.Ordinary
 		uploadLimit = app.RequestBodyLimit.Upload
+	}
+	if app.RateLimit != nil {
+		authWriteLimit = app.RateLimit.Cooldown(middleware.RuleNameAuthWrite)
+		initWriteLimit = app.RateLimit.Cooldown(middleware.RuleNameInitWrite)
+		profileWriteLimit = app.RateLimit.Window(middleware.RuleNameProfileWrite)
+		userSecurityWriteLimit = app.RateLimit.Cooldown(middleware.RuleNameUserSecurityWrite)
+		commentWriteLimit = app.RateLimit.Window(middleware.RuleNameCommentWrite)
+		attachmentWriteLimit = app.RateLimit.Window(middleware.RuleNameAttachmentWrite)
 	}
 
 	v1 := r.Group("/api/v1")
 	v1.Use(optionalLogin)
 	{
 		authGroup := v1.Group("/auth")
-		authGroup.Use(ordinaryLimit)
+		authGroup.Use(ordinaryLimit, authWriteLimit)
 		{
 			authGroup.POST("/register", authHandler.Register)
 			authGroup.POST("/login", authHandler.Login)
@@ -104,7 +118,7 @@ func BuildEngine(app *di.App) *gin.Engine {
 		initGroup.Use(ordinaryLimit)
 		{
 			initGroup.GET("/status", initHandler.Status)
-			initGroup.POST("", initHandler.Initialize)
+			initGroup.POST("", initWriteLimit, initHandler.Initialize)
 		}
 
 		loginGroup := v1.Group("")
@@ -114,29 +128,29 @@ func BuildEngine(app *di.App) *gin.Engine {
 			usersMe.Use(ordinaryLimit)
 			{
 				usersMe.GET("", userHandler.GetProfile)
-				usersMe.PATCH("/profile", userHandler.UpdateProfile)
-				usersMe.PATCH("/password", userHandler.ChangePassword)
-				usersMe.POST("/email-change", userHandler.RequestEmailChange)
-				usersMe.DELETE("/avatar", userHandler.DeleteAvatar)
+				usersMe.PATCH("/profile", profileWriteLimit, userHandler.UpdateProfile)
+				usersMe.PATCH("/password", userSecurityWriteLimit, userHandler.ChangePassword)
+				usersMe.POST("/email-change", userSecurityWriteLimit, userHandler.RequestEmailChange)
+				usersMe.DELETE("/avatar", profileWriteLimit, userHandler.DeleteAvatar)
 
 				comments := usersMe.Group("/comments")
 				{
 					comments.GET("", commentHandler.List)
 					comments.GET("/:id", commentHandler.Get)
-					comments.PATCH("/:id", commentHandler.Update)
-					comments.DELETE("/:id", commentHandler.Delete)
+					comments.PATCH("/:id", commentWriteLimit, commentHandler.Update)
+					comments.DELETE("/:id", commentWriteLimit, commentHandler.Delete)
 				}
 			}
 			usersMeUpload := loginGroup.Group("/users/me")
 			usersMeUpload.Use(uploadLimit)
 			{
-				usersMeUpload.POST("/avatar", userHandler.UploadAvatar)
+				usersMeUpload.POST("/avatar", profileWriteLimit, userHandler.UploadAvatar)
 			}
 
 			posts := loginGroup.Group("/posts")
 			posts.Use(ordinaryLimit)
 			{
-				posts.POST("/:id/comments", commentHandler.Create)
+				posts.POST("/:id/comments", commentWriteLimit, commentHandler.Create)
 			}
 
 			attachments := loginGroup.Group("/attachments")
@@ -144,12 +158,12 @@ func BuildEngine(app *di.App) *gin.Engine {
 			{
 				attachments.GET("", attachmentHandler.List)
 				attachments.GET("/:id", attachmentHandler.Get)
-				attachments.DELETE("/:id", attachmentHandler.Delete)
+				attachments.DELETE("/:id", attachmentWriteLimit, attachmentHandler.Delete)
 			}
 			attachmentUploads := loginGroup.Group("/attachments")
 			attachmentUploads.Use(uploadLimit)
 			{
-				attachmentUploads.POST("", attachmentHandler.Upload)
+				attachmentUploads.POST("", attachmentWriteLimit, attachmentHandler.Upload)
 			}
 
 		}

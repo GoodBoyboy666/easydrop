@@ -16,6 +16,7 @@ import (
 	"easydrop/internal/pkg/database"
 	"easydrop/internal/pkg/email"
 	"easydrop/internal/pkg/jwt"
+	"easydrop/internal/pkg/ratelimit"
 	"easydrop/internal/pkg/redis"
 	"easydrop/internal/pkg/storage"
 	"easydrop/internal/pkg/token"
@@ -45,12 +46,18 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	cookieConfig := config.ProvideAuthCookieConfig(staticConfig)
 	authCookie := cookie.NewAuthCookie(cookieConfig)
 	auth := middleware.NewAuth(manager, userRepo, authCookie)
-	settingRepo := repo.NewSettingRepo(db)
+	ratelimitConfig := config.ProvideRateLimitConfig(staticConfig)
 	redisConfig := config.ProvideRedisConfig(staticConfig)
 	client, err := redis.NewOptionalClient(redisConfig)
 	if err != nil {
 		return nil, err
 	}
+	limiter, err := ratelimit.NewLimiter(ratelimitConfig, client)
+	if err != nil {
+		return nil, err
+	}
+	rateLimit := middleware.NewRateLimit(ratelimitConfig, limiter)
+	settingRepo := repo.NewSettingRepo(db)
 	cacheCache, err := cache.NewCache(client)
 	if err != nil {
 		return nil, err
@@ -108,6 +115,6 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	settingAdminHandler := handler.NewSettingAdminHandler(settingService)
 	tagService := service.NewTagService(tagRepo)
 	tagHandler := handler.NewTagHandler(tagService)
-	app := NewApp(staticConfig, auth, requestBodyLimit, authHandler, captchaHandler, initHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, postAdminHandler, postHandler, settingAdminHandler, tagHandler)
+	app := NewApp(staticConfig, auth, rateLimit, requestBodyLimit, authHandler, captchaHandler, initHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, postAdminHandler, postHandler, settingAdminHandler, tagHandler)
 	return app, nil
 }

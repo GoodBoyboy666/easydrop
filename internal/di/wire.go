@@ -13,6 +13,7 @@ import (
 	"easydrop/internal/pkg/database"
 	"easydrop/internal/pkg/email"
 	"easydrop/internal/pkg/jwt"
+	"easydrop/internal/pkg/ratelimit"
 	"easydrop/internal/pkg/redis"
 	"easydrop/internal/pkg/storage"
 	"easydrop/internal/pkg/token"
@@ -28,6 +29,7 @@ func Initialize(configDir string, strict bool) (*App, error) {
 		config.StaticProviderSet,
 		database.NewDB,
 		redis.NewOptionalClient,
+		ratelimit.NewLimiter,
 		cache.NewCache,
 		email.NewClient,
 		jwt.NewManager,
@@ -37,6 +39,7 @@ func Initialize(configDir string, strict bool) (*App, error) {
 		repo.RepositorySet,
 		cookie.NewAuthCookie,
 		middleware.NewAuth,
+		middleware.NewRateLimit,
 		middleware.NewRequestBodyLimit,
 		service.ServiceSet,
 		handler.HandlerSet,

@@ -56,6 +56,32 @@ redis:
   # min_idle_conns: 2
   # max_retries: 3
 
+rate_limit:
+  enabled: false
+  key_prefix: "ratelimit"
+  rules:
+    # 注册、登录、退出等认证动作
+    auth_write:
+      interval: 2s
+    # 首次初始化动作，防止反复提交
+    init_write:
+      interval: 10s
+    # 个人资料、头像相关操作
+    profile_write:
+      interval: 1m
+      limit: 10
+    # 改密码、改邮箱等安全敏感操作
+    user_security_write:
+      interval: 30s
+    # 评论发布、编辑、删除
+    comment_write:
+      interval: 30s
+      limit: 5
+    # 普通用户附件上传、删除
+    attachment_write:
+      interval: 1m
+      limit: 20
+
 email:
   enable: false
   # host: "smtp.example.com"

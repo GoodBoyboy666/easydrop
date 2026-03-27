@@ -10,6 +10,7 @@ import (
 type App struct {
 	Config                 *config.StaticConfig
 	Middleware             middleware.Auth
+	RateLimit              middleware.RateLimit
 	RequestBodyLimit       middleware.RequestBodyLimit
 	AuthHandler            *handler.AuthHandler
 	CaptchaHandler         *handler.CaptchaHandler
@@ -30,6 +31,7 @@ type App struct {
 func NewApp(
 	cfg *config.StaticConfig,
 	authMiddleware middleware.Auth,
+	rateLimit middleware.RateLimit,
 	requestBodyLimit middleware.RequestBodyLimit,
 	authHandler *handler.AuthHandler,
 	captchaHandler *handler.CaptchaHandler,
@@ -49,6 +51,7 @@ func NewApp(
 	return &App{
 		Config:                 cfg,
 		Middleware:             authMiddleware,
+		RateLimit:              rateLimit,
 		RequestBodyLimit:       requestBodyLimit,
 		AuthHandler:            authHandler,
 		CaptchaHandler:         captchaHandler,
