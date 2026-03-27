@@ -39,6 +39,7 @@ func Initialize(configDir string, strict bool) (*App, error) {
 		repo.RepositorySet,
 		cookie.NewAuthCookie,
 		middleware.NewAuth,
+		middleware.NewSecurityHeaders,
 		middleware.NewRateLimit,
 		middleware.NewRequestBodyLimit,
 		service.ServiceSet,

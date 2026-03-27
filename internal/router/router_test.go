@@ -348,6 +348,7 @@ func TestBuildEngineServesLocalStorageFilesWithAPIURLPrefix(t *testing.T) {
 	if body := w.Body.String(); body != "hello attachment" {
 		t.Fatalf("expected file content, got %q", body)
 	}
+	assertSecurityHeaders(t, w)
 
 	apiRecorder := httptest.NewRecorder()
 	apiReq := httptest.NewRequest(http.MethodGet, "/api/v1/posts", nil)
@@ -355,6 +356,7 @@ func TestBuildEngineServesLocalStorageFilesWithAPIURLPrefix(t *testing.T) {
 	if apiRecorder.Code == http.StatusNotFound {
 		t.Fatalf("expected /api/v1 routes to remain reachable, got 404")
 	}
+	assertSecurityHeaders(t, apiRecorder)
 }
 
 func TestBuildEngineLimitsNormalRequestBodyToTwoMegabytes(t *testing.T) {
@@ -532,6 +534,21 @@ func TestBuildEngineAppliesBusinessRateLimitRules(t *testing.T) {
 	}
 }
 
+func TestBuildEngineAppliesSecurityHeadersToSwagger(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	r := BuildEngine(newTestApp(fakeAuthMiddleware{}))
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/swagger/index.html", nil)
+
+	r.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200 for swagger UI, got %d", recorder.Code)
+	}
+	assertSecurityHeaders(t, recorder)
+}
+
 var _ middleware.Auth = (*fakeAuthMiddleware)(nil)
 var _ middleware.RateLimit = (*fakeRateLimitMiddleware)(nil)
 
@@ -545,6 +562,7 @@ func newTestAppWithMode(auth middleware.Auth, mode string) *di.App {
 			Server: config.ServerConfig{Mode: mode},
 		},
 		Middleware:             auth,
+		SecurityHeaders:        middleware.NewSecurityHeaders(),
 		RateLimit:              nil,
 		RequestBodyLimit:       middleware.NewRequestBodyLimit(nil),
 		AuthHandler:            handler.NewAuthHandler(nil, cookiepkg.NewAuthCookie(nil)),
@@ -560,5 +578,25 @@ func newTestAppWithMode(auth middleware.Auth, mode string) *di.App {
 		PostHandler:            handler.NewPostHandler(nil),
 		SettingAdminHandler:    handler.NewSettingAdminHandler(nil),
 		TagHandler:             handler.NewTagHandler(nil),
+	}
+}
+
+func assertSecurityHeaders(t *testing.T, recorder *httptest.ResponseRecorder) {
+	t.Helper()
+
+	if got := recorder.Header().Get("X-Content-Type-Options"); got != "nosniff" {
+		t.Fatalf("expected X-Content-Type-Options nosniff, got %q", got)
+	}
+	if got := recorder.Header().Get("X-Frame-Options"); got != "DENY" {
+		t.Fatalf("expected X-Frame-Options DENY, got %q", got)
+	}
+	if got := recorder.Header().Get("Referrer-Policy"); got != "strict-origin-when-cross-origin" {
+		t.Fatalf("expected Referrer-Policy strict-origin-when-cross-origin, got %q", got)
+	}
+	if got := recorder.Header().Get("Permissions-Policy"); got != "geolocation=(), microphone=(), camera=()" {
+		t.Fatalf("expected Permissions-Policy to be set, got %q", got)
+	}
+	if got := recorder.Header().Get("Strict-Transport-Security"); got != "" {
+		t.Fatalf("expected Strict-Transport-Security to be empty, got %q", got)
 	}
 }

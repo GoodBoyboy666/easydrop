@@ -10,6 +10,7 @@ import (
 type App struct {
 	Config                 *config.StaticConfig
 	Middleware             middleware.Auth
+	SecurityHeaders        middleware.SecurityHeaders
 	RateLimit              middleware.RateLimit
 	RequestBodyLimit       middleware.RequestBodyLimit
 	AuthHandler            *handler.AuthHandler
@@ -31,6 +32,7 @@ type App struct {
 func NewApp(
 	cfg *config.StaticConfig,
 	authMiddleware middleware.Auth,
+	securityHeaders middleware.SecurityHeaders,
 	rateLimit middleware.RateLimit,
 	requestBodyLimit middleware.RequestBodyLimit,
 	authHandler *handler.AuthHandler,
@@ -51,6 +53,7 @@ func NewApp(
 	return &App{
 		Config:                 cfg,
 		Middleware:             authMiddleware,
+		SecurityHeaders:        securityHeaders,
 		RateLimit:              rateLimit,
 		RequestBodyLimit:       requestBodyLimit,
 		AuthHandler:            authHandler,

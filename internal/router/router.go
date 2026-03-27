@@ -45,7 +45,11 @@ func BuildEngine(app *di.App) *gin.Engine {
 			}
 		}
 	}
-	r.Use(gin.Recovery())
+	securityHeaders := passthroughMiddleware()
+	if app != nil && app.SecurityHeaders != nil {
+		securityHeaders = app.SecurityHeaders.Apply
+	}
+	r.Use(gin.Recovery(), securityHeaders)
 	r.GET("/api/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	if app == nil {

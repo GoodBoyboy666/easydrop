@@ -46,6 +46,7 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	cookieConfig := config.ProvideAuthCookieConfig(staticConfig)
 	authCookie := cookie.NewAuthCookie(cookieConfig)
 	auth := middleware.NewAuth(manager, userRepo, authCookie)
+	securityHeaders := middleware.NewSecurityHeaders()
 	ratelimitConfig := config.ProvideRateLimitConfig(staticConfig)
 	redisConfig := config.ProvideRedisConfig(staticConfig)
 	client, err := redis.NewOptionalClient(redisConfig)
@@ -115,6 +116,6 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	settingAdminHandler := handler.NewSettingAdminHandler(settingService)
 	tagService := service.NewTagService(tagRepo)
 	tagHandler := handler.NewTagHandler(tagService)
-	app := NewApp(staticConfig, auth, rateLimit, requestBodyLimit, authHandler, captchaHandler, initHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, postAdminHandler, postHandler, settingAdminHandler, tagHandler)
+	app := NewApp(staticConfig, auth, securityHeaders, rateLimit, requestBodyLimit, authHandler, captchaHandler, initHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, postAdminHandler, postHandler, settingAdminHandler, tagHandler)
 	return app, nil
 }
