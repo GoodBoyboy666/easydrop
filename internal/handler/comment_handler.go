@@ -259,6 +259,7 @@ func (h *CommentHandler) List(c *gin.Context) {
 		return
 	}
 	req.UserID = userID
+	req.CanViewHidden = canViewHiddenPost(c)
 	req.Order = strings.TrimSpace(req.Order)
 
 	result, err := h.commentService.ListByUser(c.Request.Context(), req)

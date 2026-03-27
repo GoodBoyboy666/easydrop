@@ -269,6 +269,9 @@ func TestCommentHandlerListSuccess(t *testing.T) {
 			if input.PostID == nil || *input.PostID != 9 {
 				t.Fatalf("expected post id filter 9, got %#v", input.PostID)
 			}
+			if input.CanViewHidden {
+				t.Fatal("expected normal user list request to disallow hidden posts")
+			}
 			if input.Limit != 10 || input.Offset != 20 || input.Order != "created_at_asc" {
 				t.Fatalf("unexpected list input: %+v", input)
 			}
@@ -278,6 +281,34 @@ func TestCommentHandlerListSuccess(t *testing.T) {
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/users/me/comments?post_id=9&limit=10&offset=20&order=created_at_asc")
 	c.Set(middleware.ContextUserIDKey, uint(101))
+
+	h.List(c)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+	if !called {
+		t.Fatal("expected ListByUser to be called")
+	}
+}
+
+func TestCommentHandlerListAdminCanViewHiddenPost(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	called := false
+	h := NewCommentHandler(&mockCommentServiceForHandler{
+		listByUserFn: func(_ context.Context, input dto.CommentUserListInput) (*dto.CommentListResult, error) {
+			called = true
+			if !input.CanViewHidden {
+				t.Fatal("expected admin list request to allow hidden posts")
+			}
+			return &dto.CommentListResult{Items: []dto.CommentDTO{}, Total: 0}, nil
+		},
+	})
+
+	c, w := newTestContext(http.MethodGet, "/api/v1/users/me/comments?post_id=9")
+	c.Set(middleware.ContextUserIDKey, uint(101))
+	c.Set(middleware.ContextUserAdminKey, true)
 
 	h.List(c)
 

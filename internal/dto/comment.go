@@ -47,11 +47,12 @@ type CommentPublicListInput struct {
 }
 
 type CommentUserListInput struct {
-	UserID uint   `json:"user_id"`
-	PostID *uint  `json:"post_id" form:"post_id" binding:"omitempty,gt=0"`
-	Limit  int    `json:"limit" form:"limit"`
-	Offset int    `json:"offset" form:"offset"`
-	Order  string `json:"order" form:"order"`
+	UserID        uint   `json:"user_id"`
+	PostID        *uint  `json:"post_id" form:"post_id" binding:"omitempty,gt=0"`
+	CanViewHidden bool   `json:"-"`
+	Limit         int    `json:"limit" form:"limit"`
+	Offset        int    `json:"offset" form:"offset"`
+	Order         string `json:"order" form:"order"`
 }
 
 type CommentAdminListInput struct {

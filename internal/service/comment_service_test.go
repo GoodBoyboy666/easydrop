@@ -203,7 +203,7 @@ func TestCommentServiceDeleteRootCommentDoesNotCascade(t *testing.T) {
 			1: {ID: 1, PostID: 10, UserID: 100},
 		},
 	}
-	svc := &commentService{commentRepo: repo}
+	svc := &commentService{commentRepo: repo, visibilityPolicy: NewPostVisibilityPolicy()}
 
 	if err := svc.Delete(context.Background(), 1); err != nil {
 		t.Fatalf("Delete returned error: %v", err)
@@ -224,7 +224,7 @@ func TestCommentServiceDeleteChildComment(t *testing.T) {
 			2: {ID: 2, PostID: 10, UserID: 101, ParentID: &parentID, RootID: &parentID},
 		},
 	}
-	svc := &commentService{commentRepo: repo}
+	svc := &commentService{commentRepo: repo, visibilityPolicy: NewPostVisibilityPolicy()}
 
 	if err := svc.Delete(context.Background(), 2); err != nil {
 		t.Fatalf("Delete returned error: %v", err)
@@ -250,7 +250,7 @@ func TestCommentServiceCreateRejectsHiddenPostForNormalUser(t *testing.T) {
 			7: {ID: 7},
 		},
 	}
-	svc := &commentService{commentRepo: commentRepo, postRepo: postRepo, userRepo: userRepo}
+	svc := &commentService{commentRepo: commentRepo, postRepo: postRepo, userRepo: userRepo, visibilityPolicy: NewPostVisibilityPolicy()}
 
 	_, err := svc.Create(context.Background(), dto.CommentCreateInput{
 		PostID:  9,
@@ -288,7 +288,7 @@ func TestCommentServiceCreateAllowsHiddenPostForAdmin(t *testing.T) {
 			7: {ID: 7},
 		},
 	}
-	svc := &commentService{commentRepo: commentRepo, postRepo: postRepo, userRepo: userRepo}
+	svc := &commentService{commentRepo: commentRepo, postRepo: postRepo, userRepo: userRepo, visibilityPolicy: NewPostVisibilityPolicy()}
 
 	result, err := svc.Create(context.Background(), dto.CommentCreateInput{
 		PostID:        9,
@@ -312,7 +312,7 @@ func TestCommentServiceListByPostRejectsHiddenPostForNormalUser(t *testing.T) {
 			9: {ID: 9, Hide: true},
 		},
 	}
-	svc := &commentService{commentRepo: commentRepo, postRepo: postRepo}
+	svc := &commentService{commentRepo: commentRepo, postRepo: postRepo, visibilityPolicy: NewPostVisibilityPolicy()}
 
 	_, err := svc.ListByPost(context.Background(), dto.CommentListInput{PostID: 9})
 
@@ -331,7 +331,7 @@ func TestCommentServiceListByPostAllowsHiddenPostForAdmin(t *testing.T) {
 			9: {ID: 9, Hide: true},
 		},
 	}
-	svc := &commentService{commentRepo: commentRepo, postRepo: postRepo}
+	svc := &commentService{commentRepo: commentRepo, postRepo: postRepo, visibilityPolicy: NewPostVisibilityPolicy()}
 
 	result, err := svc.ListByPost(context.Background(), dto.CommentListInput{
 		PostID:        9,
@@ -349,9 +349,59 @@ func TestCommentServiceListByPostAllowsHiddenPostForAdmin(t *testing.T) {
 	}
 }
 
+func TestCommentServiceListByUserRejectsHiddenPostForNormalUser(t *testing.T) {
+	commentRepo := &mockCommentRepoForVisibility{}
+	postID := uint(9)
+	postRepo := &mockPostRepoForVisibility{
+		posts: map[uint]*model.Post{
+			9: {ID: 9, Hide: true},
+		},
+	}
+	svc := &commentService{commentRepo: commentRepo, postRepo: postRepo, visibilityPolicy: NewPostVisibilityPolicy()}
+
+	_, err := svc.ListByUser(context.Background(), dto.CommentUserListInput{
+		UserID: 7,
+		PostID: &postID,
+	})
+
+	if err != ErrPostNotFound {
+		t.Fatalf("expected ErrPostNotFound, got %v", err)
+	}
+	if commentRepo.listCalled {
+		t.Fatal("expected hidden post user comments to be blocked")
+	}
+}
+
+func TestCommentServiceListByUserAllowsHiddenPostForAdmin(t *testing.T) {
+	commentRepo := &mockCommentRepoForVisibility{}
+	postID := uint(9)
+	postRepo := &mockPostRepoForVisibility{
+		posts: map[uint]*model.Post{
+			9: {ID: 9, Hide: true},
+		},
+	}
+	svc := &commentService{commentRepo: commentRepo, postRepo: postRepo, visibilityPolicy: NewPostVisibilityPolicy()}
+
+	result, err := svc.ListByUser(context.Background(), dto.CommentUserListInput{
+		UserID:        7,
+		PostID:        &postID,
+		CanViewHidden: true,
+	})
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result == nil || result.Total != 1 {
+		t.Fatalf("expected one visible comment, got %+v", result)
+	}
+	if !commentRepo.listCalled {
+		t.Fatal("expected user comment list to be queried")
+	}
+}
+
 func TestCommentServiceListPublicFiltersHiddenPostsForNormalUser(t *testing.T) {
 	commentRepo := &mockCommentRepoForVisibility{}
-	svc := &commentService{commentRepo: commentRepo}
+	svc := &commentService{commentRepo: commentRepo, visibilityPolicy: NewPostVisibilityPolicy()}
 
 	result, err := svc.ListPublic(context.Background(), dto.CommentPublicListInput{})
 
@@ -371,7 +421,7 @@ func TestCommentServiceListPublicFiltersHiddenPostsForNormalUser(t *testing.T) {
 
 func TestCommentServiceListPublicAllowsHiddenPostsForAdmin(t *testing.T) {
 	commentRepo := &mockCommentRepoForVisibility{}
-	svc := &commentService{commentRepo: commentRepo}
+	svc := &commentService{commentRepo: commentRepo, visibilityPolicy: NewPostVisibilityPolicy()}
 
 	_, err := svc.ListPublic(context.Background(), dto.CommentPublicListInput{CanViewHidden: true})
 

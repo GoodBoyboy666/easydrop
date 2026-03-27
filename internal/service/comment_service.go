@@ -44,19 +44,21 @@ type CommentService interface {
 }
 
 type commentService struct {
-	commentRepo    repo.CommentRepo
-	postRepo       repo.PostRepo
-	userRepo       repo.UserRepo
-	storageManager storage.Manager
+	commentRepo      repo.CommentRepo
+	postRepo         repo.PostRepo
+	userRepo         repo.UserRepo
+	storageManager   storage.Manager
+	visibilityPolicy PostVisibilityPolicy
 }
 
 // NewCommentService 创建评论服务实例。
-func NewCommentService(commentRepo repo.CommentRepo, postRepo repo.PostRepo, userRepo repo.UserRepo, storageManager storage.Manager) CommentService {
+func NewCommentService(commentRepo repo.CommentRepo, postRepo repo.PostRepo, userRepo repo.UserRepo, storageManager storage.Manager, visibilityPolicy PostVisibilityPolicy) CommentService {
 	return &commentService{
-		commentRepo:    commentRepo,
-		postRepo:       postRepo,
-		userRepo:       userRepo,
-		storageManager: storageManager,
+		commentRepo:      commentRepo,
+		postRepo:         postRepo,
+		userRepo:         userRepo,
+		storageManager:   storageManager,
+		visibilityPolicy: visibilityPolicy,
 	}
 }
 
@@ -74,16 +76,9 @@ func (s *commentService) Create(ctx context.Context, input dto.CommentCreateInpu
 		return nil, ErrEmptyCommentContent
 	}
 
-	post, err := s.postRepo.GetByID(ctx, input.PostID)
+	post, err := s.visibilityPolicy.EnsurePostReadable(ctx, s.postRepo, input.PostID, input.CanViewHidden)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrPostNotFound
-		}
-		log.Printf("查询说说失败: %v", err)
-		return nil, ErrInternal
-	}
-	if post.Hide && !input.CanViewHidden {
-		return nil, ErrPostNotFound
+		return nil, err
 	}
 	if post.DisableComment {
 		return nil, ErrPostCommentDisabled
@@ -239,7 +234,7 @@ func (s *commentService) ListByPost(ctx context.Context, input dto.CommentListIn
 	if input.PostID == 0 {
 		return nil, ErrInvalidCommentPost
 	}
-	if err := s.ensurePostVisible(ctx, input.PostID, input.CanViewHidden); err != nil {
+	if _, err := s.visibilityPolicy.EnsurePostReadable(ctx, s.postRepo, input.PostID, input.CanViewHidden); err != nil {
 		return nil, err
 	}
 
@@ -256,7 +251,7 @@ func (s *commentService) ListByUser(ctx context.Context, input dto.CommentUserLi
 		return nil, ErrInvalidCommentPost
 	}
 	if input.PostID != nil {
-		if err := s.ensurePostExists(ctx, *input.PostID); err != nil {
+		if _, err := s.visibilityPolicy.EnsurePostReadable(ctx, s.postRepo, *input.PostID, input.CanViewHidden); err != nil {
 			return nil, err
 		}
 	}
@@ -284,7 +279,7 @@ func (s *commentService) List(ctx context.Context, input dto.CommentAdminListInp
 
 // ListPublic 查询公开评论列表。
 func (s *commentService) ListPublic(ctx context.Context, input dto.CommentPublicListInput) (*dto.CommentListResult, error) {
-	comments, total, err := s.commentRepo.ListPublic(ctx, input.CanViewHidden, repo.ListOptions{
+	comments, total, err := s.commentRepo.ListPublic(ctx, s.visibilityPolicy.IncludeHiddenPosts(input.CanViewHidden), repo.ListOptions{
 		Limit:  normalizeServiceListLimit(input.Limit),
 		Offset: normalizeServiceListOffset(input.Offset),
 		Order:  normalizeCommentListOrder(input.Order),
@@ -342,22 +337,6 @@ func (s *commentService) ensurePostExists(ctx context.Context, postID uint) erro
 		}
 		log.Printf("查询说说失败: %v", err)
 		return ErrInternal
-	}
-	return nil
-}
-
-// ensurePostVisible 确保评论操作绑定的说说对当前调用方可见。
-func (s *commentService) ensurePostVisible(ctx context.Context, postID uint, canViewHidden bool) error {
-	post, err := s.postRepo.GetByID(ctx, postID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return ErrPostNotFound
-		}
-		log.Printf("查询说说失败: %v", err)
-		return ErrInternal
-	}
-	if post.Hide && !canViewHidden {
-		return ErrPostNotFound
 	}
 	return nil
 }
