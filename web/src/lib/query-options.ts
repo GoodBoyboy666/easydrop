@@ -3,6 +3,7 @@ import { api, toPublicSettingsMap } from '#/lib/api'
 import type {
   AdminAttachmentListQuery,
   AdminCommentListQuery,
+  AdminOverviewResult,
   AdminPostListQuery,
   AdminSettingListQuery,
   AdminUserListQuery,
@@ -43,9 +44,7 @@ function isQueryParamValue(value: unknown): value is string | number | boolean {
   )
 }
 
-function normalizeQuery<TQuery extends object>(
-  query?: TQuery,
-) {
+function normalizeQuery<TQuery extends object>(query?: TQuery) {
   if (!query) {
     return {}
   }
@@ -53,7 +52,8 @@ function normalizeQuery<TQuery extends object>(
   return Object.fromEntries(
     Object.entries(query)
       .filter(
-        ([, value]) => value !== undefined && value !== '' && isQueryParamValue(value),
+        ([, value]) =>
+          value !== undefined && value !== '' && isQueryParamValue(value),
       )
       .sort(([left], [right]) => left.localeCompare(right)),
   )
@@ -97,12 +97,10 @@ export const queryKeys = {
   latestCommentsPrefix: () => ['latest-comments'] as const,
   latestComments: (
     query?: Record<string, string | number | boolean | undefined>,
-  ) =>
-    ['latest-comments', normalizeQuery(query)] as const,
+  ) => ['latest-comments', normalizeQuery(query)] as const,
   myCommentsPrefix: () => ['my-comments'] as const,
-  myComments: (
-    query?: Record<string, string | number | boolean | undefined>,
-  ) => ['my-comments', normalizeQuery(query)] as const,
+  myComments: (query?: Record<string, string | number | boolean | undefined>) =>
+    ['my-comments', normalizeQuery(query)] as const,
   postComments: (
     postId: number,
     query?: Record<string, string | number | boolean | undefined>,
@@ -123,6 +121,7 @@ export const queryKeys = {
   adminUsersPrefix: () => ['admin-users'] as const,
   adminUsers: (query?: AdminUserListQuery) =>
     ['admin-users', normalizeQuery(query)] as const,
+  adminOverview: () => ['admin-overview'] as const,
   adminPostsPrefix: () => ['admin-posts'] as const,
   adminPosts: (query?: AdminPostListQuery) =>
     ['admin-posts', normalizeQuery(query)] as const,
@@ -234,45 +233,42 @@ export function tagsQueryOptions(
   })
 }
 
-export function adminUsersQueryOptions(
-  query: AdminUserListQuery,
-) {
+export function adminUsersQueryOptions(query: AdminUserListQuery) {
   return queryOptions<PagedResult<UserDTO>>({
     queryKey: queryKeys.adminUsers(query),
     queryFn: () => api.getAdminUsers(query),
   })
 }
 
-export function adminPostsQueryOptions(
-  query: AdminPostListQuery,
-) {
+export function adminOverviewQueryOptions() {
+  return queryOptions<AdminOverviewResult>({
+    queryKey: queryKeys.adminOverview(),
+    queryFn: () => api.getAdminOverview(),
+  })
+}
+
+export function adminPostsQueryOptions(query: AdminPostListQuery) {
   return queryOptions<PagedResult<PostDTO>>({
     queryKey: queryKeys.adminPosts(query),
     queryFn: () => api.getAdminPosts(query),
   })
 }
 
-export function adminCommentsQueryOptions(
-  query: AdminCommentListQuery,
-) {
+export function adminCommentsQueryOptions(query: AdminCommentListQuery) {
   return queryOptions<PagedResult<CommentDTO>>({
     queryKey: queryKeys.adminComments(query),
     queryFn: () => api.getAdminComments(query),
   })
 }
 
-export function adminAttachmentsQueryOptions(
-  query: AdminAttachmentListQuery,
-) {
+export function adminAttachmentsQueryOptions(query: AdminAttachmentListQuery) {
   return queryOptions<PagedResult<AttachmentDTO>>({
     queryKey: queryKeys.adminAttachments(query),
     queryFn: () => api.getAdminAttachments(query),
   })
 }
 
-export function adminSettingsQueryOptions(
-  query: AdminSettingListQuery,
-) {
+export function adminSettingsQueryOptions(query: AdminSettingListQuery) {
   return queryOptions<PagedResult<SettingItem>>({
     queryKey: queryKeys.adminSettings(query),
     queryFn: () => api.getAdminSettings(query),

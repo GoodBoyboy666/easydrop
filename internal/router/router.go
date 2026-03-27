@@ -67,6 +67,7 @@ func BuildEngine(app *di.App) *gin.Engine {
 	attachmentAdminHandler := app.AttachmentAdminHandler
 	commentHandler := app.CommentHandler
 	commentAdminHandler := app.CommentAdminHandler
+	overviewAdminHandler := app.OverviewAdminHandler
 	postAdminHandler := app.PostAdminHandler
 	postHandler := app.PostHandler
 	settingAdminHandler := app.SettingAdminHandler
@@ -201,6 +202,12 @@ func BuildEngine(app *di.App) *gin.Engine {
 		adminGroup := v1.Group("/admin")
 		adminGroup.Use(requireAdmin)
 		{
+			overview := adminGroup.Group("/overview")
+			overview.Use(ordinaryLimit)
+			{
+				overview.GET("", overviewAdminHandler.Get)
+			}
+
 			users := adminGroup.Group("/users")
 			users.Use(ordinaryLimit)
 			{

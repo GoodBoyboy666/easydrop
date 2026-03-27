@@ -10,10 +10,9 @@ const mockUseLocation = vi.fn()
 const mockUseQuery = vi.fn()
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({
-    children,
-    ...props
-  }: AnchorHTMLAttributes<HTMLAnchorElement>) => <a {...props}>{children}</a>,
+  Link: ({ children, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a {...props}>{children}</a>
+  ),
   Outlet: () => <div data-testid="admin-outlet" />,
   useLocation: () => mockUseLocation(),
 }))
@@ -38,7 +37,17 @@ describe('AdminRoutePage', () => {
 
   beforeEach(() => {
     mockUseLocation.mockReturnValue({ pathname: '/admin' })
-    mockUseQuery.mockReturnValue({ data: { total: 0 } })
+    mockUseQuery.mockReturnValue({
+      data: {
+        recent_activity: [],
+        totals: {
+          attachments: 0,
+          comments: 0,
+          posts: 0,
+          users: 0,
+        },
+      },
+    })
   })
 
   it('shows a login prompt for anonymous users', () => {

@@ -10,6 +10,7 @@ var HandlerSet = wire.NewSet(
 	NewCommentAdminHandler,
 	NewCommentHandler,
 	NewInitHandler,
+	NewOverviewAdminHandler,
 	NewPostAdminHandler,
 	NewPostHandler,
 	NewSettingAdminHandler,

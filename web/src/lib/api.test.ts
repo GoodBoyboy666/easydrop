@@ -154,6 +154,55 @@ describe('api.getAdminUsers', () => {
   })
 })
 
+describe('api.getAdminOverview', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('requests the admin overview endpoint with bearer token', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          recent_activity: [
+            {
+              comments: 4,
+              date: '2026-03-27',
+              posts: 2,
+            },
+          ],
+          totals: {
+            attachments: 9,
+            comments: 8,
+            posts: 7,
+            users: 6,
+          },
+        }),
+        {
+          headers: {
+            'content-type': 'application/json',
+          },
+          status: 200,
+        },
+      ),
+    )
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    await api.getAdminOverview('token-overview')
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/admin/overview',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer token-overview',
+          'Content-Type': 'application/json',
+        }),
+      }),
+    )
+  })
+})
+
 describe('api.uploadAdminUserAvatar', () => {
   afterEach(() => {
     vi.unstubAllGlobals()

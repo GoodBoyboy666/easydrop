@@ -1,6 +1,7 @@
 import type {
   AdminAttachmentListQuery,
   AdminCommentListQuery,
+  AdminOverviewResult,
   AdminPostListQuery,
   AdminSettingListQuery,
   AdminUserListQuery,
@@ -80,6 +81,42 @@ function normalizeSettingPublicResult(payload: {
 }) {
   return {
     items: asArray(payload.items),
+  }
+}
+
+function normalizeAdminOverviewResult(payload: {
+  recent_activity?: Array<{
+    comments?: number | null
+    date?: string | null
+    posts?: number | null
+  }> | null
+  totals?: {
+    attachments?: number | null
+    comments?: number | null
+    posts?: number | null
+    users?: number | null
+  } | null
+}) {
+  return {
+    recent_activity: asArray(payload.recent_activity).map((item) => ({
+      comments: typeof item.comments === 'number' ? item.comments : 0,
+      date: typeof item.date === 'string' ? item.date : '',
+      posts: typeof item.posts === 'number' ? item.posts : 0,
+    })),
+    totals: {
+      attachments:
+        typeof payload.totals?.attachments === 'number'
+          ? payload.totals.attachments
+          : 0,
+      comments:
+        typeof payload.totals?.comments === 'number'
+          ? payload.totals.comments
+          : 0,
+      posts:
+        typeof payload.totals?.posts === 'number' ? payload.totals.posts : 0,
+      users:
+        typeof payload.totals?.users === 'number' ? payload.totals.users : 0,
+    },
   }
 }
 
@@ -340,6 +377,11 @@ export const api = {
       token,
     }).then(normalizePagedResult)
   },
+  getAdminOverview(token?: string | null) {
+    return request<AdminOverviewResult>('/admin/overview', {
+      token,
+    }).then(normalizeAdminOverviewResult)
+  },
   createAdminUser(input: CreateUserInput, token?: string | null) {
     return request<UserDTO>('/admin/users', {
       method: 'POST',
@@ -364,11 +406,7 @@ export const api = {
       token,
     })
   },
-  uploadAdminUserAvatar(
-    userId: number,
-    file: File,
-    token?: string | null,
-  ) {
+  uploadAdminUserAvatar(userId: number, file: File, token?: string | null) {
     const body = new FormData()
     body.set('avatar', file)
     return request<UserDTO>(`/admin/users/${userId}/avatar`, {
@@ -403,10 +441,7 @@ export const api = {
       token,
     })
   },
-  getAdminAttachments(
-    query: AdminAttachmentListQuery,
-    token?: string | null,
-  ) {
+  getAdminAttachments(query: AdminAttachmentListQuery, token?: string | null) {
     return request<PagedResult<AttachmentDTO>>('/admin/attachments', {
       query,
       token,

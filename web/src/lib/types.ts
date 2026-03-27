@@ -257,6 +257,24 @@ export interface AdminSettingListQuery {
   order?: string
 }
 
+export interface AdminOverviewTotals {
+  attachments: number
+  comments: number
+  posts: number
+  users: number
+}
+
+export interface AdminOverviewTrendItem {
+  comments: number
+  date: string
+  posts: number
+}
+
+export interface AdminOverviewResult {
+  recent_activity: AdminOverviewTrendItem[]
+  totals: AdminOverviewTotals
+}
+
 export interface AuthState {
   status: 'anonymous' | 'loading' | 'authenticated'
   user: UserDTO | null

@@ -109,6 +109,9 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	commentService := service.NewCommentService(commentRepo, postRepo, userRepo, storageManager)
 	commentHandler := handler.NewCommentHandler(commentService)
 	commentAdminHandler := handler.NewCommentAdminHandler(commentService)
+	overviewRepo := repo.NewOverviewRepo(db)
+	adminOverviewService := service.NewAdminOverviewService(overviewRepo)
+	overviewAdminHandler := handler.NewOverviewAdminHandler(adminOverviewService)
 	tagRepo := repo.NewTagRepo(db)
 	postService := service.NewPostService(postRepo, commentRepo, tagRepo, storageManager)
 	postAdminHandler := handler.NewPostAdminHandler(postService)
@@ -116,6 +119,6 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	settingAdminHandler := handler.NewSettingAdminHandler(settingService)
 	tagService := service.NewTagService(tagRepo)
 	tagHandler := handler.NewTagHandler(tagService)
-	app := NewApp(staticConfig, auth, securityHeaders, rateLimit, requestBodyLimit, authHandler, captchaHandler, initHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, postAdminHandler, postHandler, settingAdminHandler, tagHandler)
+	app := NewApp(staticConfig, auth, securityHeaders, rateLimit, requestBodyLimit, authHandler, captchaHandler, initHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, overviewAdminHandler, postAdminHandler, postHandler, settingAdminHandler, tagHandler)
 	return app, nil
 }
