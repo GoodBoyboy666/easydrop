@@ -147,3 +147,71 @@ func TestLocalStorageGetSizeMissingObject(t *testing.T) {
 		t.Fatalf("expected not-exist error, got %v", err)
 	}
 }
+
+func TestLocalStorageUploadRejectsPathTraversal(t *testing.T) {
+	basePath := filepath.Join(t.TempDir(), "uploads")
+	manager, err := NewManager(&Config{
+		Backend: BackendLocal,
+		Local: LocalConfig{
+			BasePath: basePath,
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewManager returned error: %v", err)
+	}
+
+	err = manager.Upload(context.Background(), "../escape.txt", []byte("x"), "text/plain")
+	if !errors.Is(err, ErrInvalidLocalObjectKey) {
+		t.Fatalf("expected ErrInvalidLocalObjectKey, got %v", err)
+	}
+}
+
+func TestLocalStorageUploadRejectsNULInObjectKey(t *testing.T) {
+	basePath := filepath.Join(t.TempDir(), "uploads")
+	manager, err := NewManager(&Config{
+		Backend: BackendLocal,
+		Local: LocalConfig{
+			BasePath: basePath,
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewManager returned error: %v", err)
+	}
+
+	err = manager.Upload(context.Background(), "avatar/1/a\x00b.png", []byte("x"), "image/png")
+	if !errors.Is(err, ErrInvalidLocalObjectKey) {
+		t.Fatalf("expected ErrInvalidLocalObjectKey, got %v", err)
+	}
+}
+
+func TestLocalStorageUploadRejectsSymlinkPrefix(t *testing.T) {
+	root := t.TempDir()
+	basePath := filepath.Join(root, "uploads")
+	if err := os.MkdirAll(basePath, 0o755); err != nil {
+		t.Fatalf("MkdirAll failed: %v", err)
+	}
+
+	targetDir := filepath.Join(root, "outside")
+	if err := os.MkdirAll(targetDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll failed: %v", err)
+	}
+
+	if err := os.Symlink(targetDir, filepath.Join(basePath, "link")); err != nil {
+		t.Fatalf("Symlink failed: %v", err)
+	}
+
+	manager, err := NewManager(&Config{
+		Backend: BackendLocal,
+		Local: LocalConfig{
+			BasePath: basePath,
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewManager returned error: %v", err)
+	}
+
+	err = manager.Upload(context.Background(), "link/evil.txt", []byte("x"), "text/plain")
+	if !errors.Is(err, ErrInvalidLocalObjectKey) {
+		t.Fatalf("expected ErrInvalidLocalObjectKey, got %v", err)
+	}
+}
