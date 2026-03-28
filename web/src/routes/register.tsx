@@ -4,6 +4,11 @@ import { ArrowRightIcon, UserPlusIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
+import {
+  CaptchaPanel,
+  createEmptyCaptchaInput,
+  isCaptchaComplete,
+} from '#/components/site/captcha-panel'
 import { safeRedirectPath } from '#/lib/format'
 import { captchaConfigQueryOptions } from '#/lib/query-options'
 import { useSiteSettings } from '#/lib/site-settings'
@@ -41,14 +46,13 @@ function RegisterPage() {
     password: '',
     username: '',
   })
+  const [captcha, setCaptcha] = useState(createEmptyCaptchaInput)
+  const [captchaResetSignal, setCaptchaResetSignal] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const captchaConfigQuery = useQuery(captchaConfigQueryOptions())
   const registerMutation = useMutation({
     mutationFn: api.register,
   })
-  const captchaNotice = captchaConfigQuery.data?.enabled
-    ? `当前站点启用了 ${captchaConfigQuery.data.provider || '验证码'}，骨架版暂未接入可视化验证控件。`
-    : null
 
   useEffect(() => {
     if (auth.status === 'authenticated') {
@@ -75,8 +79,14 @@ function RegisterPage() {
       return
     }
 
+    if (!isCaptchaComplete(captchaConfigQuery.data, captcha)) {
+      setError('请先完成验证码')
+      return
+    }
+
     try {
       await registerMutation.mutateAsync({
+        captcha: captchaConfigQuery.data?.enabled ? captcha : undefined,
         email: form.email.trim(),
         nickname: form.nickname.trim(),
         password: form.password,
@@ -85,6 +95,10 @@ function RegisterPage() {
       await auth.refreshUser()
       window.location.assign(safeRedirectPath(redirect))
     } catch (submitError) {
+      if (captchaConfigQuery.data?.enabled) {
+        setCaptcha(createEmptyCaptchaInput())
+        setCaptchaResetSignal((current) => current + 1)
+      }
       setError(submitError instanceof Error ? submitError.message : '注册失败')
     }
   }
@@ -171,12 +185,18 @@ function RegisterPage() {
               </Field>
             </FieldGroup>
 
-            {captchaNotice ? (
-              <Alert className="mt-4">
-                <AlertTitle>验证码提示</AlertTitle>
-                <AlertDescription>{captchaNotice}</AlertDescription>
-              </Alert>
-            ) : null}
+            <CaptchaPanel
+              config={captchaConfigQuery.data}
+              errorMessage={
+                captchaConfigQuery.error instanceof Error
+                  ? captchaConfigQuery.error.message
+                  : null
+              }
+              isLoading={captchaConfigQuery.isLoading}
+              onChange={setCaptcha}
+              resetSignal={captchaResetSignal}
+              value={captcha}
+            />
 
             {!allowRegister ? (
               <Alert className="mt-4">

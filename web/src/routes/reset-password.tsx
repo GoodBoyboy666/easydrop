@@ -3,6 +3,11 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { CheckCircle2Icon, KeyRoundIcon } from 'lucide-react'
 import { useState } from 'react'
 import { api } from '#/lib/api'
+import {
+  CaptchaPanel,
+  createEmptyCaptchaInput,
+  isCaptchaComplete,
+} from '#/components/site/captcha-panel'
 import { captchaConfigQueryOptions } from '#/lib/query-options'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import { Button } from '#/components/ui/button'
@@ -30,6 +35,8 @@ export const Route = createFileRoute('/reset-password')({
 
 function ResetPasswordPage() {
   const { token } = Route.useSearch()
+  const [captcha, setCaptcha] = useState(createEmptyCaptchaInput)
+  const [captchaResetSignal, setCaptchaResetSignal] = useState(0)
   const [email, setEmail] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -45,10 +52,6 @@ function ResetPasswordPage() {
     mutationFn: api.confirmPasswordReset,
   })
 
-  const captchaNotice = captchaConfigQuery.data?.enabled
-    ? `当前站点启用了 ${captchaConfigQuery.data.provider || '验证码'}，骨架版暂未接入可视化验证控件。`
-    : null
-
   async function handleRequestSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setRequestError(null)
@@ -59,14 +62,28 @@ function ResetPasswordPage() {
       return
     }
 
+    if (!isCaptchaComplete(captchaConfigQuery.data, captcha)) {
+      setRequestError('请先完成验证码')
+      return
+    }
+
     try {
       await requestMutation.mutateAsync({
+        captcha: captchaConfigQuery.data?.enabled ? captcha : undefined,
         email: email.trim(),
       })
       setRequestSuccess(
         '如果该邮箱存在可重置账号，系统会向该邮箱发送重置密码邮件。',
       )
+      if (captchaConfigQuery.data?.enabled) {
+        setCaptcha(createEmptyCaptchaInput())
+        setCaptchaResetSignal((current) => current + 1)
+      }
     } catch (submitError) {
+      if (captchaConfigQuery.data?.enabled) {
+        setCaptcha(createEmptyCaptchaInput())
+        setCaptchaResetSignal((current) => current + 1)
+      }
       setRequestError(
         submitError instanceof Error ? submitError.message : '发送重置邮件失败',
       )
@@ -121,11 +138,19 @@ function ResetPasswordPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {captchaNotice ? (
-            <Alert>
-              <AlertTitle>验证码提示</AlertTitle>
-              <AlertDescription>{captchaNotice}</AlertDescription>
-            </Alert>
+          {!token ? (
+            <CaptchaPanel
+              config={captchaConfigQuery.data}
+              errorMessage={
+                captchaConfigQuery.error instanceof Error
+                  ? captchaConfigQuery.error.message
+                  : null
+              }
+              isLoading={captchaConfigQuery.isLoading}
+              onChange={setCaptcha}
+              resetSignal={captchaResetSignal}
+              value={captcha}
+            />
           ) : null}
 
           {token ? (

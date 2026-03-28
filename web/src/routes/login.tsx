@@ -4,6 +4,11 @@ import { ArrowRightIcon, LogInIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { api } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
+import {
+  CaptchaPanel,
+  createEmptyCaptchaInput,
+  isCaptchaComplete,
+} from '#/components/site/captcha-panel'
 import { safeRedirectPath } from '#/lib/format'
 import { captchaConfigQueryOptions } from '#/lib/query-options'
 import { useSiteSettings } from '#/lib/site-settings'
@@ -36,15 +41,14 @@ function LoginPage() {
   const { allowRegister } = useSiteSettings()
   const { redirect } = Route.useSearch()
   const [account, setAccount] = useState('')
+  const [captcha, setCaptcha] = useState(createEmptyCaptchaInput)
+  const [captchaResetSignal, setCaptchaResetSignal] = useState(0)
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const captchaConfigQuery = useQuery(captchaConfigQueryOptions())
   const loginMutation = useMutation({
     mutationFn: api.login,
   })
-  const captchaNotice = captchaConfigQuery.data?.enabled
-    ? `当前站点启用了 ${captchaConfigQuery.data.provider || '验证码'}，骨架版暂未接入可视化验证控件。`
-    : null
 
   useEffect(() => {
     if (auth.status === 'authenticated') {
@@ -61,14 +65,24 @@ function LoginPage() {
       return
     }
 
+    if (!isCaptchaComplete(captchaConfigQuery.data, captcha)) {
+      setError('请先完成验证码')
+      return
+    }
+
     try {
       await loginMutation.mutateAsync({
         account: account.trim(),
+        captcha: captchaConfigQuery.data?.enabled ? captcha : undefined,
         password,
       })
       await auth.refreshUser()
       window.location.assign(safeRedirectPath(redirect))
     } catch (submitError) {
+      if (captchaConfigQuery.data?.enabled) {
+        setCaptcha(createEmptyCaptchaInput())
+        setCaptchaResetSignal((current) => current + 1)
+      }
       setError(submitError instanceof Error ? submitError.message : '登录失败')
     }
   }
@@ -108,12 +122,18 @@ function LoginPage() {
               </Field>
             </FieldGroup>
 
-            {captchaNotice ? (
-              <Alert className="mt-4">
-                <AlertTitle>验证码提示</AlertTitle>
-                <AlertDescription>{captchaNotice}</AlertDescription>
-              </Alert>
-            ) : null}
+            <CaptchaPanel
+              config={captchaConfigQuery.data}
+              errorMessage={
+                captchaConfigQuery.error instanceof Error
+                  ? captchaConfigQuery.error.message
+                  : null
+              }
+              isLoading={captchaConfigQuery.isLoading}
+              onChange={setCaptcha}
+              resetSignal={captchaResetSignal}
+              value={captcha}
+            />
 
             <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <Button disabled={loginMutation.isPending} type="submit">

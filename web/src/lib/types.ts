@@ -117,10 +117,19 @@ export interface CaptchaConfigResult {
   site_key?: string
 }
 
+export interface CaptchaInput {
+  provider?: string
+  token?: string
+  lot_number?: string
+  captcha_output?: string
+  pass_token?: string
+  gen_time?: string
+}
+
 export interface LoginInput {
   account: string
   password: string
-  captcha?: Record<string, string>
+  captcha?: CaptchaInput
 }
 
 export interface RegisterInput {
@@ -128,12 +137,12 @@ export interface RegisterInput {
   nickname: string
   password: string
   username: string
-  captcha?: Record<string, string>
+  captcha?: CaptchaInput
 }
 
 export interface PasswordResetRequestInput {
   email: string
-  captcha?: Record<string, string>
+  captcha?: CaptchaInput
 }
 
 export interface PasswordResetConfirmInput {
