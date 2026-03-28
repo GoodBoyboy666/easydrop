@@ -1,5 +1,34 @@
 basePath: /api/v1
 definitions:
+  dto.AdminOverviewResult:
+    properties:
+      recent_activity:
+        items:
+          $ref: '#/definitions/dto.AdminOverviewTrendItem'
+        type: array
+      totals:
+        $ref: '#/definitions/dto.AdminOverviewTotals'
+    type: object
+  dto.AdminOverviewTotals:
+    properties:
+      attachments:
+        type: integer
+      comments:
+        type: integer
+      posts:
+        type: integer
+      users:
+        type: integer
+    type: object
+  dto.AdminOverviewTrendItem:
+    properties:
+      comments:
+        type: integer
+      date:
+        type: string
+      posts:
+        type: integer
+    type: object
   dto.AttachmentBatchDeleteFailedItem:
     properties:
       id:
@@ -135,6 +164,11 @@ definitions:
       content:
         type: string
     type: object
+  dto.EmailVerifyConfirmInput:
+    properties:
+      token:
+        type: string
+    type: object
   dto.ErrorResponse:
     properties:
       message:
@@ -171,6 +205,25 @@ definitions:
       captcha:
         $ref: '#/definitions/dto.CaptchaInput'
       password:
+        type: string
+    type: object
+  dto.MessageResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  dto.PasswordResetConfirmInput:
+    properties:
+      new_password:
+        type: string
+      token:
+        type: string
+    type: object
+  dto.PasswordResetRequestInput:
+    properties:
+      captcha:
+        $ref: '#/definitions/dto.CaptchaInput'
+      email:
         type: string
     type: object
   dto.PostAuthorDTO:
@@ -327,6 +380,11 @@ definitions:
       total:
         type: integer
     type: object
+  dto.UserChangeEmailConfirmInput:
+    properties:
+      token:
+        type: string
+    type: object
   dto.UserChangeEmailInput:
     properties:
       current_password:
@@ -421,6 +479,8 @@ definitions:
         type: integer
       storage_quota:
         type: integer
+      use_default_storage_quota:
+        type: boolean
       username:
         type: string
     type: object
@@ -757,6 +817,33 @@ paths:
       summary: 管理端更新评论
       tags:
       - comment-admin
+  /admin/overview:
+    get:
+      description: 返回后台概览页所需的汇总指标与最近 7 天趋势
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.AdminOverviewResult'
+        "401":
+          description: 未登录或登录失效
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: 无管理员权限
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 管理端查询概览聚合
+      tags:
+      - overview-admin
   /admin/posts:
     get:
       description: 分页查询说说列表，支持按用户和标签过滤
@@ -1505,6 +1592,44 @@ paths:
       summary: 查询附件详情
       tags:
       - attachment
+  /auth/email-change/confirm:
+    post:
+      consumes:
+      - application/json
+      description: 使用邮件中的 token 完成邮箱修改
+      parameters:
+      - description: 邮箱修改确认参数
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UserChangeEmailConfirmInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserDTO'
+        "400":
+          description: 参数校验失败或 token 无效
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: 用户不存在
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "409":
+          description: 邮箱冲突
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: 确认邮箱修改
+      tags:
+      - auth
   /auth/login:
     post:
       consumes:
@@ -1543,6 +1668,85 @@ paths:
       summary: 用户登录
       tags:
       - auth
+  /auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: 清除认证 Cookie
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.MessageResponse'
+      summary: 用户登出
+      tags:
+      - auth
+  /auth/password-reset/confirm:
+    post:
+      consumes:
+      - application/json
+      description: 使用邮件中的 token 完成密码重置
+      parameters:
+      - description: 重置密码确认参数
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.PasswordResetConfirmInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.MessageResponse'
+        "400":
+          description: 参数校验失败或 token 无效
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: 用户不存在
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: 重置密码
+      tags:
+      - auth
+  /auth/password-reset/request:
+    post:
+      consumes:
+      - application/json
+      description: 按邮箱发起密码重置并发送确认邮件
+      parameters:
+      - description: 重置密码请求参数
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.PasswordResetRequestInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.MessageResponse'
+        "400":
+          description: 参数校验失败或验证码缺失
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: 忘记密码
+      tags:
+      - auth
   /auth/register:
     post:
       consumes:
@@ -1579,6 +1783,40 @@ paths:
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
       summary: 用户注册
+      tags:
+      - auth
+  /auth/verify-email/confirm:
+    post:
+      consumes:
+      - application/json
+      description: 使用邮件中的 token 完成邮箱验证
+      parameters:
+      - description: 邮箱验证确认参数
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.EmailVerifyConfirmInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.MessageResponse'
+        "400":
+          description: 参数校验失败或 token 无效
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: 用户不存在
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: 验证注册邮箱
       tags:
       - auth
   /captcha/config:

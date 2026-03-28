@@ -522,6 +522,49 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/overview": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "返回后台概览页所需的汇总指标与最近 7 天趋势",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "overview-admin"
+                ],
+                "summary": "管理端查询概览聚合",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.AdminOverviewResult"
+                        }
+                    },
+                    "401": {
+                        "description": "未登录或登录失效",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "无管理员权限",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/posts": {
             "get": {
                 "security": [
@@ -1685,6 +1728,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/email-change/confirm": {
+            "post": {
+                "description": "使用邮件中的 token 完成邮箱修改",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "确认邮箱修改",
+                "parameters": [
+                    {
+                        "description": "邮箱修改确认参数",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UserChangeEmailConfirmInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.UserDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "参数校验失败或 token 无效",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "用户不存在",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "邮箱冲突",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "post": {
                 "description": "使用用户名或邮箱登录并返回访问令牌",
@@ -1743,6 +1844,127 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/logout": {
+            "post": {
+                "description": "清除认证 Cookie",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "用户登出",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.MessageResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/password-reset/confirm": {
+            "post": {
+                "description": "使用邮件中的 token 完成密码重置",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "重置密码",
+                "parameters": [
+                    {
+                        "description": "重置密码确认参数",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.PasswordResetConfirmInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "参数校验失败或 token 无效",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "用户不存在",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/password-reset/request": {
+            "post": {
+                "description": "按邮箱发起密码重置并发送确认邮件",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "忘记密码",
+                "parameters": [
+                    {
+                        "description": "重置密码请求参数",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.PasswordResetRequestInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "参数校验失败或验证码缺失",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/register": {
             "post": {
                 "description": "注册新用户并返回登录态信息",
@@ -1788,6 +2010,58 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "用户名或邮箱已存在",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "服务内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/verify-email/confirm": {
+            "post": {
+                "description": "使用邮件中的 token 完成邮箱验证",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "验证注册邮箱",
+                "parameters": [
+                    {
+                        "description": "邮箱验证确认参数",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.EmailVerifyConfirmInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "参数校验失败或 token 无效",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "用户不存在",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -2860,6 +3134,51 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "dto.AdminOverviewResult": {
+            "type": "object",
+            "properties": {
+                "recent_activity": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.AdminOverviewTrendItem"
+                    }
+                },
+                "totals": {
+                    "$ref": "#/definitions/dto.AdminOverviewTotals"
+                }
+            }
+        },
+        "dto.AdminOverviewTotals": {
+            "type": "object",
+            "properties": {
+                "attachments": {
+                    "type": "integer"
+                },
+                "comments": {
+                    "type": "integer"
+                },
+                "posts": {
+                    "type": "integer"
+                },
+                "users": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.AdminOverviewTrendItem": {
+            "type": "object",
+            "properties": {
+                "comments": {
+                    "type": "integer"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "posts": {
+                    "type": "integer"
+                }
+            }
+        },
         "dto.AttachmentBatchDeleteFailedItem": {
             "type": "object",
             "properties": {
@@ -3069,6 +3388,14 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.EmailVerifyConfirmInput": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -3124,6 +3451,36 @@ const docTemplate = `{
                     "$ref": "#/definitions/dto.CaptchaInput"
                 },
                 "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.MessageResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.PasswordResetConfirmInput": {
+            "type": "object",
+            "properties": {
+                "new_password": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.PasswordResetRequestInput": {
+            "type": "object",
+            "properties": {
+                "captcha": {
+                    "$ref": "#/definitions/dto.CaptchaInput"
+                },
+                "email": {
                     "type": "string"
                 }
             }
@@ -3366,6 +3723,14 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.UserChangeEmailConfirmInput": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.UserChangeEmailInput": {
             "type": "object",
             "properties": {
@@ -3509,6 +3874,9 @@ const docTemplate = `{
                 },
                 "storage_quota": {
                     "type": "integer"
+                },
+                "use_default_storage_quota": {
+                    "type": "boolean"
                 },
                 "username": {
                     "type": "string"
