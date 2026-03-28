@@ -142,7 +142,7 @@ function LoginPage() {
               </Button>
               <div className="flex flex-col items-start gap-2 sm:items-end">
                 <Button asChild size="sm" variant="ghost">
-                  <Link to="/reset-password">忘记密码？</Link>
+                  <Link to="/forgot-password">忘记密码？</Link>
                 </Button>
                 {allowRegister ? (
                   <Button asChild size="sm" variant="ghost">

@@ -15,6 +15,7 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as InitRouteImport } from './routes/init'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as ChangeEmailRouteImport } from './routes/change-email'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
@@ -54,6 +55,11 @@ const LoginRoute = LoginRouteImport.update({
 const InitRoute = InitRouteImport.update({
   id: '/init',
   path: '/init',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChangeEmailRoute = ChangeEmailRouteImport.update({
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/change-email': typeof ChangeEmailRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/init': typeof InitRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRouteWithChildren
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/change-email': typeof ChangeEmailRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/init': typeof InitRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRouteWithChildren
@@ -148,6 +156,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/change-email': typeof ChangeEmailRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/init': typeof InitRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRouteWithChildren
@@ -168,6 +177,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/change-email'
+    | '/forgot-password'
     | '/init'
     | '/login'
     | '/me'
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/change-email'
+    | '/forgot-password'
     | '/init'
     | '/login'
     | '/me'
@@ -204,6 +215,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/change-email'
+    | '/forgot-password'
     | '/init'
     | '/login'
     | '/me'
@@ -223,6 +235,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   ChangeEmailRoute: typeof ChangeEmailRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   InitRoute: typeof InitRoute
   LoginRoute: typeof LoginRoute
   MeRoute: typeof MeRouteWithChildren
@@ -274,6 +287,13 @@ declare module '@tanstack/react-router' {
       path: '/init'
       fullPath: '/init'
       preLoaderRoute: typeof InitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/change-email': {
@@ -381,6 +401,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   ChangeEmailRoute: ChangeEmailRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   InitRoute: InitRoute,
   LoginRoute: LoginRoute,
   MeRoute: MeRouteWithChildren,
