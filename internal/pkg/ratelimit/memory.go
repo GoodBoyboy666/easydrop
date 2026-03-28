@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 	"time"
+
+	"github.com/jellydator/ttlcache/v3"
 )
 
 type memoryEntry struct {
@@ -15,14 +17,16 @@ type memoryLimiter struct {
 	mu        sync.Mutex
 	keyPrefix string
 	now       func() time.Time
-	items     map[string]memoryEntry
+	items     *ttlcache.Cache[string, memoryEntry]
 }
 
 func newMemoryLimiter(cfg *Config) *memoryLimiter {
 	return &memoryLimiter{
 		keyPrefix: normalizeLimiterKeyPrefix(cfg),
 		now:       time.Now,
-		items:     make(map[string]memoryEntry),
+		items: ttlcache.New(
+			ttlcache.WithDisableTouchOnHit[string, memoryEntry](),
+		),
 	}
 }
 
@@ -52,8 +56,7 @@ func (l *memoryLimiter) Allow(_ context.Context, key string, rule Rule) (*Decisi
 }
 
 func (l *memoryLimiter) allowCooldown(storageKey string, interval time.Duration, now time.Time) *Decision {
-	entry, found := l.items[storageKey]
-	if found && entry.expiresAt.After(now) {
+	if entry, found := l.getEntry(storageKey); found && entry.expiresAt.After(now) {
 		return &Decision{
 			Allowed:    false,
 			Remaining:  0,
@@ -63,7 +66,7 @@ func (l *memoryLimiter) allowCooldown(storageKey string, interval time.Duration,
 	}
 
 	resetAt := now.Add(interval)
-	l.items[storageKey] = memoryEntry{count: 1, expiresAt: resetAt}
+	l.items.Set(storageKey, memoryEntry{count: 1, expiresAt: resetAt}, ttlcache.NoTTL)
 	return &Decision{
 		Allowed:   true,
 		Remaining: 0,
@@ -72,10 +75,10 @@ func (l *memoryLimiter) allowCooldown(storageKey string, interval time.Duration,
 }
 
 func (l *memoryLimiter) allowWindow(storageKey string, rule Rule, now time.Time) *Decision {
-	entry, found := l.items[storageKey]
+	entry, found := l.getEntry(storageKey)
 	if !found || !entry.expiresAt.After(now) {
 		resetAt := now.Add(rule.Interval)
-		l.items[storageKey] = memoryEntry{count: 1, expiresAt: resetAt}
+		l.items.Set(storageKey, memoryEntry{count: 1, expiresAt: resetAt}, ttlcache.NoTTL)
 		return &Decision{
 			Allowed:   true,
 			Remaining: maxInt(rule.Limit-1, 0),
@@ -93,12 +96,21 @@ func (l *memoryLimiter) allowWindow(storageKey string, rule Rule, now time.Time)
 	}
 
 	entry.count++
-	l.items[storageKey] = entry
+	l.items.Set(storageKey, entry, ttlcache.NoTTL)
 	return &Decision{
 		Allowed:   true,
 		Remaining: maxInt(rule.Limit-entry.count, 0),
 		ResetAt:   entry.expiresAt,
 	}
+}
+
+func (l *memoryLimiter) getEntry(storageKey string) (memoryEntry, bool) {
+	item := l.items.Get(storageKey)
+	if item == nil {
+		return memoryEntry{}, false
+	}
+
+	return item.Value(), true
 }
 
 func (l *memoryLimiter) prepareRequest(key string, rule Rule) (Rule, string, time.Time, error) {
