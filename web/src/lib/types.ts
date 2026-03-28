@@ -131,6 +131,24 @@ export interface RegisterInput {
   captcha?: Record<string, string>
 }
 
+export interface PasswordResetRequestInput {
+  email: string
+  captcha?: Record<string, string>
+}
+
+export interface PasswordResetConfirmInput {
+  token: string
+  new_password: string
+}
+
+export interface EmailVerifyConfirmInput {
+  token: string
+}
+
+export interface EmailChangeConfirmInput {
+  token: string
+}
+
 export interface UpdateMyProfileInput {
   nickname?: string
 }

@@ -9,10 +9,13 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VerifyEmailRouteImport } from './routes/verify-email'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as InitRouteImport } from './routes/init'
+import { Route as ChangeEmailRouteImport } from './routes/change-email'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PostsIdRouteImport } from './routes/posts.$id'
@@ -23,6 +26,16 @@ import { Route as AdminPostsRouteImport } from './routes/admin.posts'
 import { Route as AdminCommentsRouteImport } from './routes/admin.comments'
 import { Route as AdminAttachmentsRouteImport } from './routes/admin.attachments'
 
+const VerifyEmailRoute = VerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
@@ -41,6 +54,11 @@ const LoginRoute = LoginRouteImport.update({
 const InitRoute = InitRouteImport.update({
   id: '/init',
   path: '/init',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChangeEmailRoute = ChangeEmailRouteImport.update({
+  id: '/change-email',
+  path: '/change-email',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -92,10 +110,13 @@ const AdminAttachmentsRoute = AdminAttachmentsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/change-email': typeof ChangeEmailRoute
   '/init': typeof InitRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRouteWithChildren
   '/register': typeof RegisterRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/admin/attachments': typeof AdminAttachmentsRoute
   '/admin/comments': typeof AdminCommentsRoute
   '/admin/posts': typeof AdminPostsRoute
@@ -107,10 +128,13 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/change-email': typeof ChangeEmailRoute
   '/init': typeof InitRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRouteWithChildren
   '/register': typeof RegisterRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/admin/attachments': typeof AdminAttachmentsRoute
   '/admin/comments': typeof AdminCommentsRoute
   '/admin/posts': typeof AdminPostsRoute
@@ -123,10 +147,13 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/change-email': typeof ChangeEmailRoute
   '/init': typeof InitRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRouteWithChildren
   '/register': typeof RegisterRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/admin/attachments': typeof AdminAttachmentsRoute
   '/admin/comments': typeof AdminCommentsRoute
   '/admin/posts': typeof AdminPostsRoute
@@ -140,10 +167,13 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/change-email'
     | '/init'
     | '/login'
     | '/me'
     | '/register'
+    | '/reset-password'
+    | '/verify-email'
     | '/admin/attachments'
     | '/admin/comments'
     | '/admin/posts'
@@ -155,10 +185,13 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/change-email'
     | '/init'
     | '/login'
     | '/me'
     | '/register'
+    | '/reset-password'
+    | '/verify-email'
     | '/admin/attachments'
     | '/admin/comments'
     | '/admin/posts'
@@ -170,10 +203,13 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/change-email'
     | '/init'
     | '/login'
     | '/me'
     | '/register'
+    | '/reset-password'
+    | '/verify-email'
     | '/admin/attachments'
     | '/admin/comments'
     | '/admin/posts'
@@ -186,15 +222,32 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
+  ChangeEmailRoute: typeof ChangeEmailRoute
   InitRoute: typeof InitRoute
   LoginRoute: typeof LoginRoute
   MeRoute: typeof MeRouteWithChildren
   RegisterRoute: typeof RegisterRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
+  VerifyEmailRoute: typeof VerifyEmailRoute
   PostsIdRoute: typeof PostsIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/register': {
       id: '/register'
       path: '/register'
@@ -221,6 +274,13 @@ declare module '@tanstack/react-router' {
       path: '/init'
       fullPath: '/init'
       preLoaderRoute: typeof InitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/change-email': {
+      id: '/change-email'
+      path: '/change-email'
+      fullPath: '/change-email'
+      preLoaderRoute: typeof ChangeEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -320,10 +380,13 @@ const MeRouteWithChildren = MeRoute._addFileChildren(MeRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
+  ChangeEmailRoute: ChangeEmailRoute,
   InitRoute: InitRoute,
   LoginRoute: LoginRoute,
   MeRoute: MeRouteWithChildren,
   RegisterRoute: RegisterRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
+  VerifyEmailRoute: VerifyEmailRoute,
   PostsIdRoute: PostsIdRoute,
 }
 export const routeTree = rootRouteImport

@@ -15,10 +15,14 @@ import type {
   CreatePostInput,
   ChangeMyEmailInput,
   ChangeMyPasswordInput,
+  EmailChangeConfirmInput,
+  EmailVerifyConfirmInput,
   InitInput,
   InitStatusResult,
   LoginInput,
   PagedResult,
+  PasswordResetConfirmInput,
+  PasswordResetRequestInput,
   PostDTO,
   PublicPostListResult,
   PublicSettingsMap,
@@ -206,6 +210,30 @@ export const api = {
   },
   register(input: RegisterInput) {
     return request<AuthResult>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+  },
+  requestPasswordReset(input: PasswordResetRequestInput) {
+    return request<{ message?: string }>('/auth/password-reset/request', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+  },
+  confirmPasswordReset(input: PasswordResetConfirmInput) {
+    return request<{ message?: string }>('/auth/password-reset/confirm', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+  },
+  confirmVerifyEmail(input: EmailVerifyConfirmInput) {
+    return request<{ message?: string }>('/auth/verify-email/confirm', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+  },
+  confirmEmailChange(input: EmailChangeConfirmInput) {
+    return request<UserDTO>('/auth/email-change/confirm', {
       method: 'POST',
       body: JSON.stringify(input),
     })

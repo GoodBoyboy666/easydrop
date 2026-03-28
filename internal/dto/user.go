@@ -53,8 +53,7 @@ type UserChangeEmailInput struct {
 }
 
 type UserChangeEmailConfirmInput struct {
-	UserID            uint   `json:"-"`
-	VerificationToken string `json:"verification_token"`
+	VerificationToken string `json:"token"`
 }
 
 type UserAvatarUploadInput struct {

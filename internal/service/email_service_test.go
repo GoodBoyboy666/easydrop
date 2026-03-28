@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"html"
 	"os"
 	"path/filepath"
 	"strings"
@@ -56,7 +57,8 @@ func TestEmailServiceUsesDefaultTemplateWhenFileMissing(t *testing.T) {
 	if len(sender.to) != 1 || sender.to[0] != "u@example.com" {
 		t.Fatalf("unexpected recipients: %#v", sender.to)
 	}
-	if !strings.Contains(sender.body, "/reset-password?token=token-abc") {
+	body := html.UnescapeString(sender.body)
+	if !strings.Contains(body, "/reset-password?token=token-abc") {
 		t.Fatalf("expected reset action url in body, got: %s", sender.body)
 	}
 	if strings.Contains(sender.body, "令牌：") {
@@ -90,7 +92,8 @@ func TestEmailServiceUsesTemplateFileFromConfigDir(t *testing.T) {
 		t.Fatalf("SendPasswordResetEmail returned error: %v", err)
 	}
 
-	if !strings.Contains(sender.body, "custom /reset-password?token=abc") {
+	body := html.UnescapeString(sender.body)
+	if !strings.Contains(body, "custom /reset-password?token=abc") {
 		t.Fatalf("expected custom template content, got: %s", sender.body)
 	}
 }
@@ -131,7 +134,8 @@ func TestEmailServiceBuildsAbsoluteActionURLFromSiteURL(t *testing.T) {
 		t.Fatalf("SendVerifyEmail returned error: %v", err)
 	}
 
-	if !strings.Contains(sender.body, "https://example.com/verify-email?token=verify-1") {
+	body := html.UnescapeString(sender.body)
+	if !strings.Contains(body, "https://example.com/verify-email?token=verify-1") {
 		t.Fatalf("expected absolute action url in body, got: %s", sender.body)
 	}
 }
@@ -176,7 +180,8 @@ func TestEmailServiceChangeEmailTemplateContainsNewEmail(t *testing.T) {
 		t.Fatalf("SendChangeEmailEmail returned error: %v", err)
 	}
 
-	if !strings.Contains(sender.body, "change to new@example.com /change-email?token=abc") {
+	body := html.UnescapeString(sender.body)
+	if !strings.Contains(body, "change to new@example.com /change-email?token=abc") {
 		t.Fatalf("expected new email in template body, got: %s", sender.body)
 	}
 }

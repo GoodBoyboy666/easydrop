@@ -111,6 +111,10 @@ func BuildEngine(app *di.App) *gin.Engine {
 			authGroup.POST("/register", authHandler.Register)
 			authGroup.POST("/login", authHandler.Login)
 			authGroup.POST("/logout", authHandler.Logout)
+			authGroup.POST("/password-reset/request", authHandler.RequestPasswordReset)
+			authGroup.POST("/password-reset/confirm", authHandler.ConfirmPasswordReset)
+			authGroup.POST("/verify-email/confirm", authHandler.ConfirmVerifyEmail)
+			authGroup.POST("/email-change/confirm", authHandler.ConfirmEmailChange)
 		}
 
 		captchaGroup := v1.Group("/captcha")

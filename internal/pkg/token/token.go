@@ -50,13 +50,13 @@ type Record struct {
 
 type store interface {
 	Save(ctx context.Context, record *Record) error
-	Consume(ctx context.Context, userID uint, kind, token string, now time.Time) (*Record, error)
+	Consume(ctx context.Context, kind, token string, now time.Time) (*Record, error)
 }
 
 type Manager interface {
 	Backend() string
 	Issue(ctx context.Context, userID uint, kind string, ttl time.Duration, payload string) (string, error)
-	Consume(ctx context.Context, userID uint, kind, tokenValue string) (*Record, error)
+	Consume(ctx context.Context, kind, tokenValue string) (*Record, error)
 }
 
 type manager struct {
@@ -124,17 +124,17 @@ func (m *manager) Issue(ctx context.Context, userID uint, kind string, ttl time.
 	return tokenValue, nil
 }
 
-func (m *manager) Consume(ctx context.Context, userID uint, kind, tokenValue string) (*Record, error) {
+func (m *manager) Consume(ctx context.Context, kind, tokenValue string) (*Record, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
-	normalizedKind, normalizedToken, err := validateConsumeInput(userID, kind, tokenValue)
+	normalizedKind, normalizedToken, err := validateConsumeInput(kind, tokenValue)
 	if err != nil {
 		return nil, err
 	}
 
-	record, err := m.store.Consume(ctx, userID, normalizedKind, normalizedToken, m.now().UTC())
+	record, err := m.store.Consume(ctx, normalizedKind, normalizedToken, m.now().UTC())
 	if err != nil {
 		return nil, err
 	}
@@ -174,11 +174,7 @@ func validateIssueInput(userID uint, kind string, ttl time.Duration) (string, er
 	return normalizedKind, nil
 }
 
-func validateConsumeInput(userID uint, kind, tokenValue string) (string, string, error) {
-	if userID == 0 {
-		return "", "", ErrInvalidUserID
-	}
-
+func validateConsumeInput(kind, tokenValue string) (string, string, error) {
 	normalizedKind := normalizeKind(kind)
 	if normalizedKind == "" {
 		return "", "", ErrEmptyKind

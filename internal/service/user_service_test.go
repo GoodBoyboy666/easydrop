@@ -58,7 +58,7 @@ func (m *mockTokenManager) Issue(_ context.Context, userID uint, kind string, tt
 	return value, nil
 }
 
-func (m *mockTokenManager) Consume(_ context.Context, userID uint, kind, tokenValue string) (*token.Record, error) {
+func (m *mockTokenManager) Consume(_ context.Context, kind, tokenValue string) (*token.Record, error) {
 	if m.consumeErr != nil {
 		return nil, m.consumeErr
 	}
@@ -66,7 +66,7 @@ func (m *mockTokenManager) Consume(_ context.Context, userID uint, kind, tokenVa
 	if !ok {
 		return nil, token.ErrTokenNotFound
 	}
-	if record.UserID != userID || record.Kind != kind {
+	if record.Kind != kind {
 		return nil, token.ErrTokenMismatch
 	}
 	delete(m.recordByToken, tokenValue)
@@ -131,6 +131,15 @@ func (m *mockEmailService) SendChangeEmailEmail(ctx context.Context, to, newEmai
 func (m *mockUserRepo) Create(_ context.Context, user *model.User) error {
 	if m.users == nil {
 		m.users = make(map[uint]*model.User)
+	}
+	if user.ID == 0 {
+		var nextID uint = 1
+		for id := range m.users {
+			if id >= nextID {
+				nextID = id + 1
+			}
+		}
+		user.ID = nextID
 	}
 	m.users[user.ID] = cloneUser(user)
 	return nil
@@ -602,7 +611,6 @@ func TestUserServiceRequestAndConfirmEmailChange(t *testing.T) {
 	}
 
 	result, err := svc.ConfirmEmailChange(context.Background(), dto.UserChangeEmailConfirmInput{
-		UserID:            10,
 		VerificationToken: "confirm-abc",
 	})
 	if err != nil {
@@ -684,7 +692,7 @@ func TestUserServiceConfirmEmailChangeOldEmailMismatch(t *testing.T) {
 	}}
 	svc := &userService{userRepo: repo, tokenManager: tokens}
 
-	_, err = svc.ConfirmEmailChange(context.Background(), dto.UserChangeEmailConfirmInput{UserID: 11, VerificationToken: "confirm-old"})
+	_, err = svc.ConfirmEmailChange(context.Background(), dto.UserChangeEmailConfirmInput{VerificationToken: "confirm-old"})
 	if !errors.Is(err, ErrEmailChanged) {
 		t.Fatalf("expected ErrEmailChanged, got %v", err)
 	}

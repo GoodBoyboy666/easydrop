@@ -6,11 +6,13 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
 	"easydrop/internal/pkg/captcha"
 	"easydrop/internal/pkg/jwt"
+	"easydrop/internal/pkg/token"
 	"easydrop/internal/pkg/validator"
 	"easydrop/internal/repo"
 
@@ -19,17 +21,24 @@ import (
 )
 
 var (
-	ErrRegisterClosed     = errors.New("当前不允许注册")
-	ErrUsernameExists     = errors.New("用户名已存在")
-	ErrEmailExists        = errors.New("邮箱已存在")
-	ErrEmptyAccount       = errors.New("账号不能为空")
-	ErrUserNotFound       = errors.New("用户不存在")
-	ErrInvalidPassword    = errors.New("密码错误")
-	ErrUserDisabled       = errors.New("用户状态异常")
-	ErrCaptchaRequired    = errors.New("请完成验证码")
-	ErrInvalidSiteSetting = errors.New("站点配置异常")
-	ErrInternal           = errors.New("服务异常，请稍后重试")
-	ErrCaptchaFailed      = errors.New("验证码校验失败")
+	ErrRegisterClosed       = errors.New("当前不允许注册")
+	ErrUsernameExists       = errors.New("用户名已存在")
+	ErrEmailExists          = errors.New("邮箱已存在")
+	ErrEmptyAccount         = errors.New("账号不能为空")
+	ErrUserNotFound         = errors.New("用户不存在")
+	ErrInvalidPassword      = errors.New("密码错误")
+	ErrUserDisabled         = errors.New("用户状态异常")
+	ErrCaptchaRequired      = errors.New("请完成验证码")
+	ErrInvalidSiteSetting   = errors.New("站点配置异常")
+	ErrInternal             = errors.New("服务异常，请稍后重试")
+	ErrCaptchaFailed        = errors.New("验证码校验失败")
+	ErrInvalidPasswordReset = errors.New("重置密码凭证无效或已过期")
+	ErrInvalidEmailVerify   = errors.New("邮箱验证凭证无效或已过期")
+)
+
+const (
+	passwordResetTokenTTL = 30 * time.Minute
+	verifyEmailTokenTTL   = 24 * time.Hour
 )
 
 type AuthService interface {
@@ -37,22 +46,32 @@ type AuthService interface {
 	Register(ctx context.Context, input dto.RegisterInput) (*dto.AuthResult, error)
 	// Login 使用用户名或邮箱登录并返回登录态信息。
 	Login(ctx context.Context, input dto.LoginInput) (*dto.AuthResult, error)
+	// RequestPasswordReset 发起忘记密码流程并发送重置邮件。
+	RequestPasswordReset(ctx context.Context, input dto.PasswordResetRequestInput) error
+	// ConfirmPasswordReset 校验重置 token 并更新密码。
+	ConfirmPasswordReset(ctx context.Context, input dto.PasswordResetConfirmInput) error
+	// ConfirmVerifyEmail 校验邮箱验证 token 并更新邮箱验证状态。
+	ConfirmVerifyEmail(ctx context.Context, input dto.EmailVerifyConfirmInput) error
 }
 
 type authService struct {
-	userRepo repo.UserRepo
-	settings SettingService
-	jwt      jwt.Manager
-	captcha  captcha.Verifier
+	userRepo     repo.UserRepo
+	settings     SettingService
+	jwt          jwt.Manager
+	captcha      captcha.Verifier
+	tokenManager token.Manager
+	emailService EmailService
 }
 
 // NewAuthService 创建认证服务实例。
-func NewAuthService(userRepo repo.UserRepo, settings SettingService, jwtManager jwt.Manager, captchaVerifier captcha.Verifier) AuthService {
+func NewAuthService(userRepo repo.UserRepo, settings SettingService, jwtManager jwt.Manager, captchaVerifier captcha.Verifier, tokenManager token.Manager, emailService EmailService) AuthService {
 	return &authService{
-		userRepo: userRepo,
-		settings: settings,
-		jwt:      jwtManager,
-		captcha:  captchaVerifier,
+		userRepo:     userRepo,
+		settings:     settings,
+		jwt:          jwtManager,
+		captcha:      captchaVerifier,
+		tokenManager: tokenManager,
+		emailService: emailService,
 	}
 }
 
@@ -117,12 +136,150 @@ func (s *authService) Register(ctx context.Context, input dto.RegisterInput) (*d
 		return nil, ErrInternal
 	}
 
+	s.sendVerifyEmailAsync(ctx, user)
+
 	result, err := s.buildAuthResult(user)
 	if err != nil {
 		log.Printf("签发令牌失败: %v", err)
 		return nil, ErrInternal
 	}
 	return result, nil
+}
+
+// RequestPasswordReset 校验请求后发送密码重置邮件。
+func (s *authService) RequestPasswordReset(ctx context.Context, input dto.PasswordResetRequestInput) error {
+	email := strings.TrimSpace(input.Email)
+	if err := validator.ValidateEmail(email); err != nil {
+		return err
+	}
+
+	if err := s.verifyCaptcha(ctx, input.Captcha); err != nil {
+		return err
+	}
+
+	if s.tokenManager == nil || s.emailService == nil {
+		log.Printf("密码重置邮件服务未初始化")
+		return nil
+	}
+
+	user, err := s.userRepo.GetByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		log.Printf("按邮箱查询用户失败: %v", err)
+		return nil
+	}
+	if user.Status != 1 {
+		return nil
+	}
+
+	resetToken, err := s.tokenManager.Issue(ctx, user.ID, token.KindResetPassword, passwordResetTokenTTL, strings.TrimSpace(user.Email))
+	if err != nil {
+		log.Printf("签发密码重置 token 失败: %v", err)
+		return nil
+	}
+
+	if err := s.emailService.SendPasswordResetEmail(ctx, user.Email, resetToken, passwordResetTokenTTL); err != nil {
+		log.Printf("发送密码重置邮件失败: %v", err)
+	}
+
+	return nil
+}
+
+// ConfirmPasswordReset 校验 token 并重置用户密码。
+func (s *authService) ConfirmPasswordReset(ctx context.Context, input dto.PasswordResetConfirmInput) error {
+	if s.tokenManager == nil {
+		return ErrInternal
+	}
+	if err := validator.ValidatePassword(input.NewPassword); err != nil {
+		return err
+	}
+
+	record, err := s.tokenManager.Consume(ctx, token.KindResetPassword, input.Token)
+	if err != nil {
+		switch {
+		case errors.Is(err, token.ErrEmptyToken),
+			errors.Is(err, token.ErrTokenNotFound),
+			errors.Is(err, token.ErrTokenMismatch),
+			errors.Is(err, token.ErrTokenExpired):
+			return ErrInvalidPasswordReset
+		default:
+			log.Printf("消费密码重置 token 失败: %v", err)
+			return ErrInternal
+		}
+	}
+
+	user, err := s.userRepo.GetByID(ctx, record.UserID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrUserNotFound
+		}
+		log.Printf("获取用户失败: %v", err)
+		return ErrInternal
+	}
+	if !matchTokenEmailPayload(record.Payload, user.Email) {
+		return ErrInvalidPasswordReset
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(input.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		log.Printf("生成密码哈希失败: %v", err)
+		return ErrInternal
+	}
+
+	user.Password = string(hash)
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		log.Printf("更新重置密码失败: %v", err)
+		return ErrInternal
+	}
+
+	return nil
+}
+
+// ConfirmVerifyEmail 校验邮箱验证 token 并更新用户邮箱验证状态。
+func (s *authService) ConfirmVerifyEmail(ctx context.Context, input dto.EmailVerifyConfirmInput) error {
+	if s.tokenManager == nil {
+		return ErrInternal
+	}
+
+	record, err := s.tokenManager.Consume(ctx, token.KindVerifyEmail, input.Token)
+	if err != nil {
+		switch {
+		case errors.Is(err, token.ErrEmptyToken),
+			errors.Is(err, token.ErrTokenNotFound),
+			errors.Is(err, token.ErrTokenMismatch),
+			errors.Is(err, token.ErrTokenExpired):
+			return ErrInvalidEmailVerify
+		default:
+			log.Printf("消费邮箱验证 token 失败: %v", err)
+			return ErrInternal
+		}
+	}
+
+	user, err := s.userRepo.GetByID(ctx, record.UserID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrUserNotFound
+		}
+		log.Printf("获取用户失败: %v", err)
+		return ErrInternal
+	}
+	if !matchTokenEmailPayload(record.Payload, user.Email) {
+		return ErrInvalidEmailVerify
+	}
+
+	if user.EmailVerified {
+		return nil
+	}
+
+	user.EmailVerified = true
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		log.Printf("更新邮箱验证状态失败: %v", err)
+		return ErrInternal
+	}
+
+	return nil
 }
 
 // Login 校验账号密码与验证码，并在成功后签发访问令牌。
@@ -245,4 +402,32 @@ func (s *authService) verifyCaptcha(ctx context.Context, input *dto.CaptchaInput
 		return ErrCaptchaFailed
 	}
 	return nil
+}
+
+func (s *authService) sendVerifyEmailAsync(ctx context.Context, user *model.User) {
+	if s.tokenManager == nil || s.emailService == nil || user == nil || user.ID == 0 {
+		return
+	}
+
+	verifyToken, err := s.tokenManager.Issue(ctx, user.ID, token.KindVerifyEmail, verifyEmailTokenTTL, strings.TrimSpace(user.Email))
+	if err != nil {
+		log.Printf("签发邮箱验证 token 失败: %v", err)
+		return
+	}
+
+	if err := s.emailService.SendVerifyEmail(ctx, user.Email, verifyToken, verifyEmailTokenTTL); err != nil {
+		log.Printf("发送注册验证邮件失败: %v", err)
+	}
+}
+
+func matchTokenEmailPayload(payload, currentEmail string) bool {
+	payload = strings.TrimSpace(payload)
+	currentEmail = strings.TrimSpace(currentEmail)
+	if payload == "" || currentEmail == "" {
+		return false
+	}
+	if err := validator.ValidateEmail(payload); err != nil {
+		return false
+	}
+	return strings.EqualFold(payload, currentEmail)
 }

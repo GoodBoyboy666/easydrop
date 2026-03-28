@@ -120,18 +120,23 @@ function LoginPage() {
                 <LogInIcon data-icon="inline-start" />
                 {loginMutation.isPending ? '正在登录…' : '立即登录'}
               </Button>
-              {allowRegister ? (
+              <div className="flex flex-col items-start gap-2 sm:items-end">
                 <Button asChild size="sm" variant="ghost">
-                  <Link to="/register" search={{ redirect }}>
-                    没有账号？去注册
-                    <ArrowRightIcon data-icon="inline-end" />
-                  </Link>
+                  <Link to="/reset-password">忘记密码？</Link>
                 </Button>
-              ) : (
-                <div className="text-sm text-muted-foreground">
-                  当前站点未开放注册
-                </div>
-              )}
+                {allowRegister ? (
+                  <Button asChild size="sm" variant="ghost">
+                    <Link to="/register" search={{ redirect }}>
+                      没有账号？去注册
+                      <ArrowRightIcon data-icon="inline-end" />
+                    </Link>
+                  </Button>
+                ) : (
+                  <div className="text-sm text-muted-foreground">
+                    当前站点未开放注册
+                  </div>
+                )}
+              </div>
             </div>
           </form>
         </CardContent>

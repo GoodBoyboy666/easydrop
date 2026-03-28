@@ -19,6 +19,7 @@ type mockUserServiceForHandler struct {
 	updateProfileFn      func(ctx context.Context, input dto.UserProfileUpdateInput) (*dto.UserDTO, error)
 	changePasswordFn     func(ctx context.Context, input dto.UserChangePasswordInput) error
 	requestEmailChangeFn func(ctx context.Context, input dto.UserChangeEmailInput) error
+	confirmEmailChangeFn func(ctx context.Context, input dto.UserChangeEmailConfirmInput) (*dto.UserDTO, error)
 	uploadAvatarFn       func(ctx context.Context, input dto.UserAvatarUploadInput) (*dto.UserDTO, error)
 	deleteAvatarFn       func(ctx context.Context, userID uint) error
 }
@@ -55,8 +56,11 @@ func (m *mockUserServiceForHandler) RequestEmailChange(ctx context.Context, inpu
 	return m.requestEmailChangeFn(ctx, input)
 }
 
-func (m *mockUserServiceForHandler) ConfirmEmailChange(context.Context, dto.UserChangeEmailConfirmInput) (*dto.UserDTO, error) {
-	return nil, nil
+func (m *mockUserServiceForHandler) ConfirmEmailChange(ctx context.Context, input dto.UserChangeEmailConfirmInput) (*dto.UserDTO, error) {
+	if m.confirmEmailChangeFn == nil {
+		return nil, nil
+	}
+	return m.confirmEmailChangeFn(ctx, input)
 }
 
 func (m *mockUserServiceForHandler) Update(context.Context, dto.UserUpdateInput) (*dto.UserDTO, error) {

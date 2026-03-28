@@ -15,13 +15,15 @@ import (
 // AuthHandler 处理认证相关请求。
 type AuthHandler struct {
 	authService service.AuthService
+	userService service.UserService
 	authCookie  cookiepkg.AuthCookie
 }
 
 // NewAuthHandler 创建认证处理器。
-func NewAuthHandler(authService service.AuthService, authCookie cookiepkg.AuthCookie) *AuthHandler {
+func NewAuthHandler(authService service.AuthService, userService service.UserService, authCookie cookiepkg.AuthCookie) *AuthHandler {
 	return &AuthHandler{
 		authService: authService,
+		userService: userService,
 		authCookie:  authCookie,
 	}
 }
@@ -123,6 +125,138 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.MessageResponse{Message: "已退出登录"})
 }
 
+// RequestPasswordReset 发起密码重置请求。
+// @Summary 忘记密码
+// @Description 按邮箱发起密码重置并发送确认邮件
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param input body dto.PasswordResetRequestInput true "重置密码请求参数"
+// @Success 200 {object} dto.MessageResponse
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败或验证码缺失"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
+// @Router /auth/password-reset/request [post]
+func (h *AuthHandler) RequestPasswordReset(c *gin.Context) {
+	if h.authService == nil {
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+		return
+	}
+
+	var input dto.PasswordResetRequestInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "请求参数格式错误"})
+		return
+	}
+	if input.Captcha != nil {
+		input.Captcha.RemoteIP = c.ClientIP()
+	}
+
+	if err := h.authService.RequestPasswordReset(c.Request.Context(), input); err != nil {
+		c.JSON(mapAuthActionErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.MessageResponse{Message: "ok"})
+}
+
+// ConfirmPasswordReset 校验重置 token 并更新密码。
+// @Summary 重置密码
+// @Description 使用邮件中的 token 完成密码重置
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param input body dto.PasswordResetConfirmInput true "重置密码确认参数"
+// @Success 200 {object} dto.MessageResponse
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败或 token 无效"
+// @Failure 404 {object} dto.ErrorResponse "用户不存在"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
+// @Router /auth/password-reset/confirm [post]
+func (h *AuthHandler) ConfirmPasswordReset(c *gin.Context) {
+	if h.authService == nil {
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+		return
+	}
+
+	var input dto.PasswordResetConfirmInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "请求参数格式错误"})
+		return
+	}
+
+	if err := h.authService.ConfirmPasswordReset(c.Request.Context(), input); err != nil {
+		c.JSON(mapAuthActionErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.MessageResponse{Message: "ok"})
+}
+
+// ConfirmVerifyEmail 校验邮箱验证 token。
+// @Summary 验证注册邮箱
+// @Description 使用邮件中的 token 完成邮箱验证
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param input body dto.EmailVerifyConfirmInput true "邮箱验证确认参数"
+// @Success 200 {object} dto.MessageResponse
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败或 token 无效"
+// @Failure 404 {object} dto.ErrorResponse "用户不存在"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
+// @Router /auth/verify-email/confirm [post]
+func (h *AuthHandler) ConfirmVerifyEmail(c *gin.Context) {
+	if h.authService == nil {
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+		return
+	}
+
+	var input dto.EmailVerifyConfirmInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "请求参数格式错误"})
+		return
+	}
+
+	if err := h.authService.ConfirmVerifyEmail(c.Request.Context(), input); err != nil {
+		c.JSON(mapAuthActionErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.MessageResponse{Message: "ok"})
+}
+
+// ConfirmEmailChange 校验邮箱修改 token 并完成邮箱修改。
+// @Summary 确认邮箱修改
+// @Description 使用邮件中的 token 完成邮箱修改
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param input body dto.UserChangeEmailConfirmInput true "邮箱修改确认参数"
+// @Success 200 {object} dto.UserDTO
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败或 token 无效"
+// @Failure 404 {object} dto.ErrorResponse "用户不存在"
+// @Failure 409 {object} dto.ErrorResponse "邮箱冲突"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
+// @Router /auth/email-change/confirm [post]
+func (h *AuthHandler) ConfirmEmailChange(c *gin.Context) {
+	if h.userService == nil {
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+		return
+	}
+
+	var input dto.UserChangeEmailConfirmInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "请求参数格式错误"})
+		return
+	}
+
+	result, err := h.userService.ConfirmEmailChange(c.Request.Context(), input)
+	if err != nil {
+		c.JSON(mapAuthActionErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
 func mapAuthErrorStatus(err error) int {
 	switch {
 	case errors.Is(err, validator.ErrEmptyUsername),
@@ -149,6 +283,33 @@ func mapAuthErrorStatus(err error) int {
 		return http.StatusForbidden
 	case errors.Is(err, service.ErrUsernameExists),
 		errors.Is(err, service.ErrEmailExists):
+		return http.StatusConflict
+	case errors.Is(err, service.ErrInternal):
+		return http.StatusInternalServerError
+	default:
+		return http.StatusInternalServerError
+	}
+}
+
+func mapAuthActionErrorStatus(err error) int {
+	switch {
+	case errors.Is(err, validator.ErrEmptyPassword),
+		errors.Is(err, validator.ErrPasswordTooShort),
+		errors.Is(err, validator.ErrPasswordContainsSpace),
+		errors.Is(err, validator.ErrPasswordMissingLetter),
+		errors.Is(err, validator.ErrPasswordMissingNumber),
+		errors.Is(err, validator.ErrEmptyEmail),
+		errors.Is(err, validator.ErrInvalidEmailFormat),
+		errors.Is(err, service.ErrCaptchaRequired),
+		errors.Is(err, service.ErrCaptchaFailed),
+		errors.Is(err, service.ErrInvalidPasswordReset),
+		errors.Is(err, service.ErrInvalidEmailVerify),
+		errors.Is(err, service.ErrInvalidEmailChange):
+		return http.StatusBadRequest
+	case errors.Is(err, service.ErrUserNotFound):
+		return http.StatusNotFound
+	case errors.Is(err, service.ErrEmailExists),
+		errors.Is(err, service.ErrEmailChanged):
 		return http.StatusConflict
 	case errors.Is(err, service.ErrInternal):
 		return http.StatusInternalServerError

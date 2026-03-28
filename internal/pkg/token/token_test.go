@@ -67,7 +67,7 @@ func TestManagerIssueAndConsume_Memory(t *testing.T) {
 		t.Fatal("期望生成非空 token")
 	}
 
-	record, err := manager.Consume(context.Background(), 42, KindVerifyEmail, tokenValue)
+	record, err := manager.Consume(context.Background(), KindVerifyEmail, tokenValue)
 	if err != nil {
 		t.Fatalf("消费 token 失败: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestManagerIssueAndConsume_Memory(t *testing.T) {
 		t.Fatalf("payload 不符合预期: %q", record.Payload)
 	}
 
-	_, err = manager.Consume(context.Background(), 42, KindVerifyEmail, tokenValue)
+	_, err = manager.Consume(context.Background(), KindVerifyEmail, tokenValue)
 	if !errors.Is(err, ErrTokenNotFound) {
 		t.Fatalf("期望消费后 token 不存在，实际为: %v", err)
 	}
@@ -115,12 +115,12 @@ func TestManagerIssue_ReplacesExistingTokenOfSameKind(t *testing.T) {
 		t.Fatal("期望新 token 与旧 token 不同")
 	}
 
-	_, err = manager.Consume(context.Background(), 7, KindResetPassword, firstToken)
-	if !errors.Is(err, ErrTokenMismatch) {
+	_, err = manager.Consume(context.Background(), KindResetPassword, firstToken)
+	if !errors.Is(err, ErrTokenNotFound) {
 		t.Fatalf("期望旧 token 失效，实际为: %v", err)
 	}
 
-	record, err := manager.Consume(context.Background(), 7, KindResetPassword, secondToken)
+	record, err := manager.Consume(context.Background(), KindResetPassword, secondToken)
 	if err != nil {
 		t.Fatalf("消费新 token 失败: %v", err)
 	}
@@ -147,7 +147,7 @@ func TestManagerIssue_AllowsDifferentKinds(t *testing.T) {
 		t.Fatalf("签发邮箱验证 token 失败: %v", err)
 	}
 
-	resetRecord, err := manager.Consume(context.Background(), 9, KindResetPassword, resetToken)
+	resetRecord, err := manager.Consume(context.Background(), KindResetPassword, resetToken)
 	if err != nil {
 		t.Fatalf("消费重置密码 token 失败: %v", err)
 	}
@@ -155,7 +155,7 @@ func TestManagerIssue_AllowsDifferentKinds(t *testing.T) {
 		t.Fatalf("重置密码 token payload 不符合预期: %q", resetRecord.Payload)
 	}
 
-	verifyRecord, err := manager.Consume(context.Background(), 9, KindVerifyEmail, verifyToken)
+	verifyRecord, err := manager.Consume(context.Background(), KindVerifyEmail, verifyToken)
 	if err != nil {
 		t.Fatalf("消费邮箱验证 token 失败: %v", err)
 	}
@@ -179,7 +179,7 @@ func TestManagerConsume_ExpiredToken(t *testing.T) {
 
 	manager.now = func() time.Time { return now.Add(2 * time.Minute) }
 
-	_, err = manager.Consume(context.Background(), 12, KindChangeEmail, tokenValue)
+	_, err = manager.Consume(context.Background(), KindChangeEmail, tokenValue)
 	if !errors.Is(err, ErrTokenExpired) {
 		t.Fatalf("期望过期错误，实际为: %v", err)
 	}
@@ -195,7 +195,7 @@ func TestManagerIssueAndConsume_EmptyPayload(t *testing.T) {
 		t.Fatalf("签发空 payload token 失败: %v", err)
 	}
 
-	record, err := manager.Consume(context.Background(), 13, KindChangeEmail, tokenValue)
+	record, err := manager.Consume(context.Background(), KindChangeEmail, tokenValue)
 	if err != nil {
 		t.Fatalf("消费空 payload token 失败: %v", err)
 	}
@@ -235,7 +235,7 @@ func TestRedisStoreSaveAndConsume(t *testing.T) {
 		t.Fatalf("ttl 未写入: record=%s user=%s", client.ttls[recordKey], client.ttls[userKey])
 	}
 
-	consumed, err := store.Consume(context.Background(), record.UserID, record.Kind, record.Token, record.CreatedAt.Add(time.Minute))
+	consumed, err := store.Consume(context.Background(), record.Kind, record.Token, record.CreatedAt.Add(time.Minute))
 	if err != nil {
 		t.Fatalf("消费 redis token 失败: %v", err)
 	}
@@ -244,9 +244,6 @@ func TestRedisStoreSaveAndConsume(t *testing.T) {
 	}
 	if _, ok := client.values[recordKey]; ok {
 		t.Fatalf("消费后 record key 未删除: %s", recordKey)
-	}
-	if _, ok := client.values[userKey]; ok {
-		t.Fatalf("消费后 user key 未删除: %s", userKey)
 	}
 }
 
@@ -336,7 +333,7 @@ func TestRedisStoreConsume_RetriesOnTransactionConflict(t *testing.T) {
 	}
 
 	client.watchFailures = 1
-	consumed, err := store.Consume(context.Background(), record.UserID, record.Kind, record.Token, record.CreatedAt.Add(time.Minute))
+	consumed, err := store.Consume(context.Background(), record.Kind, record.Token, record.CreatedAt.Add(time.Minute))
 	if err != nil {
 		t.Fatalf("事务重试后消费 token 失败: %v", err)
 	}
@@ -365,12 +362,9 @@ func TestRedisStoreConsume_ExpiredTokenDeletesKeys(t *testing.T) {
 		t.Fatalf("预写入 token 失败: %v", err)
 	}
 
-	_, err := store.Consume(context.Background(), record.UserID, record.Kind, record.Token, record.CreatedAt.Add(2*time.Minute))
+	_, err := store.Consume(context.Background(), record.Kind, record.Token, record.CreatedAt.Add(2*time.Minute))
 	if !errors.Is(err, ErrTokenExpired) {
 		t.Fatalf("期望过期错误，实际为: %v", err)
-	}
-	if _, ok := client.values[store.userKey(record.UserID, record.Kind)]; ok {
-		t.Fatalf("过期 token 的 user key 未删除")
 	}
 	if _, ok := client.values[store.recordKey(record.Kind, record.Token)]; ok {
 		t.Fatalf("过期 token 的 record key 未删除")
@@ -504,7 +498,7 @@ func TestRedisStoreConsume_ReturnsConflictAfterRetryExhausted(t *testing.T) {
 	}
 
 	client.watchFailures = redisTxnMaxRetries
-	_, err := store.Consume(context.Background(), record.UserID, record.Kind, record.Token, record.CreatedAt.Add(time.Minute))
+	_, err := store.Consume(context.Background(), record.Kind, record.Token, record.CreatedAt.Add(time.Minute))
 	if !errors.Is(err, ErrTransactionConflict) {
 		t.Fatalf("期望事务冲突错误，实际为: %v", err)
 	}
@@ -513,7 +507,7 @@ func TestRedisStoreConsume_ReturnsConflictAfterRetryExhausted(t *testing.T) {
 	}
 }
 
-func TestRedisStoreConsume_CleansDanglingUserKeyWhenRecordMissing(t *testing.T) {
+func TestRedisStoreConsume_IgnoresDanglingUserKeyWhenRecordMissing(t *testing.T) {
 	t.Parallel()
 
 	client := newFakeRedisTxnClient()
@@ -523,12 +517,12 @@ func TestRedisStoreConsume_CleansDanglingUserKeyWhenRecordMissing(t *testing.T) 
 	client.values[userKey] = "dangling-token"
 	client.ttls[userKey] = time.Minute
 
-	_, err := store.Consume(context.Background(), 55, KindResetPassword, "dangling-token", time.Date(2026, 3, 20, 10, 1, 0, 0, time.UTC))
+	_, err := store.Consume(context.Background(), KindResetPassword, "dangling-token", time.Date(2026, 3, 20, 10, 1, 0, 0, time.UTC))
 	if !errors.Is(err, ErrTokenNotFound) {
 		t.Fatalf("期望 token 不存在，实际为: %v", err)
 	}
-	if _, ok := client.values[userKey]; ok {
-		t.Fatalf("悬挂 user key 未删除")
+	if _, ok := client.values[userKey]; !ok {
+		t.Fatalf("悬挂 user key 不应被当前消费逻辑修改")
 	}
 }
 

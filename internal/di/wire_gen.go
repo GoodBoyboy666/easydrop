@@ -74,18 +74,6 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	authService := service.NewAuthService(userRepo, settingService, manager, verifier)
-	authHandler := handler.NewAuthHandler(authService, authCookie)
-	captchaConfigService := service.NewCaptchaConfigService(allCaptchaConfig)
-	captchaHandler := handler.NewCaptchaHandler(captchaConfigService)
-	initRepo := repo.NewInitRepo(db)
-	initService := service.NewInitService(userRepo, initRepo, settingService, cacheCache)
-	initHandler := handler.NewInitHandler(initService)
-	storageConfig := config.ProvideStorageConfig(staticConfig)
-	storageManager, err := storage.NewManager(storageConfig)
-	if err != nil {
-		return nil, err
-	}
 	tokenConfig := config.ProvideTokenConfig(staticConfig)
 	tokenManager, err := token.NewManager(tokenConfig, client)
 	if err != nil {
@@ -97,7 +85,19 @@ func Initialize(configDir string, strict bool) (*App, error) {
 		return nil, err
 	}
 	emailService := service.NewEmailService(emailClient, settingService)
+	authService := service.NewAuthService(userRepo, settingService, manager, verifier, tokenManager, emailService)
+	storageConfig := config.ProvideStorageConfig(staticConfig)
+	storageManager, err := storage.NewManager(storageConfig)
+	if err != nil {
+		return nil, err
+	}
 	userService := service.NewUserService(userRepo, storageManager, settingService, tokenManager, emailService)
+	authHandler := handler.NewAuthHandler(authService, userService, authCookie)
+	captchaConfigService := service.NewCaptchaConfigService(allCaptchaConfig)
+	captchaHandler := handler.NewCaptchaHandler(captchaConfigService)
+	initRepo := repo.NewInitRepo(db)
+	initService := service.NewInitService(userRepo, initRepo, settingService, cacheCache)
+	initHandler := handler.NewInitHandler(initService)
 	userHandler := handler.NewUserHandler(userService)
 	userAdminHandler := handler.NewUserAdminHandler(userService)
 	attachmentRepo := repo.NewAttachmentRepo(db)

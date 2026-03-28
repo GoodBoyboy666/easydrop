@@ -138,31 +138,16 @@ func (s *redisStore) Save(ctx context.Context, record *Record) error {
 	return fmt.Errorf("写入 token 失败: %w", ErrTransactionConflict)
 }
 
-func (s *redisStore) Consume(ctx context.Context, userID uint, kind, tokenValue string, now time.Time) (*Record, error) {
-	userKey := s.userKey(userID, kind)
+func (s *redisStore) Consume(ctx context.Context, kind, tokenValue string, now time.Time) (*Record, error) {
 	recordKey := s.recordKey(kind, tokenValue)
 	for attempt := 0; attempt < redisTxnMaxRetries; attempt++ {
 		var consumed *Record
 		err := s.client.Watch(ctx, func(tx redisTx) error {
-			activeToken, found, err := tx.Get(ctx, userKey)
-			if err != nil {
-				return fmt.Errorf("读取 token 索引失败: %w", err)
-			}
-			if !found {
-				return ErrTokenNotFound
-			}
-			if activeToken != tokenValue {
-				return ErrTokenMismatch
-			}
-
 			serialized, found, err := tx.Get(ctx, recordKey)
 			if err != nil {
 				return fmt.Errorf("读取 token 记录失败: %w", err)
 			}
 			if !found {
-				if err := deleteKeysInTransaction(ctx, tx, userKey); err != nil {
-					return fmt.Errorf("删除失效 token 索引失败: %w", err)
-				}
 				return ErrTokenNotFound
 			}
 
@@ -170,11 +155,11 @@ func (s *redisStore) Consume(ctx context.Context, userID uint, kind, tokenValue 
 			if err != nil {
 				return err
 			}
-			if record.UserID != userID || record.Kind != kind || record.Token != tokenValue {
+			if record.Kind != kind || record.Token != tokenValue {
 				return ErrTokenMismatch
 			}
 			if !record.ExpiresAt.After(now) {
-				if err := deleteKeysInTransaction(ctx, tx, recordKey, userKey); err != nil {
+				if err := deleteKeysInTransaction(ctx, tx, recordKey); err != nil {
 					return fmt.Errorf("删除过期 token 失败: %w", err)
 				}
 				return ErrTokenExpired
@@ -184,11 +169,11 @@ func (s *redisStore) Consume(ctx context.Context, userID uint, kind, tokenValue 
 			if err != nil {
 				return err
 			}
-			if err := deleteKeysInTransaction(ctx, tx, recordKey, userKey); err != nil {
+			if err := deleteKeysInTransaction(ctx, tx, recordKey); err != nil {
 				return fmt.Errorf("删除已消费 token 失败: %w", err)
 			}
 			return nil
-		}, userKey, recordKey)
+		}, recordKey)
 		if err == nil {
 			return consumed, nil
 		}

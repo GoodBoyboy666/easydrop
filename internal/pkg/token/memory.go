@@ -39,19 +39,12 @@ func (s *memoryStore) Save(_ context.Context, record *Record) error {
 	return nil
 }
 
-func (s *memoryStore) Consume(_ context.Context, userID uint, kind, tokenValue string, now time.Time) (*Record, error) {
+func (s *memoryStore) Consume(_ context.Context, kind, tokenValue string, now time.Time) (*Record, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	userKey := memoryUserKindKey(userID, kind)
-	activeToken, ok := s.byUserKey[userKey]
+	record, ok := s.byToken[tokenValue]
 	if !ok {
-		return nil, ErrTokenNotFound
-	}
-
-	record, ok := s.byToken[activeToken]
-	if !ok {
-		delete(s.byUserKey, userKey)
 		return nil, ErrTokenNotFound
 	}
 
@@ -60,10 +53,7 @@ func (s *memoryStore) Consume(_ context.Context, userID uint, kind, tokenValue s
 		return nil, ErrTokenExpired
 	}
 
-	if activeToken != tokenValue {
-		return nil, ErrTokenMismatch
-	}
-	if record.UserID != userID || record.Kind != kind {
+	if record.Kind != kind || record.Token != tokenValue {
 		return nil, ErrTokenMismatch
 	}
 

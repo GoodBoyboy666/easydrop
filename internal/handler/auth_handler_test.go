@@ -17,8 +17,11 @@ import (
 )
 
 type mockAuthService struct {
-	loginFn    func(context.Context, dto.LoginInput) (*dto.AuthResult, error)
-	registerFn func(context.Context, dto.RegisterInput) (*dto.AuthResult, error)
+	loginFn                func(context.Context, dto.LoginInput) (*dto.AuthResult, error)
+	registerFn             func(context.Context, dto.RegisterInput) (*dto.AuthResult, error)
+	requestPasswordResetFn func(context.Context, dto.PasswordResetRequestInput) error
+	confirmPasswordResetFn func(context.Context, dto.PasswordResetConfirmInput) error
+	confirmVerifyEmailFn   func(context.Context, dto.EmailVerifyConfirmInput) error
 }
 
 func (m *mockAuthService) Register(ctx context.Context, input dto.RegisterInput) (*dto.AuthResult, error) {
@@ -35,6 +38,27 @@ func (m *mockAuthService) Login(ctx context.Context, input dto.LoginInput) (*dto
 	return m.loginFn(ctx, input)
 }
 
+func (m *mockAuthService) RequestPasswordReset(ctx context.Context, input dto.PasswordResetRequestInput) error {
+	if m.requestPasswordResetFn == nil {
+		return nil
+	}
+	return m.requestPasswordResetFn(ctx, input)
+}
+
+func (m *mockAuthService) ConfirmPasswordReset(ctx context.Context, input dto.PasswordResetConfirmInput) error {
+	if m.confirmPasswordResetFn == nil {
+		return nil
+	}
+	return m.confirmPasswordResetFn(ctx, input)
+}
+
+func (m *mockAuthService) ConfirmVerifyEmail(ctx context.Context, input dto.EmailVerifyConfirmInput) error {
+	if m.confirmVerifyEmailFn == nil {
+		return nil
+	}
+	return m.confirmVerifyEmailFn(ctx, input)
+}
+
 func TestAuthHandlerLoginSetsCookieAndReturnsToken(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -42,7 +66,7 @@ func TestAuthHandlerLoginSetsCookieAndReturnsToken(t *testing.T) {
 		loginFn: func(context.Context, dto.LoginInput) (*dto.AuthResult, error) {
 			return &dto.AuthResult{AccessToken: "jwt-token"}, nil
 		},
-	}, cookiepkg.NewAuthCookie(&cookiepkg.Config{
+	}, nil, cookiepkg.NewAuthCookie(&cookiepkg.Config{
 		Name:     "session",
 		Path:     "/",
 		SameSite: "lax",
@@ -100,7 +124,7 @@ func TestAuthHandlerLoginSetsSecureCookieInProduction(t *testing.T) {
 		loginFn: func(context.Context, dto.LoginInput) (*dto.AuthResult, error) {
 			return &dto.AuthResult{AccessToken: "jwt-token"}, nil
 		},
-	}, cookiepkg.NewAuthCookie(&cookiepkg.Config{
+	}, nil, cookiepkg.NewAuthCookie(&cookiepkg.Config{
 		Name:   "session",
 		Secure: true,
 	}))
@@ -126,7 +150,7 @@ func TestAuthHandlerLoginSetsSecureCookieInProduction(t *testing.T) {
 func TestAuthHandlerLogoutClearsCookie(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	handler := NewAuthHandler(nil, cookiepkg.NewAuthCookie(&cookiepkg.Config{
+	handler := NewAuthHandler(nil, nil, cookiepkg.NewAuthCookie(&cookiepkg.Config{
 		Name: "session",
 		Path: "/",
 	}))
@@ -156,5 +180,61 @@ func TestAuthHandlerLogoutClearsCookie(t *testing.T) {
 	}
 	if cookie.MaxAge >= 0 {
 		t.Fatalf("expected negative MaxAge for cleared cookie, got %d", cookie.MaxAge)
+	}
+}
+
+func TestAuthHandlerRequestPasswordResetPassesCaptchaRemoteIP(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	handler := NewAuthHandler(&mockAuthService{
+		requestPasswordResetFn: func(_ context.Context, input dto.PasswordResetRequestInput) error {
+			if input.Email != "alice@example.com" {
+				t.Fatalf("unexpected email: %s", input.Email)
+			}
+			if input.Captcha == nil || input.Captcha.RemoteIP != "192.0.2.1" {
+				t.Fatalf("unexpected captcha remote ip: %#v", input.Captcha)
+			}
+			return nil
+		},
+	}, nil, nil)
+
+	router := gin.New()
+	router.POST("/password-reset/request", handler.RequestPasswordReset)
+
+	req := httptest.NewRequest(http.MethodPost, "/password-reset/request", strings.NewReader(`{"email":"alice@example.com","captcha":{"token":"abc"}}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.RemoteAddr = "192.0.2.1:1234"
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", recorder.Code)
+	}
+}
+
+func TestAuthHandlerConfirmEmailChangeSuccess(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	handler := NewAuthHandler(nil, &mockUserServiceForHandler{
+		confirmEmailChangeFn: func(_ context.Context, input dto.UserChangeEmailConfirmInput) (*dto.UserDTO, error) {
+			if input.VerificationToken != "confirm-token" {
+				t.Fatalf("unexpected token: %s", input.VerificationToken)
+			}
+			return &dto.UserDTO{ID: 12, Email: "new@example.com", EmailVerified: true}, nil
+		},
+	}, nil)
+
+	router := gin.New()
+	router.POST("/email-change/confirm", handler.ConfirmEmailChange)
+
+	req := httptest.NewRequest(http.MethodPost, "/email-change/confirm", strings.NewReader(`{"token":"confirm-token"}`))
+	req.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", recorder.Code)
 	}
 }

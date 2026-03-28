@@ -310,15 +310,12 @@ func (s *userService) RequestEmailChange(ctx context.Context, input dto.UserChan
 
 // ConfirmEmailChange 校验邮箱变更 token 后更新邮箱。
 func (s *userService) ConfirmEmailChange(ctx context.Context, input dto.UserChangeEmailConfirmInput) (*dto.UserDTO, error) {
-	if input.UserID == 0 {
-		return nil, ErrUserNotFound
-	}
 	if s.tokenManager == nil {
 		return nil, ErrInternal
 	}
 
 	verifyToken := strings.TrimSpace(input.VerificationToken)
-	record, err := s.tokenManager.Consume(ctx, input.UserID, token.KindChangeEmail, verifyToken)
+	record, err := s.tokenManager.Consume(ctx, token.KindChangeEmail, verifyToken)
 	if err != nil {
 		switch {
 		case errors.Is(err, token.ErrEmptyToken),
@@ -337,7 +334,7 @@ func (s *userService) ConfirmEmailChange(ctx context.Context, input dto.UserChan
 		return nil, err
 	}
 
-	user, err := s.userRepo.GetByID(ctx, input.UserID)
+	user, err := s.userRepo.GetByID(ctx, record.UserID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound

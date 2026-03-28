@@ -24,6 +24,20 @@ type LoginInput struct {
 	Captcha  *CaptchaInput `json:"captcha"`
 }
 
+type PasswordResetRequestInput struct {
+	Email   string        `json:"email"`
+	Captcha *CaptchaInput `json:"captcha"`
+}
+
+type PasswordResetConfirmInput struct {
+	Token       string `json:"token"`
+	NewPassword string `json:"new_password"`
+}
+
+type EmailVerifyConfirmInput struct {
+	Token string `json:"token"`
+}
+
 type AuthResult struct {
 	AccessToken string `json:"access_token"`
 }
