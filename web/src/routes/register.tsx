@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { ArrowRightIcon, UserPlusIcon } from 'lucide-react'
+import { motion, useReducedMotion } from 'motion/react'
+import type { Transition } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { api } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
@@ -38,6 +40,7 @@ export const Route = createFileRoute('/register')({
 
 function RegisterPage() {
   const auth = useAuth()
+  const prefersReducedMotion = useReducedMotion()
   const { allowRegister, siteName } = useSiteSettings()
   const { redirect } = Route.useSearch()
   const [form, setForm] = useState({
@@ -53,6 +56,18 @@ function RegisterPage() {
   const registerMutation = useMutation({
     mutationFn: api.register,
   })
+  const pageTransition: Transition = prefersReducedMotion
+    ? { duration: 0 }
+    : { duration: 0.34, ease: 'easeOut' }
+
+  const sectionTransition = (delay: number): Transition =>
+    prefersReducedMotion
+      ? { duration: 0 }
+      : {
+          duration: 0.3,
+          ease: 'easeOut',
+          delay,
+        }
 
   useEffect(() => {
     if (auth.status === 'authenticated') {
@@ -104,15 +119,36 @@ function RegisterPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-9rem)] w-full max-w-7xl items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-2xl border border-border/70 bg-card/95 shadow-sm px-4 py-8">
-        <CardHeader>
-          <CardTitle className="text-2xl">注册</CardTitle>
-          <CardDescription>Sign up</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit}>
-            <FieldGroup>
+    <motion.div
+      animate={{ opacity: 1, y: 0 }}
+      className="mx-auto flex min-h-[calc(100vh-9rem)] w-full max-w-7xl items-center justify-center px-4 py-8 sm:px-6 lg:px-8"
+      initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
+      transition={pageTransition}
+    >
+      <motion.div
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className="flex w-full justify-center"
+        initial={prefersReducedMotion ? false : { opacity: 0, y: 16, scale: 0.98 }}
+        transition={sectionTransition(0.08)}
+      >
+        <Card className="w-full max-w-2xl border border-border/70 bg-card/95 shadow-sm px-4 py-8">
+          <CardHeader>
+            <CardTitle className="text-2xl">注册</CardTitle>
+            <CardDescription>Sign up</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <motion.form
+              animate={{ opacity: 1, y: 0 }}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 12 }}
+              onSubmit={handleSubmit}
+              transition={sectionTransition(0.14)}
+            >
+            <motion.div
+              animate={{ opacity: 1, y: 0 }}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+              transition={sectionTransition(0.2)}
+            >
+              <FieldGroup>
               <Field data-invalid={!!error}>
                 <FieldLabel htmlFor="username">用户名</FieldLabel>
                 <Input
@@ -183,31 +219,49 @@ function RegisterPage() {
                 />
                 <FieldError>{error}</FieldError>
               </Field>
-            </FieldGroup>
+              </FieldGroup>
+            </motion.div>
 
-            <CaptchaPanel
-              config={captchaConfigQuery.data}
-              errorMessage={
-                captchaConfigQuery.error instanceof Error
-                  ? captchaConfigQuery.error.message
-                  : null
-              }
-              isLoading={captchaConfigQuery.isLoading}
-              onChange={setCaptcha}
-              resetSignal={captchaResetSignal}
-              value={captcha}
-            />
+            <motion.div
+              animate={{ opacity: 1, y: 0 }}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+              transition={sectionTransition(0.26)}
+            >
+              <CaptchaPanel
+                config={captchaConfigQuery.data}
+                errorMessage={
+                  captchaConfigQuery.error instanceof Error
+                    ? captchaConfigQuery.error.message
+                    : null
+                }
+                isLoading={captchaConfigQuery.isLoading}
+                onChange={setCaptcha}
+                resetSignal={captchaResetSignal}
+                value={captcha}
+              />
+            </motion.div>
 
             {!allowRegister ? (
-              <Alert className="mt-4">
-                <AlertTitle>当前未开放注册</AlertTitle>
-                <AlertDescription>
-                  {siteName} 当前关闭了公开注册，请联系管理员开通账号。
-                </AlertDescription>
-              </Alert>
+              <motion.div
+                animate={{ opacity: 1, y: 0 }}
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
+                transition={sectionTransition(0.3)}
+              >
+                <Alert className="mt-4">
+                  <AlertTitle>当前未开放注册</AlertTitle>
+                  <AlertDescription>
+                    {siteName} 当前关闭了公开注册，请联系管理员开通账号。
+                  </AlertDescription>
+                </Alert>
+              </motion.div>
             ) : null}
 
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <motion.div
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+              transition={sectionTransition(0.34)}
+            >
               <Button
                 disabled={!allowRegister || registerMutation.isPending}
                 type="submit"
@@ -221,10 +275,11 @@ function RegisterPage() {
                   <ArrowRightIcon data-icon="inline-end" />
                 </Link>
               </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+            </motion.div>
+            </motion.form>
+          </CardContent>
+        </Card>
+      </motion.div>
+    </motion.div>
   )
 }
