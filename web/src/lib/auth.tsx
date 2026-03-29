@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, ApiError } from '#/lib/api'
+import { api, isUnauthorizedApiError } from '#/lib/api'
 import { FullScreenLoading } from '#/components/ui/full-screen-loading'
 import { currentUserQueryOptions, queryKeys } from '#/lib/query-options'
 import type { AuthState, UserDTO } from '#/lib/types'
@@ -29,10 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    if (
-      currentUserQuery.error instanceof ApiError &&
-      currentUserQuery.error.status === 401
-    ) {
+    if (isUnauthorizedApiError(currentUserQuery.error)) {
       setSessionCheckEnabled(false)
       queryClient.removeQueries({ queryKey: queryKeys.currentUser() })
     }
@@ -44,7 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       return await queryClient.fetchQuery(currentUserQueryOptions())
     } catch (error) {
-      if (error instanceof ApiError && error.status === 401) {
+      if (isUnauthorizedApiError(error)) {
         setSessionCheckEnabled(false)
         queryClient.removeQueries({ queryKey: queryKeys.currentUser() })
       }

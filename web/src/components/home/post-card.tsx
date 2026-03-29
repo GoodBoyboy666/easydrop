@@ -3,8 +3,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { SquarePenIcon, Trash2Icon } from 'lucide-react'
-import { api, ApiError } from '#/lib/api'
-import { useAuth } from '#/lib/auth'
+import { api } from '#/lib/api'
+import { useUnauthorizedHandler } from '#/lib/auth-guards'
 import { formatDateTime, formatRelativeTime, getInitials } from '#/lib/format'
 import { hasMarkdownContent, normalizeMarkdownContent } from '#/lib/markdown'
 import {
@@ -61,7 +61,7 @@ export function PostCard({
   post,
   showComments = true,
 }: PostCardProps) {
-  const auth = useAuth()
+  const { auth, handleUnauthorized } = useUnauthorizedHandler('/')
   const queryClient = useQueryClient()
   const [postState, setPostState] = useState(post)
   const [commentTotal, setCommentTotal] = useState(0)
@@ -99,14 +99,8 @@ export function PostCard({
     setPendingDeletePost(false)
   }, [post])
 
-  function redirectToLogin() {
-    window.location.assign('/login?redirect=/')
-  }
-
   function handleApiError(error: unknown, fallbackMessage: string) {
-    if (error instanceof ApiError && error.status === 401) {
-      void auth.logout()
-      redirectToLogin()
+    if (handleUnauthorized(error)) {
       return true
     }
 

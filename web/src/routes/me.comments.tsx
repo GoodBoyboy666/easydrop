@@ -4,8 +4,8 @@ import { MessageSquareTextIcon, SquarePenIcon, Trash2Icon } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import type { HTMLMotionProps, Transition } from 'motion/react'
 import { useEffect, useState } from 'react'
-import { api, ApiError } from '#/lib/api'
-import { useAuth } from '#/lib/auth'
+import { api } from '#/lib/api'
+import { useUnauthorizedHandler } from '#/lib/auth-guards'
 import { formatDateTime, formatRelativeTime } from '#/lib/format'
 import { hasMarkdownContent, normalizeMarkdownContent } from '#/lib/markdown'
 import { myCommentsQueryOptions } from '#/lib/query-options'
@@ -59,7 +59,7 @@ const GPU_ACCELERATED_MOTION_PROPS = {
 } as const
 
 function MyCommentsPage() {
-  const auth = useAuth()
+  const { auth, handleUnauthorized } = useUnauthorizedHandler('/me/comments')
   const queryClient = useQueryClient()
   const prefersReducedMotion = useReducedMotion()
   const [actionError, setActionError] = useState<string | null>(null)
@@ -125,20 +125,6 @@ function MyCommentsPage() {
           ease: 'easeOut' as const,
           delay: delay + MOTION_DELAY_SECONDS,
         }
-
-  function redirectToLogin() {
-    window.location.assign('/login?redirect=/me/comments')
-  }
-
-  function handleUnauthorized(error: unknown) {
-    if (error instanceof ApiError && error.status === 401) {
-      auth.logout()
-      redirectToLogin()
-      return true
-    }
-
-    return false
-  }
 
   async function invalidateCommentQueries(comment: CommentDTO) {
     await invalidateMyCommentQueries(queryClient, comment.post_id)

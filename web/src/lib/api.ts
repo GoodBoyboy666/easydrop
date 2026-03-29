@@ -54,6 +54,17 @@ export class ApiError extends Error {
   }
 }
 
+export function isApiErrorWithStatus(
+  error: unknown,
+  status: number,
+): error is ApiError {
+  return error instanceof ApiError && error.status === status
+}
+
+export function isUnauthorizedApiError(error: unknown): error is ApiError {
+  return isApiErrorWithStatus(error, 401)
+}
+
 function asArray<T>(value: T[] | null | undefined) {
   return Array.isArray(value) ? value : []
 }

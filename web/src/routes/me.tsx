@@ -8,8 +8,11 @@ import { MailIcon, ShieldCheckIcon, UserCircleIcon } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import type { HTMLMotionProps, Transition } from 'motion/react'
 import { useEffect, useState } from 'react'
-import { api, ApiError } from '#/lib/api'
-import { useAuth } from '#/lib/auth'
+import { api } from '#/lib/api'
+import {
+  requireAuthenticatedRoute,
+  useUnauthorizedHandler,
+} from '#/lib/auth-guards'
 import { formatDateTime, getInitials } from '#/lib/format'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar'
@@ -27,6 +30,9 @@ import { Input } from '#/components/ui/input'
 import { Separator } from '#/components/ui/separator'
 
 export const Route = createFileRoute('/me')({
+  beforeLoad: async () => {
+    await requireAuthenticatedRoute()
+  },
   component: MePage,
 })
 
@@ -43,7 +49,7 @@ const PAGE_ENTER_INITIAL = { opacity: 0, y: 10 }
 const SECTION_ENTER_INITIAL = { opacity: 0, y: 12 }
 
 function MePage() {
-  const auth = useAuth()
+  const { auth, handleUnauthorized } = useUnauthorizedHandler('/me')
   const location = useLocation()
   const prefersReducedMotion = useReducedMotion()
   const [nickname, setNickname] = useState('')
@@ -114,20 +120,6 @@ function MePage() {
           ease: 'easeOut' as const,
           delay: delay + MOTION_DELAY_SECONDS,
         }
-
-  function redirectToLogin() {
-    window.location.assign('/login?redirect=/me')
-  }
-
-  function handleUnauthorized(error: unknown) {
-    if (error instanceof ApiError && error.status === 401) {
-      auth.logout()
-      redirectToLogin()
-      return true
-    }
-
-    return false
-  }
 
   async function handleProfileSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()

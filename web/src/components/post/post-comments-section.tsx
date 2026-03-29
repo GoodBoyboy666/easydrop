@@ -9,8 +9,8 @@ import {
   Trash2Icon,
   XIcon,
 } from 'lucide-react'
-import { api, ApiError } from '#/lib/api'
-import { useAuth } from '#/lib/auth'
+import { api } from '#/lib/api'
+import { useUnauthorizedHandler } from '#/lib/auth-guards'
 import { formatRelativeTime, getInitials } from '#/lib/format'
 import { hasMarkdownContent, normalizeMarkdownContent } from '#/lib/markdown'
 import { postCommentsQueryOptions, queryKeys } from '#/lib/query-options'
@@ -61,7 +61,8 @@ export function PostCommentsSection({
   onPostUpdated,
   post,
 }: PostCommentsSectionProps) {
-  const auth = useAuth()
+  const { auth, handleUnauthorized, redirectToLogin } =
+    useUnauthorizedHandler(loginRedirectPath)
   const queryClient = useQueryClient()
   const [commentLimit, setCommentLimit] = useState(INITIAL_COMMENT_PAGE_SIZE)
   const [commentError, setCommentError] = useState<string | null>(null)
@@ -160,20 +161,6 @@ export function PostCommentsSection({
     setSubmitError(null)
     setComposerOpen(false)
   }, [post.disable_comment])
-
-  function redirectToLogin() {
-    window.location.assign(`/login?redirect=${loginRedirectPath}`)
-  }
-
-  function handleUnauthorized(error: unknown) {
-    if (error instanceof ApiError && error.status === 401) {
-      void auth.logout()
-      redirectToLogin()
-      return true
-    }
-
-    return false
-  }
 
   function handleApiError(error: unknown, fallbackMessage: string) {
     if (handleUnauthorized(error)) {
