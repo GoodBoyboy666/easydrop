@@ -2,9 +2,18 @@ package database
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 )
+
+func newTestSQLiteDSN(t *testing.T) string {
+	t.Helper()
+
+	name := strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
+	return fmt.Sprintf("file:%s?mode=memory&cache=shared", name)
+}
 
 func TestNewDB_ConfigValidation(t *testing.T) {
 	t.Parallel()
@@ -14,7 +23,7 @@ func TestNewDB_ConfigValidation(t *testing.T) {
 		t.Fatalf("期望错误 ErrNilConfig，实际为: %v", err)
 	}
 
-	_, err = NewDB(&Config{SQLitePath: "file::memory:?cache=shared"})
+	_, err = NewDB(&Config{SQLitePath: newTestSQLiteDSN(t)})
 	if !errors.Is(err, ErrEmptyDriver) {
 		t.Fatalf("期望错误 ErrEmptyDriver，实际为: %v", err)
 	}
@@ -55,7 +64,7 @@ func TestNewDB_SQLiteSuccess(t *testing.T) {
 
 	db, err := NewDB(&Config{
 		Driver:          DriverSQLite,
-		SQLitePath:      "file::memory:?cache=shared",
+		SQLitePath:      newTestSQLiteDSN(t),
 		MaxOpenConns:    10,
 		MaxIdleConns:    5,
 		ConnMaxLifetime: time.Minute,
@@ -84,7 +93,7 @@ func TestNewDB_SQLiteSuccess(t *testing.T) {
 func TestBuildDialector_CaseInsensitiveDriver(t *testing.T) {
 	t.Parallel()
 
-	db, err := NewDB(&Config{Driver: "SQLITE", SQLitePath: "file::memory:?cache=shared"})
+	db, err := NewDB(&Config{Driver: "SQLITE", SQLitePath: newTestSQLiteDSN(t)})
 	if err != nil {
 		t.Fatalf("大小写驱动名应可识别，实际错误: %v", err)
 	}
@@ -95,4 +104,3 @@ func TestBuildDialector_CaseInsensitiveDriver(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = sqlDB.Close() })
 }
-

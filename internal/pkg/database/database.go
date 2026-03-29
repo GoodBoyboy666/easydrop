@@ -85,7 +85,8 @@ func NewDB(cfg *Config) (*gorm.DB, error) {
 		&model.User{},
 	)
 	if err != nil {
-		log.Fatalf("自动迁移建表失败: %v", err)
+		log.Printf("自动迁移建表失败: %v", err)
+		return nil, err
 	}
 
 	sqlDB, err := db.DB()
