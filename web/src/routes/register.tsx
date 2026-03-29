@@ -31,7 +31,10 @@ import { Input } from '#/components/ui/input'
 
 export const Route = createFileRoute('/register')({
   validateSearch: (search: Record<string, unknown>) => ({
-    redirect: typeof search.redirect === 'string' ? search.redirect : '/',
+    redirect:
+      typeof search.redirect === 'string'
+        ? safeRedirectPath(search.redirect)
+        : '/',
   }),
   component: RegisterPage,
 })

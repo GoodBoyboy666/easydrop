@@ -12,7 +12,6 @@ import {
 import { safeRedirectPath } from '#/lib/format'
 import { captchaConfigQueryOptions } from '#/lib/query-options'
 import { useSiteSettings } from '#/lib/site-settings'
-import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import { Button } from '#/components/ui/button'
 import {
   Card,
@@ -31,7 +30,10 @@ import { Input } from '#/components/ui/input'
 
 export const Route = createFileRoute('/login')({
   validateSearch: (search: Record<string, unknown>) => ({
-    redirect: typeof search.redirect === 'string' ? search.redirect : '/',
+    redirect:
+      typeof search.redirect === 'string'
+        ? safeRedirectPath(search.redirect)
+        : '/',
   }),
   component: LoginPage,
 })

@@ -65,9 +65,33 @@ export function getInitials(name?: string) {
 }
 
 export function safeRedirectPath(path?: string) {
-  if (!path || !path.startsWith('/')) {
+  if (!path) {
     return '/'
   }
 
-  return path
+  const normalizedPath = path.trim()
+  if (!normalizedPath.startsWith('/')) {
+    return '/'
+  }
+
+  if (normalizedPath.startsWith('//') || normalizedPath.startsWith('/\\')) {
+    return '/'
+  }
+
+  try {
+    const origin =
+      typeof window !== 'undefined' && window.location.origin
+        ? window.location.origin
+        : 'http://localhost'
+    const redirectUrl = new URL(normalizedPath, origin)
+
+    if (redirectUrl.origin !== origin) {
+      return '/'
+    }
+
+    return `${redirectUrl.pathname}${redirectUrl.search}${redirectUrl.hash}`
+  } catch {
+    return '/'
+  }
+
 }
