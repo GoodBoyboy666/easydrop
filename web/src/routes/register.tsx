@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { ArrowRightIcon, UserPlusIcon } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
@@ -43,6 +43,7 @@ export const Route = createFileRoute('/register')({
 
 function RegisterPage() {
   const auth = useAuth()
+  const navigate = useNavigate()
   const prefersReducedMotion = useReducedMotion()
   const { allowRegister, siteName } = useSiteSettings()
   const { redirect } = Route.useSearch()
@@ -74,9 +75,9 @@ function RegisterPage() {
 
   useEffect(() => {
     if (auth.status === 'authenticated') {
-      window.location.assign(safeRedirectPath(redirect))
+      void navigate({ href: safeRedirectPath(redirect) })
     }
-  }, [auth.status, redirect])
+  }, [auth.status, navigate, redirect])
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -111,7 +112,7 @@ function RegisterPage() {
         username: form.username.trim(),
       })
       await auth.refreshUser()
-      window.location.assign(safeRedirectPath(redirect))
+      void navigate({ href: safeRedirectPath(redirect) })
     } catch (submitError) {
       if (captchaConfigQuery.data?.enabled) {
         setCaptcha(createEmptyCaptchaInput())

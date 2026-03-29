@@ -1,4 +1,4 @@
-import { redirect } from '@tanstack/react-router'
+import { redirect, useNavigate } from '@tanstack/react-router'
 import { api, isUnauthorizedApiError } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
 import { safeRedirectPath } from '#/lib/format'
@@ -54,9 +54,10 @@ export async function requireAdminRoute(): Promise<UserDTO> {
 
 export function useUnauthorizedHandler(redirectPath: string) {
   const auth = useAuth()
+  const navigate = useNavigate()
 
   function redirectToLogin() {
-    window.location.assign(buildLoginRedirectHref(redirectPath))
+    void navigate({ href: buildLoginRedirectHref(redirectPath) })
   }
 
   function handleUnauthorized(error: unknown) {

@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { ArrowRightIcon, LogInIcon } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
@@ -42,6 +42,7 @@ export const Route = createFileRoute('/login')({
 
 function LoginPage() {
   const auth = useAuth()
+  const navigate = useNavigate()
   const prefersReducedMotion = useReducedMotion()
   const { allowRegister } = useSiteSettings()
   const { redirect } = Route.useSearch()
@@ -69,9 +70,9 @@ function LoginPage() {
 
   useEffect(() => {
     if (auth.status === 'authenticated') {
-      window.location.assign(safeRedirectPath(redirect))
+      void navigate({ href: safeRedirectPath(redirect) })
     }
-  }, [auth.status, redirect])
+  }, [auth.status, navigate, redirect])
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -94,7 +95,7 @@ function LoginPage() {
         password,
       })
       await auth.refreshUser()
-      window.location.assign(safeRedirectPath(redirect))
+      void navigate({ href: safeRedirectPath(redirect) })
     } catch (submitError) {
       if (captchaConfigQuery.data?.enabled) {
         setCaptcha(createEmptyCaptchaInput())
