@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -50,7 +51,7 @@ func (m *requestBodyLimit) Upload(c *gin.Context) {
 }
 
 func handleRequestBodyLimit(c *gin.Context, limit int64, bufferBody bool) {
-	if c.Request == nil || c.Request.Body == nil {
+	if c == nil || c.Request == nil || c.Request.Body == nil {
 		c.Next()
 		return
 	}
@@ -64,21 +65,51 @@ func handleRequestBodyLimit(c *gin.Context, limit int64, bufferBody bool) {
 		return
 	}
 
-	if !bufferBody {
-		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, limit)
+	maxBytesBody := http.MaxBytesReader(c.Writer, c.Request.Body, limit)
+
+	// 已知 Content-Length 的请求无需预读，避免一次完整内存拷贝。
+	if !bufferBody || !shouldBufferRequestBody(c.Request) {
+		c.Request.Body = maxBytesBody
 		c.Next()
 		return
 	}
 
-	body, err := io.ReadAll(http.MaxBytesReader(c.Writer, c.Request.Body, limit))
+	body, err := io.ReadAll(maxBytesBody)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusRequestEntityTooLarge, gin.H{"message": "请求体过大"})
+		if isRequestBodyTooLargeError(err) {
+			c.AbortWithStatusJSON(http.StatusRequestEntityTooLarge, gin.H{"message": "请求体过大"})
+			return
+		}
+
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "请求体读取失败"})
 		return
 	}
 
 	c.Request.Body = io.NopCloser(bytes.NewReader(body))
 	c.Request.ContentLength = int64(len(body))
 	c.Next()
+}
+
+func shouldBufferRequestBody(req *http.Request) bool {
+	if req == nil {
+		return false
+	}
+
+	// Content-Length = -1 表示未知长度（常见于 chunked），中间件需预读才能稳定返回 413。
+	return req.ContentLength < 0
+}
+
+func isRequestBodyTooLargeError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	var maxBytesErr *http.MaxBytesError
+	if errors.As(err, &maxBytesErr) {
+		return true
+	}
+
+	return strings.Contains(strings.ToLower(err.Error()), "request body too large")
 }
 
 func resolveUploadMaxRequestBodyBytes(c *gin.Context, settings service.SettingService) int64 {
