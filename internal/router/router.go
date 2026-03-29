@@ -50,7 +50,9 @@ func BuildEngine(app *di.App) *gin.Engine {
 		securityHeaders = app.SecurityHeaders.Apply
 	}
 	r.Use(gin.Recovery(), securityHeaders)
-	r.GET("/api/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	if shouldRegisterSwagger(app) {
+		r.GET("/api/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	}
 
 	if app == nil {
 		return r
@@ -264,6 +266,14 @@ func BuildEngine(app *di.App) *gin.Engine {
 	}
 
 	return r
+}
+
+func shouldRegisterSwagger(app *di.App) bool {
+	if app == nil || app.Config == nil {
+		return true
+	}
+
+	return app.Config.Server.Mode == config.ServerModeDevelopment
 }
 
 func fallbackMiddleware(status int, message string) gin.HandlerFunc {

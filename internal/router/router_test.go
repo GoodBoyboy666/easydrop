@@ -297,12 +297,20 @@ func TestBuildEngineNilApp(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	r := BuildEngine(nil)
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/login", nil)
-	r.ServeHTTP(w, req)
+	apiRecorder := httptest.NewRecorder()
+	apiReq := httptest.NewRequest(http.MethodGet, "/api/v1/auth/login", nil)
+	r.ServeHTTP(apiRecorder, apiReq)
 
-	if w.Code != http.StatusNotFound {
-		t.Fatalf("expected 404 for nil app router, got %d", w.Code)
+	if apiRecorder.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for nil app router, got %d", apiRecorder.Code)
+	}
+
+	swaggerRecorder := httptest.NewRecorder()
+	swaggerReq := httptest.NewRequest(http.MethodGet, "/api/swagger/index.html", nil)
+	r.ServeHTTP(swaggerRecorder, swaggerReq)
+
+	if swaggerRecorder.Code != http.StatusOK {
+		t.Fatalf("expected 200 for swagger UI when app is nil, got %d", swaggerRecorder.Code)
 	}
 }
 
@@ -549,6 +557,21 @@ func TestBuildEngineAppliesSecurityHeadersToSwagger(t *testing.T) {
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected 200 for swagger UI, got %d", recorder.Code)
+	}
+	assertSecurityHeaders(t, recorder)
+}
+
+func TestBuildEngineDisablesSwaggerInProduction(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	r := BuildEngine(newTestAppWithMode(fakeAuthMiddleware{}, config.ServerModeProduction))
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/swagger/index.html", nil)
+
+	r.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for swagger UI in production, got %d", recorder.Code)
 	}
 	assertSecurityHeaders(t, recorder)
 }
