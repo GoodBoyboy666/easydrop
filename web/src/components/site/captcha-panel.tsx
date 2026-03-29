@@ -87,15 +87,25 @@ export function isCaptchaComplete(
 
   const provider = normalizeProvider(config.provider)
   if (provider === GEETEST_V4_PROVIDER) {
+    if (!value) {
+      return false
+    }
+
+    const lotNumber = value.lot_number ?? ''
+    const captchaOutput = value.captcha_output ?? ''
+    const passToken = value.pass_token ?? ''
+    const genTime = value.gen_time ?? ''
+
     return !!(
-      value?.lot_number?.trim() &&
-      value?.captcha_output?.trim() &&
-      value?.pass_token?.trim() &&
-      value?.gen_time?.trim()
+      lotNumber.trim() &&
+      captchaOutput.trim() &&
+      passToken.trim() &&
+      genTime.trim()
     )
   }
 
-  return !!value?.token?.trim()
+  const token = value?.token ?? ''
+  return !!token.trim()
 }
 
 function normalizeProvider(provider?: string) {
@@ -241,8 +251,7 @@ export function CaptchaPanel(props: {
       return
     }
 
-    let active = true
-    let disposed = false
+    const abortController = new AbortController()
     const container = containerRef.current
     if (!container) {
       return
@@ -262,7 +271,7 @@ export function CaptchaPanel(props: {
           '验证码脚本已加载，但前端 API 未就绪',
         )
 
-        if (!active || disposed) {
+        if (abortController.signal.aborted) {
           return
         }
 
@@ -370,7 +379,7 @@ export function CaptchaPanel(props: {
           return
         }
       } catch (error) {
-        if (!active || disposed) {
+        if (abortController.signal.aborted) {
           return
         }
         setWidgetError(
@@ -380,8 +389,7 @@ export function CaptchaPanel(props: {
     })()
 
     return () => {
-      active = false
-      disposed = true
+      abortController.abort()
       clearCaptchaInput(onChange)
 
       if (provider === TURNSTILE_PROVIDER && widgetIdRef.current) {
