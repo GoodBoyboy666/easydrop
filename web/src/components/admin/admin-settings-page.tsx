@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { SaveIcon } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { api } from '#/lib/api'
 import { adminSettingsQueryOptions } from '#/lib/query-options'
@@ -49,6 +49,7 @@ export function AdminSettingsPage() {
   const queryClient = useQueryClient()
   const { auth, handleUnauthorized } = useAdminSession('/admin/settings')
   const [draftValues, setDraftValues] = useState<Record<string, string>>({})
+  const [isSavingAll, setIsSavingAll] = useState(false)
 
   const settingsQuery = useQuery({
     ...adminSettingsQueryOptions({
@@ -59,17 +60,14 @@ export function AdminSettingsPage() {
     enabled: auth.status === 'authenticated',
   })
 
-  const updateMutation = useMutation({
-    mutationFn: (input: { key: string; value: string }) =>
-      api.updateAdminSetting(
-        input.key,
-        {
-          value: input.value,
-        },
-      ),
-  })
-
   const settings = settingsQuery.data?.items ?? []
+  const changedSettings = useMemo(
+    () =>
+      settings.filter(
+        (setting) => (draftValues[setting.key] ?? '') !== setting.value,
+      ),
+    [draftValues, settings],
+  )
 
   useEffect(() => {
     const nextDrafts = settings.reduce<Record<string, string>>(
@@ -87,17 +85,45 @@ export function AdminSettingsPage() {
     await invalidateAdminSettingQueries(queryClient)
   }
 
-  async function handleSaveSetting(setting: SettingItem) {
+  async function handleSaveAllSettings() {
     if (auth.status !== 'authenticated') {
       return
     }
 
+    if (changedSettings.length === 0) {
+      return
+    }
+
+    setIsSavingAll(true)
+
     try {
-      await updateMutation.mutateAsync({
-        key: setting.key,
-        value: draftValues[setting.key] ?? '',
-      })
-      toast.success(`配置 ${setting.key} 已更新`)
+      const results = await Promise.allSettled(
+        changedSettings.map((setting) =>
+          api.updateAdminSetting(setting.key, {
+            value: draftValues[setting.key] ?? '',
+          }),
+        ),
+      )
+
+      const rejected = results.filter((result) => result.status === 'rejected')
+
+      for (const result of rejected) {
+        if (handleUnauthorized(result.reason)) {
+          return
+        }
+      }
+
+      if (rejected.length > 0) {
+        const firstError = rejected[0].reason
+        toast.error(
+          firstError instanceof Error
+            ? firstError.message
+            : `部分配置更新失败（成功 ${results.length - rejected.length} / ${results.length}）`,
+        )
+        return
+      }
+
+      toast.success(`已更新 ${results.length} 项配置`)
       await invalidateSettingQueries()
     } catch (error) {
       if (handleUnauthorized(error)) {
@@ -105,6 +131,8 @@ export function AdminSettingsPage() {
       }
 
       toast.error(error instanceof Error ? error.message : '更新配置失败')
+    } finally {
+      setIsSavingAll(false)
     }
   }
 
@@ -159,93 +187,66 @@ export function AdminSettingsPage() {
           <div className="overflow-hidden bg-transparent">
             {settings.map((setting, index) => {
               const currentValue = draftValues[setting.key] ?? ''
-              const savingCurrent =
-                updateMutation.isPending &&
-                updateMutation.variables.key === setting.key
               const isBooleanSetting = isBooleanSettingValue(setting.value)
               const useTextarea = shouldUseTextarea(setting, currentValue)
 
               return (
                 <div key={setting.key}>
                   <AdminMotionItem className="p-5" delay={index * 0.02}>
-                    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_220px]">
-                      <div className="min-w-0 space-y-4">
-                        <div className="min-w-0">
-                          <div className="font-medium">
-                            {setting.desc || setting.key}
-                          </div>
-                        </div>
-
-                        {isBooleanSetting ? (
-                          <Field orientation="horizontal">
-                            <Switch
-                              checked={asBooleanValue(currentValue)}
-                              id={`setting-${setting.key}`}
-                              onCheckedChange={(checked) =>
-                                handleDraftChange(
-                                  setting.key,
-                                  checked ? 'true' : 'false',
-                                )
-                              }
-                            />
-                            <FieldContent>
-                              <FieldLabel htmlFor={`setting-${setting.key}`}>
-                                <FieldTitle>启用</FieldTitle>
-                              </FieldLabel>
-                            </FieldContent>
-                          </Field>
-                        ) : useTextarea ? (
-                          <Field>
-                            <FieldLabel htmlFor={`setting-${setting.key}`}>
-                              配置值
-                            </FieldLabel>
-                            <Textarea
-                              id={`setting-${setting.key}`}
-                              onChange={(event) =>
-                                handleDraftChange(
-                                  setting.key,
-                                  event.target.value,
-                                )
-                              }
-                              placeholder="请输入新的配置值"
-                              rows={6}
-                              value={currentValue}
-                            />
-                          </Field>
-                        ) : (
-                          <Field>
-                            <FieldLabel htmlFor={`setting-${setting.key}`}>
-                              配置值
-                            </FieldLabel>
-                            <Input
-                              id={`setting-${setting.key}`}
-                              onChange={(event) =>
-                                handleDraftChange(
-                                  setting.key,
-                                  event.target.value,
-                                )
-                              }
-                              placeholder="请输入新的配置值"
-                              type={setting.sensitive ? 'password' : 'text'}
-                              value={currentValue}
-                            />
-                          </Field>
-                        )}
+                    <div className="min-w-0 space-y-4">
+                      <div className="min-w-0">
+                        <div className="font-medium">{setting.desc || setting.key}</div>
                       </div>
 
-                      <div className="flex items-end justify-end">
-                        <div className="flex flex-wrap justify-end gap-2">
-                          <Button
-                            disabled={savingCurrent}
-                            onClick={() => void handleSaveSetting(setting)}
-                            size="sm"
-                            type="button"
-                          >
-                            <SaveIcon data-icon="inline-start" />
-                            {savingCurrent ? '保存中…' : '保存'}
-                          </Button>
-                        </div>
-                      </div>
+                      {isBooleanSetting ? (
+                        <Field orientation="horizontal">
+                          <Switch
+                            checked={asBooleanValue(currentValue)}
+                            id={`setting-${setting.key}`}
+                            onCheckedChange={(checked) =>
+                              handleDraftChange(
+                                setting.key,
+                                checked ? 'true' : 'false',
+                              )
+                            }
+                          />
+                          <FieldContent>
+                            <FieldLabel htmlFor={`setting-${setting.key}`}>
+                              <FieldTitle>启用</FieldTitle>
+                            </FieldLabel>
+                          </FieldContent>
+                        </Field>
+                      ) : useTextarea ? (
+                        <Field>
+                          <FieldLabel htmlFor={`setting-${setting.key}`}>
+                            配置值
+                          </FieldLabel>
+                          <Textarea
+                            id={`setting-${setting.key}`}
+                            onChange={(event) =>
+                              handleDraftChange(setting.key, event.target.value)
+                            }
+                            placeholder="请输入新的配置值"
+                            rows={6}
+                            value={currentValue}
+                          />
+                        </Field>
+                      ) : (
+                        <Field>
+                          <FieldLabel htmlFor={`setting-${setting.key}`}>
+                            配置值
+                          </FieldLabel>
+                          <Input
+                            id={`setting-${setting.key}`}
+                            onChange={(event) =>
+                              handleDraftChange(setting.key, event.target.value)
+                            }
+                            placeholder="请输入新的配置值"
+                            type={setting.sensitive ? 'password' : 'text'}
+                            value={currentValue}
+                          />
+                        </Field>
+                      )}
                     </div>
                   </AdminMotionItem>
 
@@ -255,6 +256,24 @@ export function AdminSettingsPage() {
                 </div>
               )
             })}
+
+            <AdminMotionItem className="p-5 pt-4" delay={settings.length * 0.02}>
+              <div className="flex flex-wrap items-center justify-end gap-3">
+                <span className="text-sm text-muted-foreground">
+                  {changedSettings.length > 0
+                    ? `已修改 ${changedSettings.length} 项`
+                    : '暂无未保存修改'}
+                </span>
+                <Button
+                  disabled={isSavingAll || changedSettings.length === 0}
+                  onClick={() => void handleSaveAllSettings()}
+                  type="button"
+                >
+                  <SaveIcon data-icon="inline-start" />
+                  {isSavingAll ? '保存中…' : '保存'}
+                </Button>
+              </div>
+            </AdminMotionItem>
           </div>
         ) : null}
       </AdminSection>

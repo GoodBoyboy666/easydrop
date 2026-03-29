@@ -23,10 +23,6 @@ linters-settings:
 
 issues:
   exclude-rules:
-    - path: internal/pkg/pathsecurity/pathsecurity.go
-      linters:
-        - gocyclo
-      text: "cyclomatic complexity .*SecureJoin.*"
     - path: internal/pkg/token/redis.go
       linters:
         - gocyclo

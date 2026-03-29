@@ -5,18 +5,24 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/jellydator/ttlcache/v3"
 )
 
 type memoryStore struct {
 	mu        sync.Mutex
-	byToken   map[string]*Record
-	byUserKey map[string]string
+	byToken   *ttlcache.Cache[string, *Record]
+	byUserKey *ttlcache.Cache[string, string]
 }
 
 func newMemoryStore() *memoryStore {
 	return &memoryStore{
-		byToken:   make(map[string]*Record),
-		byUserKey: make(map[string]string),
+		byToken: ttlcache.New(
+			ttlcache.WithDisableTouchOnHit[string, *Record](),
+		),
+		byUserKey: ttlcache.New(
+			ttlcache.WithDisableTouchOnHit[string, string](),
+		),
 	}
 }
 
@@ -25,8 +31,11 @@ func (s *memoryStore) Save(_ context.Context, record *Record) error {
 	defer s.mu.Unlock()
 
 	userKey := memoryUserKindKey(record.UserID, record.Kind)
-	if oldToken, ok := s.byUserKey[userKey]; ok && oldToken != record.Token {
-		delete(s.byToken, oldToken)
+	if oldTokenItem := s.byUserKey.Get(userKey); oldTokenItem != nil {
+		oldToken := oldTokenItem.Value()
+		if oldToken != record.Token {
+			s.byToken.Delete(oldToken)
+		}
 	}
 
 	cloned, err := cloneRecord(record)
@@ -34,8 +43,8 @@ func (s *memoryStore) Save(_ context.Context, record *Record) error {
 		return fmt.Errorf("复制 token 记录失败: %w", err)
 	}
 
-	s.byToken[record.Token] = cloned
-	s.byUserKey[userKey] = record.Token
+	s.byToken.Set(record.Token, cloned, ttlcache.NoTTL)
+	s.byUserKey.Set(userKey, record.Token, ttlcache.NoTTL)
 	return nil
 }
 
@@ -43,10 +52,11 @@ func (s *memoryStore) Consume(_ context.Context, kind, tokenValue string, now ti
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	record, ok := s.byToken[tokenValue]
-	if !ok {
+	item := s.byToken.Get(tokenValue)
+	if item == nil {
 		return nil, ErrTokenNotFound
 	}
+	record := item.Value()
 
 	if !record.ExpiresAt.After(now) {
 		s.deleteLocked(record)
@@ -66,8 +76,8 @@ func (s *memoryStore) deleteLocked(record *Record) {
 		return
 	}
 
-	delete(s.byToken, record.Token)
-	delete(s.byUserKey, memoryUserKindKey(record.UserID, record.Kind))
+	s.byToken.Delete(record.Token)
+	s.byUserKey.Delete(memoryUserKindKey(record.UserID, record.Kind))
 }
 
 func memoryUserKindKey(userID uint, kind string) string {

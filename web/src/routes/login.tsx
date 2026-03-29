@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { ArrowRightIcon, LogInIcon } from 'lucide-react'
+import { motion, useReducedMotion } from 'motion/react'
+import type { Transition } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { api } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
@@ -40,6 +42,7 @@ export const Route = createFileRoute('/login')({
 
 function LoginPage() {
   const auth = useAuth()
+  const prefersReducedMotion = useReducedMotion()
   const { allowRegister } = useSiteSettings()
   const { redirect } = Route.useSearch()
   const [account, setAccount] = useState('')
@@ -51,6 +54,18 @@ function LoginPage() {
   const loginMutation = useMutation({
     mutationFn: api.login,
   })
+  const pageTransition: Transition = prefersReducedMotion
+    ? { duration: 0 }
+    : { duration: 0.34, ease: 'easeOut' }
+
+  const sectionTransition = (delay: number): Transition =>
+    prefersReducedMotion
+      ? { duration: 0 }
+      : {
+          duration: 0.3,
+          ease: 'easeOut',
+          delay,
+        }
 
   useEffect(() => {
     if (auth.status === 'authenticated') {
@@ -90,15 +105,36 @@ function LoginPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-9rem)] w-full max-w-7xl items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-xl border border-border/70 bg-card/95 shadow-sm px-4 py-8">
-        <CardHeader>
-          <CardTitle className="text-2xl">欢迎回来</CardTitle>
-          <CardDescription>Welcome back</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit}>
-            <FieldGroup>
+    <motion.div
+      animate={{ opacity: 1, y: 0 }}
+      className="mx-auto flex min-h-[calc(100vh-9rem)] w-full max-w-7xl items-center justify-center px-4 py-8 sm:px-6 lg:px-8"
+      initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
+      transition={pageTransition}
+    >
+      <motion.div
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className="flex w-full justify-center"
+        initial={prefersReducedMotion ? false : { opacity: 0, y: 16, scale: 0.98 }}
+        transition={sectionTransition(0.08)}
+      >
+        <Card className="w-full max-w-xl border border-border/70 bg-card/95 shadow-sm px-4 py-8">
+          <CardHeader>
+            <CardTitle className="text-2xl">欢迎回来</CardTitle>
+            <CardDescription>Welcome back</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <motion.form
+              animate={{ opacity: 1, y: 0 }}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 12 }}
+              onSubmit={handleSubmit}
+              transition={sectionTransition(0.14)}
+            >
+            <motion.div
+              animate={{ opacity: 1, y: 0 }}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+              transition={sectionTransition(0.2)}
+            >
+              <FieldGroup>
               <Field data-invalid={!!error}>
                 <FieldLabel htmlFor="account">账号或邮箱</FieldLabel>
                 <Input
@@ -122,22 +158,34 @@ function LoginPage() {
                 />
                 <FieldError>{error}</FieldError>
               </Field>
-            </FieldGroup>
+              </FieldGroup>
+            </motion.div>
 
-            <CaptchaPanel
-              config={captchaConfigQuery.data}
-              errorMessage={
-                captchaConfigQuery.error instanceof Error
-                  ? captchaConfigQuery.error.message
-                  : null
-              }
-              isLoading={captchaConfigQuery.isLoading}
-              onChange={setCaptcha}
-              resetSignal={captchaResetSignal}
-              value={captcha}
-            />
+            <motion.div
+              animate={{ opacity: 1, y: 0 }}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+              transition={sectionTransition(0.26)}
+            >
+              <CaptchaPanel
+                config={captchaConfigQuery.data}
+                errorMessage={
+                  captchaConfigQuery.error instanceof Error
+                    ? captchaConfigQuery.error.message
+                    : null
+                }
+                isLoading={captchaConfigQuery.isLoading}
+                onChange={setCaptcha}
+                resetSignal={captchaResetSignal}
+                value={captcha}
+              />
+            </motion.div>
 
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <motion.div
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+              transition={sectionTransition(0.32)}
+            >
               <Button disabled={loginMutation.isPending} type="submit">
                 <LogInIcon data-icon="inline-start" />
                 {loginMutation.isPending ? '正在登录…' : '立即登录'}
@@ -159,10 +207,11 @@ function LoginPage() {
                   </div>
                 )}
               </div>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+            </motion.div>
+            </motion.form>
+          </CardContent>
+        </Card>
+      </motion.div>
+    </motion.div>
   )
 }

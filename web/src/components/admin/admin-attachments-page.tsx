@@ -213,7 +213,6 @@ export function AdminAttachmentsPage() {
 
       <AdminPageHeader
         title="附件管理"
-        description="按用户、类型和时间范围排查附件，支持单条删除和批量清理。"
         actions={
           <Button
             disabled={selectedCount === 0}
@@ -229,7 +228,6 @@ export function AdminAttachmentsPage() {
 
       <AdminSection
         title="筛选附件"
-        description="时间筛选使用本地时间，提交时会转换为 Unix 秒时间戳。"
       >
         <form
           className="grid gap-4 lg:grid-cols-6"

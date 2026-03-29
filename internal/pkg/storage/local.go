@@ -132,9 +132,12 @@ func (s *localStorage) resolvePath(objectKey string) (string, error) {
 	if key == "" {
 		return "", ErrEmptyObjectKey
 	}
+	if containsNUL(key) {
+		return "", ErrInvalidLocalObjectKey
+	}
 
 	cleanKey := filepath.Clean(filepath.FromSlash(key))
-	if cleanKey == "." || cleanKey == ".." || filepath.IsAbs(cleanKey) {
+	if cleanKey == "." || cleanKey == ".." || filepath.IsAbs(cleanKey) || filepath.VolumeName(cleanKey) != "" {
 		return "", ErrInvalidLocalObjectKey
 	}
 	if strings.HasPrefix(cleanKey, ".."+string(filepath.Separator)) {
@@ -147,7 +150,19 @@ func (s *localStorage) resolvePath(objectKey string) (string, error) {
 		return "", err
 	}
 
-	if absPath != s.basePath && !strings.HasPrefix(absPath, s.basePath+string(filepath.Separator)) {
+	ok, err := isPathUnderBase(s.basePath, absPath)
+	if err != nil {
+		return "", err
+	}
+	if !ok {
+		return "", ErrInvalidLocalObjectKey
+	}
+
+	if err := ensureExistingPathChainNoSymlink(s.basePath); err != nil {
+		return "", ErrInvalidLocalObjectKey
+	}
+
+	if err := ensureNoSymlinkOnExistingPrefix(s.basePath, absPath); err != nil {
 		return "", ErrInvalidLocalObjectKey
 	}
 
