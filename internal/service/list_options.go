@@ -3,27 +3,50 @@ package service
 import "strings"
 
 const (
-	defaultServiceListLimit = 20
-	maxServiceListLimit     = 100
+	defaultServiceListPage = 1
+	defaultServiceListSize = 20
+	maxServiceListSize     = 100
 )
 
-// normalizeServiceListLimit 规范化 service 层列表分页大小，并限制最大值。
-func normalizeServiceListLimit(limit int) int {
-	if limit <= 0 {
-		return defaultServiceListLimit
+// normalizeServiceListPage 规范化 service 层分页页码，页码从 1 开始。
+func normalizeServiceListPage(page int) int {
+	if page <= 0 {
+		return defaultServiceListPage
 	}
-	if limit > maxServiceListLimit {
-		return maxServiceListLimit
-	}
-	return limit
+	return page
 }
 
-// normalizeServiceListOffset 规范化 service 层列表偏移量，避免负数。
-func normalizeServiceListOffset(offset int) int {
-	if offset < 0 {
-		return 0
+// normalizeServiceListSize 规范化 service 层分页大小，并限制最大值。
+func normalizeServiceListSize(size int) int {
+	if size <= 0 {
+		return defaultServiceListSize
 	}
-	return offset
+	if size > maxServiceListSize {
+		return maxServiceListSize
+	}
+	return size
+}
+
+func normalizeServiceListPageSize(page, size int) (int, int) {
+	return normalizeServiceListPage(page), normalizeServiceListSize(size)
+}
+
+func maxIntValue() int {
+	return int(^uint(0) >> 1)
+}
+
+// pageSizeToOffset 将 page/size 转换为 offset，并避免整数溢出。
+func pageSizeToOffset(page, size int) int {
+	normalizedPage, normalizedSize := normalizeServiceListPageSize(page, size)
+	deltaPage := int64(normalizedPage - 1)
+	size64 := int64(normalizedSize)
+	maxInt64 := int64(maxIntValue())
+
+	if deltaPage > 0 && size64 > 0 && deltaPage > maxInt64/size64 {
+		return maxIntValue()
+	}
+
+	return int(deltaPage * size64)
 }
 
 // normalizePostListOrder 将说说列表排序参数映射为允许的排序表达式。

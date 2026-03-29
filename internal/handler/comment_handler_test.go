@@ -272,14 +272,14 @@ func TestCommentHandlerListSuccess(t *testing.T) {
 			if input.CanViewHidden {
 				t.Fatal("expected normal user list request to disallow hidden posts")
 			}
-			if input.Limit != 10 || input.Offset != 20 || input.Order != "created_at_asc" {
+			if input.Page != 3 || input.Size != 10 || input.Order != "created_at_asc" {
 				t.Fatalf("unexpected list input: %+v", input)
 			}
 			return &dto.CommentListResult{Items: []dto.CommentDTO{}, Total: 0}, nil
 		},
 	})
 
-	c, w := newTestContext(http.MethodGet, "/api/v1/users/me/comments?post_id=9&limit=10&offset=20&order=created_at_asc")
+	c, w := newTestContext(http.MethodGet, "/api/v1/users/me/comments?post_id=9&page=3&size=10&order=created_at_asc")
 	c.Set(middleware.ContextUserIDKey, uint(101))
 
 	h.List(c)
@@ -330,14 +330,14 @@ func TestCommentHandlerListPublicSuccess(t *testing.T) {
 			if input.CanViewHidden {
 				t.Fatal("expected anonymous public list to disallow hidden posts")
 			}
-			if input.Limit != 10 || input.Offset != 20 || input.Order != "created_at_desc" {
+			if input.Page != 3 || input.Size != 10 || input.Order != "created_at_desc" {
 				t.Fatalf("unexpected public list input: %+v", input)
 			}
 			return &dto.CommentListResult{Items: []dto.CommentDTO{}, Total: 0}, nil
 		},
 	})
 
-	c, w := newTestContext(http.MethodGet, "/api/v1/comments?limit=10&offset=20&order=created_at_desc")
+	c, w := newTestContext(http.MethodGet, "/api/v1/comments?page=3&size=10&order=created_at_desc")
 
 	h.ListPublic(c)
 
@@ -359,7 +359,7 @@ func TestCommentHandlerListPublicRejectsUnknownQuery(t *testing.T) {
 			if input.CanViewHidden {
 				t.Fatal("expected anonymous public list to keep hidden posts filtered")
 			}
-			if input.Order != "" || input.Limit != 0 || input.Offset != 0 {
+			if input.Order != "" || input.Page != 0 || input.Size != 0 {
 				t.Fatalf("unexpected list defaults: %+v", input)
 			}
 			return &dto.CommentListResult{Items: []dto.CommentDTO{}, Total: 0}, nil
@@ -419,14 +419,14 @@ func TestCommentHandlerListByPostSuccess(t *testing.T) {
 			if input.CanViewHidden {
 				t.Fatal("expected normal public viewer to disallow hidden posts")
 			}
-			if input.Limit != 10 || input.Offset != 20 || input.Order != "created_at_desc" {
+			if input.Page != 3 || input.Size != 10 || input.Order != "created_at_desc" {
 				t.Fatalf("unexpected list input: %+v", input)
 			}
 			return &dto.CommentListResult{Items: []dto.CommentDTO{}, Total: 0}, nil
 		},
 	})
 
-	c, w := newTestContext(http.MethodGet, "/api/v1/posts/9/comments?limit=10&offset=20&order=created_at_desc")
+	c, w := newTestContext(http.MethodGet, "/api/v1/posts/9/comments?page=3&size=10&order=created_at_desc")
 	c.Params = gin.Params{{Key: "id", Value: "9"}}
 
 	h.ListByPost(c)

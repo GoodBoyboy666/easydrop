@@ -98,14 +98,14 @@ func TestUserAdminHandlerListSuccess(t *testing.T) {
 			if input.Status == nil || *input.Status != 1 {
 				t.Fatalf("unexpected status: %+v", input.Status)
 			}
-			if input.Limit != 10 || input.Offset != 20 || input.Order != "id desc" {
+			if input.Page != 3 || input.Size != 10 || input.Order != "id desc" {
 				t.Fatalf("unexpected list options: %+v", input)
 			}
 			return &dto.UserListResult{Items: []dto.UserDTO{}, Total: 0}, nil
 		},
 	})
 
-	c, w := newTestContext(http.MethodGet, "/api/v1/admin/users?username=neo&email=@example.com&status=1&limit=10&offset=20&order=id%20desc")
+	c, w := newTestContext(http.MethodGet, "/api/v1/admin/users?username=neo&email=@example.com&status=1&page=3&size=10&order=id%20desc")
 	h.List(c)
 
 	if w.Code != http.StatusOK {

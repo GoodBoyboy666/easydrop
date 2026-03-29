@@ -67,7 +67,7 @@ export function AdminAttachmentsPage() {
   const [draftFilters, setDraftFilters] =
     useState<AttachmentFilterState>(EMPTY_FILTERS)
   const [filters, setFilters] = useState<AttachmentFilterState>(EMPTY_FILTERS)
-  const [page, setPage] = useState(0)
+  const [page, setPage] = useState(1)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [pendingDelete, setPendingDelete] = useState<AttachmentDTO | null>(null)
   const [batchDeleteOpen, setBatchDeleteOpen] = useState(false)
@@ -78,9 +78,9 @@ export function AdminAttachmentsPage() {
       created_from: toUnixSeconds(filters.createdFrom),
       created_to: toUnixSeconds(filters.createdTo),
       id: parseOptionalInteger(filters.attachmentId),
-      limit: ADMIN_PAGE_SIZE,
-      offset: page * ADMIN_PAGE_SIZE,
+      page,
       order: filters.order,
+      size: ADMIN_PAGE_SIZE,
       user_id: parseOptionalInteger(filters.userId),
     }),
     enabled: auth.status === 'authenticated',
@@ -234,7 +234,7 @@ export function AdminAttachmentsPage() {
           onSubmit={(event) => {
             event.preventDefault()
             setFilters(draftFilters)
-            setPage(0)
+            setPage(1)
           }}
         >
           <Field>
@@ -348,7 +348,7 @@ export function AdminAttachmentsPage() {
               onClick={() => {
                 setDraftFilters(EMPTY_FILTERS)
                 setFilters(EMPTY_FILTERS)
-                setPage(0)
+                setPage(1)
                 setSelectedIds([])
               }}
               type="button"

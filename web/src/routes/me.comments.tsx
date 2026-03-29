@@ -70,9 +70,9 @@ function MyCommentsPage() {
   const [motionReady, setMotionReady] = useState(prefersReducedMotion)
   const commentsQuery = useQuery({
     ...myCommentsQueryOptions({
-      limit: 20,
-      offset: 0,
       order: 'created_at_desc',
+      page: 1,
+      size: 20,
     }),
     enabled: auth.status === 'authenticated',
   })

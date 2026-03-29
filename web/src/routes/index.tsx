@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import {
   AlertCircleIcon,
@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react'
 import { api } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
 import { hasMarkdownContent, normalizeMarkdownContent } from '#/lib/markdown'
-import { postsQueryOptions } from '#/lib/query-options'
+import { queryKeys } from '#/lib/query-options'
 import { invalidatePublicFeedQueries } from '#/lib/query-invalidation'
 import { MarkdownEditor } from '#/components/markdown/markdown-editor'
 import { PostCard } from '#/components/home/post-card'
@@ -74,28 +74,35 @@ function HomePage() {
   const prefersReducedMotion = useReducedMotion()
   const searchContent = content ?? ''
   const isSearchMode = searchContent.length > 0
-  const [feedLimit, setFeedLimit] = useState(FEED_PAGE_SIZE)
-  const [feedLimitSearchKey, setFeedLimitSearchKey] = useState(searchContent)
   const [publishDraft, setPublishDraft] = useState('')
   const [publishHidden, setPublishHidden] = useState(false)
   const [publishPinned, setPublishPinned] = useState(false)
   const [publishPin, setPublishPin] = useState('')
   const [publishError, setPublishError] = useState<string | null>(null)
   const [motionReady, setMotionReady] = useState(prefersReducedMotion)
-  const effectiveFeedLimit =
-    feedLimitSearchKey === searchContent ? feedLimit : FEED_PAGE_SIZE
 
-  const feedQuery = useQuery({
-    ...postsQueryOptions(auth.status === 'authenticated', {
-      content: searchContent || undefined,
-      limit: effectiveFeedLimit,
-      offset: 0,
-      order: 'created_at_desc',
-    }),
-    placeholderData:
-      feedLimitSearchKey === searchContent
-        ? (previousData) => previousData
-        : undefined,
+  const feedBaseQuery = {
+    content: searchContent || undefined,
+    order: 'created_at_desc',
+    size: FEED_PAGE_SIZE,
+  }
+
+  const feedQuery = useInfiniteQuery({
+    initialPageParam: 1,
+    queryKey: queryKeys.posts(auth.status === 'authenticated', feedBaseQuery),
+    queryFn: ({ pageParam }) =>
+      api.getPosts({
+        ...feedBaseQuery,
+        page: pageParam,
+      }),
+    getNextPageParam: (lastPage, allPages) => {
+      const loadedPostCount = allPages.reduce(
+        (count, page) => count + page.items.length + page.pinnedItems.length,
+        0,
+      )
+
+      return loadedPostCount < lastPage.total ? allPages.length + 1 : undefined
+    },
   })
   const publishMutation = useMutation({
     mutationFn: () =>
@@ -108,22 +115,38 @@ function HomePage() {
       ),
   })
 
-  const feedData = feedQuery.data ?? {
-    items: [],
-    pinnedItems: [],
-    total: 0,
+  const allFeedPages = feedQuery.data?.pages ?? []
+  const pinnedItems = Array.from(
+    new Map(
+      allFeedPages
+        .flatMap((page) => page.pinnedItems)
+        .map((post) => [post.id, post]),
+    ).values(),
+  )
+  const pinnedIds = new Set(pinnedItems.map((post) => post.id))
+  const items = Array.from(
+    new Map(
+      allFeedPages
+        .flatMap((page) => page.items)
+        .filter((post) => !pinnedIds.has(post.id))
+        .map((post) => [post.id, post]),
+    ).values(),
+  )
+  const feedData = {
+    items,
+    pinnedItems,
+    total: allFeedPages[allFeedPages.length - 1]?.total ?? 0,
   }
-  const feedError =
-    feedQuery.error instanceof Error ? feedQuery.error.message : null
+  const showFeedSkeleton =
+    feedQuery.isPending &&
+    feedData.items.length === 0 &&
+    feedData.pinnedItems.length === 0
+  const feedLoadError =
+    !showFeedSkeleton && feedQuery.error instanceof Error
+      ? feedQuery.error.message
+      : null
   const loadedPostCount = feedData.items.length + feedData.pinnedItems.length
-  const canLoadMorePosts = loadedPostCount < feedData.total
-
-  useEffect(() => {
-    if (feedLimitSearchKey !== searchContent) {
-      setFeedLimit(FEED_PAGE_SIZE)
-      setFeedLimitSearchKey(searchContent)
-    }
-  }, [feedLimitSearchKey, searchContent])
+  const canLoadMorePosts = !!feedQuery.hasNextPage
 
   useEffect(() => {
     if (prefersReducedMotion) {
@@ -331,7 +354,7 @@ function HomePage() {
               </motion.div>
             </div>
 
-            {feedQuery.isPending ? (
+            {showFeedSkeleton ? (
               <div className="flex flex-col gap-4">
                 {Array.from({ length: 3 }).map((_, index) => (
                   <Card
@@ -357,16 +380,16 @@ function HomePage() {
               </div>
             ) : null}
 
-            {!feedQuery.isPending && feedError ? (
+            {feedLoadError ? (
               <Alert variant="destructive">
                 <AlertCircleIcon />
                 <AlertTitle>日志流加载失败</AlertTitle>
-                <AlertDescription>{feedError}</AlertDescription>
+                <AlertDescription>{feedLoadError}</AlertDescription>
               </Alert>
             ) : null}
 
-            {!feedQuery.isPending &&
-            !feedError &&
+            {!showFeedSkeleton &&
+            !feedLoadError &&
             feedData.pinnedItems.length === 0 &&
             feedData.items.length === 0 ? (
               <Empty className="border border-dashed border-border/80 bg-card/60">
@@ -386,10 +409,13 @@ function HomePage() {
               </Empty>
             ) : null}
 
-            {!feedQuery.isPending && !feedError ? (
+            {loadedPostCount > 0 ? (
               <div className="flex flex-col gap-4">
                 <AnimatePresence initial={false}>
-                  {[...feedData.pinnedItems, ...feedData.items].map(
+                  {[
+                    ...feedData.pinnedItems,
+                    ...feedData.items,
+                  ].map(
                     (post, index) => (
                       <motion.div
                         key={post.id}
@@ -430,14 +456,12 @@ function HomePage() {
                 {...GPU_ACCELERATED_MOTION_PROPS}
               >
                 <Button
-                  disabled={feedQuery.isFetching}
-                  onClick={() =>
-                    setFeedLimit((current) => current + FEED_PAGE_SIZE)
-                  }
+                  disabled={feedQuery.isFetchingNextPage}
+                  onClick={() => void feedQuery.fetchNextPage()}
                   type="button"
                   variant="outline"
                 >
-                  {feedQuery.isFetching ? '正在加载…' : '加载更多日志'}
+                  {feedQuery.isFetchingNextPage ? '正在加载…' : '加载更多日志'}
                 </Button>
               </motion.div>
             ) : null}

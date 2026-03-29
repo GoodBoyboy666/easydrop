@@ -22,27 +22,27 @@ type CommentUpdateInput struct {
 type CommentListInput struct {
 	PostID        uint   `json:"post_id"`
 	CanViewHidden bool   `json:"-"`
-	Limit         int    `json:"limit"`
-	Offset        int    `json:"offset"`
+	Page          int    `json:"page"`
+	Size          int    `json:"size"`
 	Order         string `json:"order"`
 }
 
 type CommentPostListQueryInput struct {
-	Limit  int    `json:"limit" form:"limit"`
-	Offset int    `json:"offset" form:"offset"`
-	Order  string `json:"order" form:"order"`
+	Page  int    `json:"page" form:"page"`
+	Size  int    `json:"size" form:"size"`
+	Order string `json:"order" form:"order"`
 }
 
 type CommentPublicListQueryInput struct {
-	Limit  int    `json:"limit" form:"limit"`
-	Offset int    `json:"offset" form:"offset"`
-	Order  string `json:"order" form:"order"`
+	Page  int    `json:"page" form:"page"`
+	Size  int    `json:"size" form:"size"`
+	Order string `json:"order" form:"order"`
 }
 
 type CommentPublicListInput struct {
 	CanViewHidden bool   `json:"-"`
-	Limit         int    `json:"limit"`
-	Offset        int    `json:"offset"`
+	Page          int    `json:"page"`
+	Size          int    `json:"size"`
 	Order         string `json:"order"`
 }
 
@@ -50,16 +50,16 @@ type CommentUserListInput struct {
 	UserID        uint   `json:"user_id"`
 	PostID        *uint  `json:"post_id" form:"post_id" binding:"omitempty,gt=0"`
 	CanViewHidden bool   `json:"-"`
-	Limit         int    `json:"limit" form:"limit"`
-	Offset        int    `json:"offset" form:"offset"`
+	Page          int    `json:"page" form:"page"`
+	Size          int    `json:"size" form:"size"`
 	Order         string `json:"order" form:"order"`
 }
 
 type CommentAdminListInput struct {
 	PostID *uint  `json:"post_id" form:"post_id" binding:"omitempty,gt=0"`
 	UserID *uint  `json:"user_id" form:"user_id" binding:"omitempty,gt=0"`
-	Limit  int    `json:"limit" form:"limit"`
-	Offset int    `json:"offset" form:"offset"`
+	Page   int    `json:"page" form:"page"`
+	Size   int    `json:"size" form:"size"`
 	Order  string `json:"order" form:"order"`
 }
 

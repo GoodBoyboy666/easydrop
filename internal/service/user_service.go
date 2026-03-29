@@ -611,13 +611,15 @@ func (s *userService) Delete(ctx context.Context, id uint) error {
 
 // List 根据过滤条件和分页参数返回用户列表。
 func (s *userService) List(ctx context.Context, input dto.UserListInput) (*dto.UserListResult, error) {
+	page, size := normalizeServiceListPageSize(input.Page, input.Size)
+
 	users, total, err := s.userRepo.List(ctx, repo.UserFilter{
 		Username: strings.TrimSpace(input.Username),
 		Email:    strings.TrimSpace(input.Email),
 		Status:   input.Status,
 	}, repo.ListOptions{
-		Limit:  normalizeServiceListLimit(input.Limit),
-		Offset: normalizeServiceListOffset(input.Offset),
+		Limit:  size,
+		Offset: pageSizeToOffset(page, size),
 		Order:  normalizeUserListOrder(input.Order),
 	})
 	if err != nil {

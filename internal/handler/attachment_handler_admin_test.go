@@ -36,14 +36,14 @@ func TestAttachmentAdminHandlerListSuccess(t *testing.T) {
 			if input.CreatedTo == nil || *input.CreatedTo != 1800000000 {
 				t.Fatalf("expected created_to 1800000000, got %#v", input.CreatedTo)
 			}
-			if input.Limit != 10 || input.Offset != 20 || input.Order != "created_at_desc" {
+			if input.Page != 3 || input.Size != 10 || input.Order != "created_at_desc" {
 				t.Fatalf("unexpected list input: %+v", input)
 			}
 			return &dto.AttachmentListResult{Items: []dto.AttachmentDTO{}, Total: 0}, nil
 		},
 	})
 
-	c, w := newTestContext(http.MethodGet, "/api/v1/admin/attachments?id=12&user_id=100&biz_type=2&created_from=1700000000&created_to=1800000000&limit=10&offset=20&order=created_at_desc")
+	c, w := newTestContext(http.MethodGet, "/api/v1/admin/attachments?id=12&user_id=100&biz_type=2&created_from=1700000000&created_to=1800000000&page=3&size=10&order=created_at_desc")
 
 	h.List(c)
 

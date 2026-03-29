@@ -28,8 +28,8 @@ type PostListInput struct {
 	TagID   *uint  `json:"tag_id" form:"tag_id" binding:"omitempty,gt=0"`
 	Content string `json:"content" form:"content"`
 	Hide    *bool  `json:"hide" form:"hide"`
-	Limit   int    `json:"limit" form:"limit"`
-	Offset  int    `json:"offset" form:"offset"`
+	Page    int    `json:"page" form:"page"`
+	Size    int    `json:"size" form:"size"`
 	Order   string `json:"order" form:"order"`
 }
 

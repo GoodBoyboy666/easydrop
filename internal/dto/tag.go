@@ -10,8 +10,8 @@ type TagDTO struct {
 
 type TagListInput struct {
 	Keyword string `json:"keyword" form:"keyword"`
-	Limit   int    `json:"limit" form:"limit"`
-	Offset  int    `json:"offset" form:"offset"`
+	Page    int    `json:"page" form:"page"`
+	Size    int    `json:"size" form:"size"`
 	Order   string `json:"order" form:"order"`
 }
 

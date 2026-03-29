@@ -53,9 +53,9 @@ export function AdminSettingsPage() {
 
   const settingsQuery = useQuery({
     ...adminSettingsQueryOptions({
-      limit: 100,
-      offset: 0,
       order: 'key_asc',
+      page: 1,
+      size: 100,
     }),
     enabled: auth.status === 'authenticated',
   })

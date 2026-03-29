@@ -228,8 +228,8 @@ func (h *CommentHandler) Delete(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param post_id query int false "说说ID"
-// @Param limit query int false "分页大小"
-// @Param offset query int false "偏移量"
+// @Param page query int false "页码，从 1 开始"
+// @Param size query int false "每页条数，最大 100"
 // @Param order query string false "排序，如 created_at_desc 或 created_at_asc"
 // @Success 200 {object} dto.CommentListResult
 // @Failure 400 {object} dto.ErrorResponse "参数校验失败"
@@ -271,8 +271,8 @@ func (h *CommentHandler) List(c *gin.Context) {
 // @Description 分页查询公开评论列表
 // @Tags comment
 // @Produce json
-// @Param limit query int false "分页大小"
-// @Param offset query int false "偏移量"
+// @Param page query int false "页码，从 1 开始"
+// @Param size query int false "每页条数，最大 100"
 // @Param order query string false "排序，如 created_at_desc 或 created_at_asc"
 // @Success 200 {object} dto.CommentListResult
 // @Failure 400 {object} dto.ErrorResponse "参数校验失败"
@@ -292,8 +292,8 @@ func (h *CommentHandler) ListPublic(c *gin.Context) {
 
 	result, err := h.commentService.ListPublic(c.Request.Context(), dto.CommentPublicListInput{
 		CanViewHidden: canViewHiddenPost(c),
-		Limit:         req.Limit,
-		Offset:        req.Offset,
+		Page:          req.Page,
+		Size:          req.Size,
 		Order:         req.Order,
 	})
 	if err != nil {
@@ -310,8 +310,8 @@ func (h *CommentHandler) ListPublic(c *gin.Context) {
 // @Tags comment
 // @Produce json
 // @Param id path int true "说说ID"
-// @Param limit query int false "分页大小"
-// @Param offset query int false "偏移量"
+// @Param page query int false "页码，从 1 开始"
+// @Param size query int false "每页条数，最大 100"
 // @Param order query string false "排序，如 created_at_asc 或 created_at_desc"
 // @Success 200 {object} dto.CommentListResult
 // @Failure 400 {object} dto.ErrorResponse "参数校验失败"
@@ -338,8 +338,8 @@ func (h *CommentHandler) ListByPost(c *gin.Context) {
 	result, err := h.commentService.ListByPost(c.Request.Context(), dto.CommentListInput{
 		PostID:        uriReq.ID,
 		CanViewHidden: canViewHiddenPost(c),
-		Limit:         queryReq.Limit,
-		Offset:        queryReq.Offset,
+		Page:          queryReq.Page,
+		Size:          queryReq.Size,
 		Order:         strings.TrimSpace(queryReq.Order),
 	})
 	if err != nil {

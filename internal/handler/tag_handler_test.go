@@ -32,14 +32,14 @@ func TestTagHandlerListSuccess(t *testing.T) {
 			if input.Keyword != "go" {
 				t.Fatalf("expected keyword go, got %q", input.Keyword)
 			}
-			if input.Limit != 10 || input.Offset != 20 || input.Order != "hot_desc" {
+			if input.Page != 3 || input.Size != 10 || input.Order != "hot_desc" {
 				t.Fatalf("unexpected list input: %+v", input)
 			}
 			return &dto.TagListResult{Items: []dto.TagDTO{}, Total: 0}, nil
 		},
 	})
 
-	c, w := newTestContext(http.MethodGet, "/api/v1/tags?keyword=go&limit=10&offset=20&order=hot_desc")
+	c, w := newTestContext(http.MethodGet, "/api/v1/tags?keyword=go&page=3&size=10&order=hot_desc")
 	h.List(c)
 
 	if w.Code != http.StatusOK {
@@ -54,7 +54,7 @@ func TestTagHandlerListInvalidQuery(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	h := NewTagHandler(&mockTagServiceForHandler{})
-	c, w := newTestContext(http.MethodGet, "/api/v1/tags?limit=abc")
+	c, w := newTestContext(http.MethodGet, "/api/v1/tags?size=abc")
 	h.List(c)
 
 	if w.Code != http.StatusBadRequest {

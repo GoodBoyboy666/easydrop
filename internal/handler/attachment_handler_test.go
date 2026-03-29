@@ -248,14 +248,14 @@ func TestAttachmentHandlerListSuccess(t *testing.T) {
 			if input.BizType == nil || *input.BizType != 2 {
 				t.Fatalf("expected biz type 2, got %#v", input.BizType)
 			}
-			if input.Limit != 10 || input.Offset != 20 || input.Order != "created_at asc" {
+			if input.Page != 3 || input.Size != 10 || input.Order != "created_at asc" {
 				t.Fatalf("unexpected list input: %+v", input)
 			}
 			return &dto.AttachmentListResult{Items: []dto.AttachmentDTO{}, Total: 0}, nil
 		},
 	}, nil)
 
-	c, w := newTestContext(http.MethodGet, "/api/v1/attachments?id=12&biz_type=2&limit=10&offset=20&order=created_at%20asc")
+	c, w := newTestContext(http.MethodGet, "/api/v1/attachments?id=12&biz_type=2&page=3&size=10&order=created_at%20asc")
 	c.Set(middleware.ContextUserIDKey, uint(100))
 
 	h.List(c)

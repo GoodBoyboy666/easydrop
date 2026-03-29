@@ -1,6 +1,10 @@
 'use client'
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import {
   ChevronDownIcon,
@@ -13,7 +17,7 @@ import { api } from '#/lib/api'
 import { useUnauthorizedHandler } from '#/lib/auth-guards'
 import { formatRelativeTime, getInitials } from '#/lib/format'
 import { hasMarkdownContent, normalizeMarkdownContent } from '#/lib/markdown'
-import { postCommentsQueryOptions, queryKeys } from '#/lib/query-options'
+import { queryKeys } from '#/lib/query-options'
 import { invalidatePostCommentQueries } from '#/lib/query-invalidation'
 import type { CommentDTO, PostDTO } from '#/lib/types'
 import { MarkdownContent } from '#/components/markdown/markdown-content'
@@ -51,8 +55,7 @@ interface PostCommentsSectionProps {
 
 type PendingDeleteComment = CommentDTO | null
 
-const INITIAL_COMMENT_PAGE_SIZE = 3
-const LOAD_MORE_COMMENT_PAGE_SIZE = 5
+const COMMENT_PAGE_SIZE = 5
 
 export function PostCommentsSection({
   alwaysExpanded = false,
@@ -64,7 +67,6 @@ export function PostCommentsSection({
   const { auth, handleUnauthorized, redirectToLogin } =
     useUnauthorizedHandler(loginRedirectPath)
   const queryClient = useQueryClient()
-  const [commentLimit, setCommentLimit] = useState(INITIAL_COMMENT_PAGE_SIZE)
   const [commentError, setCommentError] = useState<string | null>(null)
   const [commentSectionOpen, setCommentSectionOpen] = useState(false)
   const [composerOpen, setComposerOpen] = useState(false)
@@ -78,13 +80,27 @@ export function PostCommentsSection({
   )
   const [pendingDelete, setPendingDelete] = useState<PendingDeleteComment>(null)
 
-  const commentsQuery = useQuery({
-    ...postCommentsQueryOptions(post.id, {
-      limit: commentLimit,
-      offset: 0,
-      order: 'created_at_desc',
-    }),
-    placeholderData: (previousData) => previousData,
+  const commentQueryBase = {
+    order: 'created_at_desc',
+    size: COMMENT_PAGE_SIZE,
+  }
+
+  const commentsQuery = useInfiniteQuery({
+    initialPageParam: 1,
+    queryKey: queryKeys.postComments(post.id, commentQueryBase),
+    queryFn: ({ pageParam }) =>
+      api.getPostComments(post.id, {
+        ...commentQueryBase,
+        page: pageParam,
+      }),
+    getNextPageParam: (lastPage, allPages) => {
+      const loadedCommentCount = allPages.reduce(
+        (count, page) => count + page.items.length,
+        0,
+      )
+
+      return loadedCommentCount < lastPage.total ? allPages.length + 1 : undefined
+    },
   })
   const toggleCommentAvailabilityMutation = useMutation({
     mutationFn: (input: { disable_comment: boolean }) =>
@@ -123,8 +139,15 @@ export function PostCommentsSection({
       ),
   })
 
-  const comments = commentsQuery.data?.items ?? []
-  const commentsTotal = commentsQuery.data?.total ?? 0
+  const allCommentPages = commentsQuery.data?.pages ?? []
+  const comments = Array.from(
+    new Map(
+      allCommentPages
+        .flatMap((page) => page.items)
+        .map((comment) => [comment.id, comment]),
+    ).values(),
+  )
+  const commentsTotal = allCommentPages[allCommentPages.length - 1]?.total ?? 0
   const commentsLoadError =
     commentsQuery.error instanceof Error ? commentsQuery.error.message : null
 
@@ -133,7 +156,6 @@ export function PostCommentsSection({
   }, [commentsTotal, onCommentTotalChange])
 
   useEffect(() => {
-    setCommentLimit(INITIAL_COMMENT_PAGE_SIZE)
     setCommentError(null)
     setReplyTarget(null)
     setCommentDraft('')
@@ -184,8 +206,12 @@ export function PostCommentsSection({
   }
 
   function loadMoreComments() {
+    if (!commentsQuery.hasNextPage || commentsQuery.isFetchingNextPage) {
+      return
+    }
+
     setCommentError(null)
-    setCommentLimit((current) => current + LOAD_MORE_COMMENT_PAGE_SIZE)
+    void commentsQuery.fetchNextPage()
   }
 
   async function toggleCommentAvailability() {
@@ -352,27 +378,7 @@ export function PostCommentsSection({
     setEditingCommentError(null)
 
     try {
-      const updatedComment = await editCommentMutation.mutateAsync(comment)
-
-      queryClient.setQueryData<{ items: CommentDTO[]; total: number }>(
-        queryKeys.postComments(post.id, {
-          limit: commentLimit,
-          offset: 0,
-          order: 'created_at_desc',
-        }),
-        (previousData) => {
-          if (!previousData) {
-            return previousData
-          }
-
-          return {
-            ...previousData,
-            items: previousData.items.map((item) =>
-              item.id === updatedComment.id ? updatedComment : item,
-            ),
-          }
-        },
-      )
+      await editCommentMutation.mutateAsync(comment)
 
       setEditingCommentId(null)
       setEditingCommentDraft('')
@@ -426,7 +432,7 @@ export function PostCommentsSection({
     }
   }
 
-  const hasMoreComments = comments.length < commentsTotal
+  const hasMoreComments = !!commentsQuery.hasNextPage
   const commentPlaceholder = replyTarget
     ? `回复 ${replyTarget.author.nickname}，支持 Markdown 评论。`
     : '期待你的发言，支持 Markdown 评论。'
@@ -617,9 +623,7 @@ export function PostCommentsSection({
                 </Alert>
               ) : null}
 
-              {!commentsQuery.isPending &&
-              !currentCommentError &&
-              comments.length > 0 ? (
+              {!commentsQuery.isPending && comments.length > 0 ? (
                 <div className="flex flex-col gap-2">
                   {comments.map((comment) => (
                     <article key={comment.id} className="px-2.5 pt-2.5 pb-1.5">
@@ -749,14 +753,16 @@ export function PostCommentsSection({
 
                   {hasMoreComments ? (
                     <Button
-                      disabled={commentsQuery.isFetching}
+                      disabled={commentsQuery.isFetchingNextPage}
                       onClick={loadMoreComments}
                       size="sm"
                       type="button"
                       variant="outline"
                     >
                       <ChevronDownIcon data-icon="inline-start" />
-                      {commentsQuery.isFetching ? '正在加载…' : '更多评论'}
+                      {commentsQuery.isFetchingNextPage
+                        ? '正在加载…'
+                        : '更多评论'}
                     </Button>
                   ) : null}
                 </div>

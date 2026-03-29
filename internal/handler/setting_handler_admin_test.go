@@ -52,14 +52,14 @@ func TestSettingAdminHandlerListSuccess(t *testing.T) {
 			if input.Category != "site" || input.Key != "site." {
 				t.Fatalf("unexpected filter: %+v", input)
 			}
-			if input.Limit != 10 || input.Offset != 20 || input.Order != "key_desc" {
+			if input.Page != 3 || input.Size != 10 || input.Order != "key_desc" {
 				t.Fatalf("unexpected paging: %+v", input)
 			}
 			return &dto.SettingListResult{Total: 1, Items: []dto.SettingItem{{Key: "site.url", Value: "https://example.com"}}}, nil
 		},
 	})
 
-	c, w := newTestContext(http.MethodGet, "/api/v1/admin/settings?category=site&key=site.&limit=10&offset=20&order=key_desc")
+	c, w := newTestContext(http.MethodGet, "/api/v1/admin/settings?category=site&key=site.&page=3&size=10&order=key_desc")
 	h.List(c)
 
 	if w.Code != http.StatusOK {

@@ -63,14 +63,14 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "分页大小",
-                        "name": "limit",
+                        "description": "页码，从 1 开始",
+                        "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "偏移量",
-                        "name": "offset",
+                        "description": "每页条数，最大 100",
+                        "name": "size",
                         "in": "query"
                     },
                     {
@@ -271,14 +271,14 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "分页大小",
-                        "name": "limit",
+                        "description": "页码，从 1 开始",
+                        "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "偏移量",
-                        "name": "offset",
+                        "description": "每页条数，最大 100",
+                        "name": "size",
                         "in": "query"
                     },
                     {
@@ -601,14 +601,14 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "分页大小",
-                        "name": "limit",
+                        "description": "页码，从 1 开始",
+                        "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "偏移量",
-                        "name": "offset",
+                        "description": "每页条数，最大 100",
+                        "name": "size",
                         "in": "query"
                     },
                     {
@@ -943,14 +943,14 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "分页大小",
-                        "name": "limit",
+                        "description": "页码，从 1 开始",
+                        "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "偏移量",
-                        "name": "offset",
+                        "description": "每页条数，最大 100",
+                        "name": "size",
                         "in": "query"
                     },
                     {
@@ -1100,14 +1100,14 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "分页大小",
-                        "name": "limit",
+                        "description": "页码，从 1 开始",
+                        "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "偏移量",
-                        "name": "offset",
+                        "description": "每页条数，最大 100",
+                        "name": "size",
                         "in": "query"
                     },
                     {
@@ -1504,14 +1504,14 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "分页大小",
-                        "name": "limit",
+                        "description": "页码，从 1 开始",
+                        "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "偏移量",
-                        "name": "offset",
+                        "description": "每页条数，最大 100",
+                        "name": "size",
                         "in": "query"
                     },
                     {
@@ -2114,14 +2114,14 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "分页大小",
-                        "name": "limit",
+                        "description": "页码，从 1 开始",
+                        "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "偏移量",
-                        "name": "offset",
+                        "description": "每页条数，最大 100",
+                        "name": "size",
                         "in": "query"
                     },
                     {
@@ -2262,14 +2262,14 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "分页大小",
-                        "name": "limit",
+                        "description": "页码，从 1 开始",
+                        "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "偏移量",
-                        "name": "offset",
+                        "description": "每页条数，最大 100",
+                        "name": "size",
                         "in": "query"
                     },
                     {
@@ -2368,14 +2368,14 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "分页大小",
-                        "name": "limit",
+                        "description": "页码，从 1 开始",
+                        "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "偏移量",
-                        "name": "offset",
+                        "description": "每页条数，最大 100",
+                        "name": "size",
                         "in": "query"
                     },
                     {
@@ -2526,14 +2526,14 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "分页大小",
-                        "name": "limit",
+                        "description": "页码，从 1 开始",
+                        "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "偏移量",
-                        "name": "offset",
+                        "description": "每页条数，最大 100",
+                        "name": "size",
                         "in": "query"
                     },
                     {
@@ -2722,14 +2722,14 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "分页大小",
-                        "name": "limit",
+                        "description": "页码，从 1 开始",
+                        "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "偏移量",
-                        "name": "offset",
+                        "description": "每页条数，最大 100",
+                        "name": "size",
                         "in": "query"
                     },
                     {

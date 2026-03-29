@@ -79,12 +79,14 @@ func (s *settingService) GetValue(ctx context.Context, key string) (string, bool
 }
 
 func (s *settingService) ListItems(ctx context.Context, input dto.SettingListInput) (*dto.SettingListResult, error) {
+	page, size := normalizeServiceListPageSize(input.Page, input.Size)
+
 	settings, total, err := s.settingRepo.List(ctx, repo.SettingFilter{
 		Category: strings.TrimSpace(input.Category),
 		Key:      strings.TrimSpace(input.Key),
 	}, repo.ListOptions{
-		Limit:  normalizeServiceListLimit(input.Limit),
-		Offset: normalizeServiceListOffset(input.Offset),
+		Limit:  size,
+		Offset: pageSizeToOffset(page, size),
 		Order:  normalizeSettingListOrder(input.Order),
 	})
 	if err != nil {

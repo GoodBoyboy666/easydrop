@@ -77,7 +77,7 @@ func TestPostHandlerListSuccess(t *testing.T) {
 			if input.Hide == nil || *input.Hide {
 				t.Fatalf("expected hide=false, got %#v", input.Hide)
 			}
-			if input.Limit != 5 || input.Offset != 10 || input.Order != "created_at_desc" {
+			if input.Page != 3 || input.Size != 5 || input.Order != "created_at_desc" {
 				t.Fatalf("unexpected list input: %+v", input)
 			}
 			return &dto.PostListResult{Items: []dto.PostDTO{
@@ -88,7 +88,7 @@ func TestPostHandlerListSuccess(t *testing.T) {
 		},
 	})
 
-	c, w := newTestContext(http.MethodGet, "/api/v1/posts?user_id=7&tag_id=2&content=%20hello%20&limit=5&offset=10&order=created_at_desc&hide=true")
+	c, w := newTestContext(http.MethodGet, "/api/v1/posts?user_id=7&tag_id=2&content=%20hello%20&page=3&size=5&order=created_at_desc&hide=true")
 	h.List(c)
 
 	if w.Code != http.StatusOK {

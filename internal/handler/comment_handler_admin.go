@@ -28,8 +28,8 @@ func NewCommentAdminHandler(commentService service.CommentService) *CommentAdmin
 // @Security BearerAuth
 // @Param post_id query int false "说说ID"
 // @Param user_id query int false "用户ID"
-// @Param limit query int false "分页大小"
-// @Param offset query int false "偏移量"
+// @Param page query int false "页码，从 1 开始"
+// @Param size query int false "每页条数，最大 100"
 // @Param order query string false "排序，如 created_at_desc 或 created_at_asc"
 // @Success 200 {object} dto.CommentListResult
 // @Failure 400 {object} dto.ErrorResponse "参数校验失败"

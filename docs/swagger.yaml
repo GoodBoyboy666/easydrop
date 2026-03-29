@@ -515,13 +515,13 @@ paths:
         in: query
         name: created_to
         type: integer
-      - description: 分页大小
+      - description: 页码，从 1 开始
         in: query
-        name: limit
+        name: page
         type: integer
-      - description: 偏移量
+      - description: 每页条数，最大 100
         in: query
-        name: offset
+        name: size
         type: integer
       - description: 排序，如 created_at_desc
         in: query
@@ -648,13 +648,13 @@ paths:
         in: query
         name: user_id
         type: integer
-      - description: 分页大小
+      - description: 页码，从 1 开始
         in: query
-        name: limit
+        name: page
         type: integer
-      - description: 偏移量
+      - description: 每页条数，最大 100
         in: query
-        name: offset
+        name: size
         type: integer
       - description: 排序，如 created_at_desc 或 created_at_asc
         in: query
@@ -860,13 +860,13 @@ paths:
         in: query
         name: content
         type: string
-      - description: 分页大小
+      - description: 页码，从 1 开始
         in: query
-        name: limit
+        name: page
         type: integer
-      - description: 偏移量
+      - description: 每页条数，最大 100
         in: query
-        name: offset
+        name: size
         type: integer
       - description: 排序，如 created_at desc
         in: query
@@ -1080,13 +1080,13 @@ paths:
         in: query
         name: key
         type: string
-      - description: 分页大小
+      - description: 页码，从 1 开始
         in: query
-        name: limit
+        name: page
         type: integer
-      - description: 偏移量
+      - description: 每页条数，最大 100
         in: query
-        name: offset
+        name: size
         type: integer
       - description: 排序，如 key_asc
         in: query
@@ -1181,13 +1181,13 @@ paths:
         in: query
         name: status
         type: integer
-      - description: 分页大小
+      - description: 页码，从 1 开始
         in: query
-        name: limit
+        name: page
         type: integer
-      - description: 偏移量
+      - description: 每页条数，最大 100
         in: query
-        name: offset
+        name: size
         type: integer
       - description: 排序，如 id desc
         in: query
@@ -1441,13 +1441,13 @@ paths:
         in: query
         name: biz_type
         type: integer
-      - description: 分页大小
+      - description: 页码，从 1 开始
         in: query
-        name: limit
+        name: page
         type: integer
-      - description: 偏移量
+      - description: 每页条数，最大 100
         in: query
-        name: offset
+        name: size
         type: integer
       - description: 排序，如 created_at desc
         in: query
@@ -1840,13 +1840,13 @@ paths:
     get:
       description: 分页查询公开评论列表
       parameters:
-      - description: 分页大小
+      - description: 页码，从 1 开始
         in: query
-        name: limit
+        name: page
         type: integer
-      - description: 偏移量
+      - description: 每页条数，最大 100
         in: query
-        name: offset
+        name: size
         type: integer
       - description: 排序，如 created_at_desc 或 created_at_asc
         in: query
@@ -1937,13 +1937,13 @@ paths:
         in: query
         name: content
         type: string
-      - description: 分页大小
+      - description: 页码，从 1 开始
         in: query
-        name: limit
+        name: page
         type: integer
-      - description: 偏移量
+      - description: 每页条数，最大 100
         in: query
-        name: offset
+        name: size
         type: integer
       - description: 排序，如 created_at_desc
         in: query
@@ -2007,13 +2007,13 @@ paths:
         name: id
         required: true
         type: integer
-      - description: 分页大小
+      - description: 页码，从 1 开始
         in: query
-        name: limit
+        name: page
         type: integer
-      - description: 偏移量
+      - description: 每页条数，最大 100
         in: query
-        name: offset
+        name: size
         type: integer
       - description: 排序，如 created_at_asc 或 created_at_desc
         in: query
@@ -2110,13 +2110,13 @@ paths:
         in: query
         name: keyword
         type: string
-      - description: 分页大小
+      - description: 页码，从 1 开始
         in: query
-        name: limit
+        name: page
         type: integer
-      - description: 偏移量
+      - description: 每页条数，最大 100
         in: query
-        name: offset
+        name: size
         type: integer
       - description: 排序，如 created_at_desc、hot_desc
         in: query
@@ -2232,13 +2232,13 @@ paths:
         in: query
         name: post_id
         type: integer
-      - description: 分页大小
+      - description: 页码，从 1 开始
         in: query
-        name: limit
+        name: page
         type: integer
-      - description: 偏移量
+      - description: 每页条数，最大 100
         in: query
-        name: offset
+        name: size
         type: integer
       - description: 排序，如 created_at_desc 或 created_at_asc
         in: query

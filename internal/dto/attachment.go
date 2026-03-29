@@ -29,8 +29,8 @@ type AttachmentListInput struct {
 	BizType     *int   `json:"biz_type" form:"biz_type"`
 	CreatedFrom *int64 `json:"created_from" form:"created_from" binding:"omitempty,gte=0"`
 	CreatedTo   *int64 `json:"created_to" form:"created_to" binding:"omitempty,gte=0"`
-	Limit       int    `json:"limit" form:"limit"`
-	Offset      int    `json:"offset" form:"offset"`
+	Page        int    `json:"page" form:"page"`
+	Size        int    `json:"size" form:"size"`
 	Order       string `json:"order" form:"order"`
 }
 

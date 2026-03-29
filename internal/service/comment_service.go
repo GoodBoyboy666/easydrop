@@ -239,7 +239,7 @@ func (s *commentService) ListByPost(ctx context.Context, input dto.CommentListIn
 	}
 
 	postID := input.PostID
-	return s.list(ctx, repo.CommentFilter{PostID: &postID}, input.Limit, input.Offset, input.Order)
+	return s.list(ctx, repo.CommentFilter{PostID: &postID}, input.Page, input.Size, input.Order)
 }
 
 // ListByUser 查询指定用户的评论列表。
@@ -257,7 +257,7 @@ func (s *commentService) ListByUser(ctx context.Context, input dto.CommentUserLi
 	}
 
 	userID := input.UserID
-	return s.list(ctx, repo.CommentFilter{PostID: input.PostID, UserID: &userID}, input.Limit, input.Offset, input.Order)
+	return s.list(ctx, repo.CommentFilter{PostID: input.PostID, UserID: &userID}, input.Page, input.Size, input.Order)
 }
 
 // List 查询评论列表（管理端）。
@@ -274,14 +274,16 @@ func (s *commentService) List(ctx context.Context, input dto.CommentAdminListInp
 		}
 	}
 
-	return s.list(ctx, repo.CommentFilter{PostID: input.PostID, UserID: input.UserID}, input.Limit, input.Offset, input.Order)
+	return s.list(ctx, repo.CommentFilter{PostID: input.PostID, UserID: input.UserID}, input.Page, input.Size, input.Order)
 }
 
 // ListPublic 查询公开评论列表。
 func (s *commentService) ListPublic(ctx context.Context, input dto.CommentPublicListInput) (*dto.CommentListResult, error) {
+	page, size := normalizeServiceListPageSize(input.Page, input.Size)
+
 	comments, total, err := s.commentRepo.ListPublic(ctx, s.visibilityPolicy.IncludeHiddenPosts(input.CanViewHidden), repo.ListOptions{
-		Limit:  normalizeServiceListLimit(input.Limit),
-		Offset: normalizeServiceListOffset(input.Offset),
+		Limit:  size,
+		Offset: pageSizeToOffset(page, size),
 		Order:  normalizeCommentListOrder(input.Order),
 	})
 	if err != nil {
@@ -301,15 +303,17 @@ func (s *commentService) ListPublic(ctx context.Context, input dto.CommentPublic
 	}, nil
 }
 
-func (s *commentService) list(ctx context.Context, filter repo.CommentFilter, limit, offset int, order string) (*dto.CommentListResult, error) {
+func (s *commentService) list(ctx context.Context, filter repo.CommentFilter, page, size int, order string) (*dto.CommentListResult, error) {
+	normalizedPage, normalizedSize := normalizeServiceListPageSize(page, size)
+
 	comments, total, err := s.commentRepo.List(ctx, repo.CommentFilter{
 		PostID:   filter.PostID,
 		UserID:   filter.UserID,
 		RootID:   filter.RootID,
 		ParentID: filter.ParentID,
 	}, repo.ListOptions{
-		Limit:  normalizeServiceListLimit(limit),
-		Offset: normalizeServiceListOffset(offset),
+		Limit:  normalizedSize,
+		Offset: pageSizeToOffset(normalizedPage, normalizedSize),
 		Order:  normalizeCommentListOrder(order),
 	})
 	if err != nil {

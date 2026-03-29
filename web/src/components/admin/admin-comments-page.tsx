@@ -51,16 +51,16 @@ export function AdminCommentsPage() {
   const [draftFilters, setDraftFilters] =
     useState<CommentFilterState>(EMPTY_FILTERS)
   const [filters, setFilters] = useState<CommentFilterState>(EMPTY_FILTERS)
-  const [page, setPage] = useState(0)
+  const [page, setPage] = useState(1)
   const [editingComment, setEditingComment] = useState<CommentDTO | null>(null)
   const [draftContent, setDraftContent] = useState('')
   const [pendingDelete, setPendingDelete] = useState<CommentDTO | null>(null)
 
   const commentsQuery = useQuery({
     ...adminCommentsQueryOptions({
-      limit: ADMIN_PAGE_SIZE,
-      offset: page * ADMIN_PAGE_SIZE,
+      page,
       order: filters.order,
+      size: ADMIN_PAGE_SIZE,
       post_id: parseOptionalInteger(filters.postId),
       user_id: parseOptionalInteger(filters.userId),
     }),
@@ -169,7 +169,7 @@ export function AdminCommentsPage() {
           onSubmit={(event) => {
             event.preventDefault()
             setFilters(draftFilters)
-            setPage(0)
+            setPage(1)
           }}
         >
           <Field>
@@ -228,7 +228,7 @@ export function AdminCommentsPage() {
               onClick={() => {
                 setDraftFilters(EMPTY_FILTERS)
                 setFilters(EMPTY_FILTERS)
-                setPage(0)
+                setPage(1)
               }}
               type="button"
               variant="outline"

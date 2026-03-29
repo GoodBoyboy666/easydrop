@@ -223,6 +223,7 @@ func (s *attachmentService) Delete(ctx context.Context, id uint) error {
 func (s *attachmentService) ListByUser(ctx context.Context, input dto.AttachmentListInput) (*dto.AttachmentListResult, error) {
 	createdFrom := toTimePtrFromUnix(input.CreatedFrom)
 	createdTo := toTimePtrFromUnix(input.CreatedTo)
+	page, size := normalizeServiceListPageSize(input.Page, input.Size)
 
 	attachments, total, err := s.attachmentRepo.List(ctx, repo.AttachmentFilter{
 		ID:          input.ID,
@@ -231,8 +232,8 @@ func (s *attachmentService) ListByUser(ctx context.Context, input dto.Attachment
 		CreatedFrom: createdFrom,
 		CreatedTo:   createdTo,
 	}, repo.ListOptions{
-		Limit:  normalizeServiceListLimit(input.Limit),
-		Offset: normalizeServiceListOffset(input.Offset),
+		Limit:  size,
+		Offset: pageSizeToOffset(page, size),
 		Order:  normalizeAttachmentListOrder(input.Order),
 	})
 	if err != nil {

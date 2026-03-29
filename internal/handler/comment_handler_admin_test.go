@@ -24,14 +24,14 @@ func TestCommentAdminHandlerListSuccess(t *testing.T) {
 			if input.UserID == nil || *input.UserID != 7 {
 				t.Fatalf("expected user_id 7, got %#v", input.UserID)
 			}
-			if input.Limit != 10 || input.Offset != 20 || input.Order != "created_at_desc" {
+			if input.Page != 3 || input.Size != 10 || input.Order != "created_at_desc" {
 				t.Fatalf("unexpected list input: %+v", input)
 			}
 			return &dto.CommentListResult{Items: []dto.CommentDTO{}, Total: 0}, nil
 		},
 	})
 
-	c, w := newTestContext(http.MethodGet, "/api/v1/admin/comments?post_id=11&user_id=7&limit=10&offset=20&order=created_at_desc")
+	c, w := newTestContext(http.MethodGet, "/api/v1/admin/comments?post_id=11&user_id=7&page=3&size=10&order=created_at_desc")
 	h.List(c)
 
 	if w.Code != http.StatusOK {

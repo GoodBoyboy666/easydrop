@@ -340,11 +340,11 @@ export function AdminPagination({
   return (
     <div className="mt-4 flex flex-col gap-3 bg-transparent px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="text-sm text-muted-foreground">
-        第 {page + 1} / {totalPages} 页，共 {total} 条记录
+        第 {page} / {totalPages} 页，共 {total} 条记录
       </div>
       <div className="flex gap-2">
         <Button
-          disabled={page <= 0}
+          disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
           size="sm"
           type="button"
@@ -354,7 +354,7 @@ export function AdminPagination({
           上一页
         </Button>
         <Button
-          disabled={page + 1 >= totalPages}
+          disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
           size="sm"
           type="button"

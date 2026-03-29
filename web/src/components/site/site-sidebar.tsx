@@ -54,16 +54,16 @@ export function SiteSidebar() {
   } = useSiteSettings()
   const postsQuery = useQuery({
     ...postsQueryOptions(auth.status === 'authenticated', {
-      limit: 1,
-      offset: 0,
       order: 'created_at_desc',
+      page: 1,
+      size: 1,
     }),
   })
   const latestCommentsQuery = useQuery({
     ...latestCommentsQueryOptions({
-      limit: LATEST_COMMENTS_FETCH_SIZE,
-      offset: 0,
       order: 'created_at_desc',
+      page: 1,
+      size: LATEST_COMMENTS_FETCH_SIZE,
     }),
     select: (result) => ({
       ...result,
@@ -74,9 +74,9 @@ export function SiteSidebar() {
   })
   const tagsQuery = useQuery(
     tagsQueryOptions({
-      limit: 16,
-      offset: 0,
       order: 'hot_desc',
+      page: 1,
+      size: 16,
     }),
   )
 

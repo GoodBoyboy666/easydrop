@@ -26,8 +26,8 @@ func NewTagHandler(tagService service.TagService) *TagHandler {
 // @Tags tag
 // @Produce json
 // @Param keyword query string false "标签关键字"
-// @Param limit query int false "分页大小"
-// @Param offset query int false "偏移量"
+// @Param page query int false "页码，从 1 开始"
+// @Param size query int false "每页条数，最大 100"
 // @Param order query string false "排序，如 created_at_desc、hot_desc"
 // @Success 200 {object} dto.TagListResult
 // @Failure 400 {object} dto.ErrorResponse "参数校验失败"

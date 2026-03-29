@@ -240,8 +240,8 @@ export interface UpdateSettingInput {
 
 export interface AdminUserListQuery {
   email?: string
-  limit?: number
-  offset?: number
+  page?: number
+  size?: number
   order?: string
   status?: number
   username?: string
@@ -250,16 +250,16 @@ export interface AdminUserListQuery {
 export interface AdminPostListQuery {
   content?: string
   hide?: boolean
-  limit?: number
-  offset?: number
+  page?: number
+  size?: number
   order?: string
   tag_id?: number
   user_id?: number
 }
 
 export interface AdminCommentListQuery {
-  limit?: number
-  offset?: number
+  page?: number
+  size?: number
   order?: string
   post_id?: number
   user_id?: number
@@ -270,8 +270,8 @@ export interface AdminAttachmentListQuery {
   created_from?: number
   created_to?: number
   id?: number
-  limit?: number
-  offset?: number
+  page?: number
+  size?: number
   order?: string
   user_id?: number
 }
@@ -279,8 +279,8 @@ export interface AdminAttachmentListQuery {
 export interface AdminSettingListQuery {
   category?: string
   key?: string
-  limit?: number
-  offset?: number
+  page?: number
+  size?: number
   order?: string
 }
 

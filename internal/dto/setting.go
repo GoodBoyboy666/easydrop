@@ -16,8 +16,8 @@ type SettingItem struct {
 type SettingListInput struct {
 	Category string `json:"category" form:"category"`
 	Key      string `json:"key" form:"key"`
-	Limit    int    `json:"limit" form:"limit"`
-	Offset   int    `json:"offset" form:"offset"`
+	Page     int    `json:"page" form:"page"`
+	Size     int    `json:"size" form:"size"`
 	Order    string `json:"order" form:"order"`
 }
 

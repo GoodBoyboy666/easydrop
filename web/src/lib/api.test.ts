@@ -133,9 +133,9 @@ describe('api.getAdminUsers', () => {
 
     await api.getAdminUsers(
       {
-        limit: 20,
-        offset: 40,
+        page: 3,
         order: 'created_at_desc',
+        size: 20,
         status: 1,
         username: 'neo',
       },
@@ -143,7 +143,7 @@ describe('api.getAdminUsers', () => {
     )
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/v1/admin/users?limit=20&offset=40&order=created_at_desc&status=1&username=neo',
+      '/api/v1/admin/users?page=3&order=created_at_desc&size=20&status=1&username=neo',
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: 'Bearer token-admin',

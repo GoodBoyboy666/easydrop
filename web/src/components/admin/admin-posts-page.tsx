@@ -54,16 +54,16 @@ export function AdminPostsPage() {
   const [draftFilters, setDraftFilters] =
     useState<PostFilterState>(EMPTY_FILTERS)
   const [filters, setFilters] = useState<PostFilterState>(EMPTY_FILTERS)
-  const [page, setPage] = useState(0)
+  const [page, setPage] = useState(1)
   const [pendingDelete, setPendingDelete] = useState<PostDTO | null>(null)
 
   const postsQuery = useQuery({
     ...adminPostsQueryOptions({
       content: filters.content.trim() || undefined,
       hide: parseOptionalBoolean(filters.hide),
-      limit: ADMIN_PAGE_SIZE,
-      offset: page * ADMIN_PAGE_SIZE,
+      page,
       order: filters.order,
+      size: ADMIN_PAGE_SIZE,
       tag_id: parseOptionalInteger(filters.tagId),
       user_id: parseOptionalInteger(filters.userId),
     }),
@@ -124,7 +124,7 @@ export function AdminPostsPage() {
           onSubmit={(event) => {
             event.preventDefault()
             setFilters(draftFilters)
-            setPage(0)
+            setPage(1)
           }}
         >
           <Field>
@@ -217,7 +217,7 @@ export function AdminPostsPage() {
               onClick={() => {
                 setDraftFilters(EMPTY_FILTERS)
                 setFilters(EMPTY_FILTERS)
-                setPage(0)
+                setPage(1)
               }}
               type="button"
               variant="outline"

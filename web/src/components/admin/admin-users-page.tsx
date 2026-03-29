@@ -122,7 +122,7 @@ export function AdminUsersPage() {
   const [draftFilters, setDraftFilters] =
     useState<UserFilterState>(EMPTY_FILTERS)
   const [filters, setFilters] = useState<UserFilterState>(EMPTY_FILTERS)
-  const [page, setPage] = useState(0)
+  const [page, setPage] = useState(1)
   const [editorMode, setEditorMode] = useState<UserEditorMode | null>(null)
   const [editingUser, setEditingUser] = useState<UserDTO | null>(null)
   const [formState, setFormState] = useState<UserFormState>(EMPTY_FORM)
@@ -132,9 +132,9 @@ export function AdminUsersPage() {
   const usersQuery = useQuery({
     ...adminUsersQueryOptions({
       email: filters.email.trim() || undefined,
-      limit: ADMIN_PAGE_SIZE,
-      offset: page * ADMIN_PAGE_SIZE,
+      page,
       order: filters.order,
+      size: ADMIN_PAGE_SIZE,
       status: filters.status === 'all' ? undefined : Number(filters.status),
       username: filters.username.trim() || undefined,
     }),
@@ -377,7 +377,7 @@ export function AdminUsersPage() {
           onSubmit={(event) => {
             event.preventDefault()
             setFilters(draftFilters)
-            setPage(0)
+            setPage(1)
           }}
         >
           <Field>
@@ -457,7 +457,7 @@ export function AdminUsersPage() {
               onClick={() => {
                 setDraftFilters(EMPTY_FILTERS)
                 setFilters(EMPTY_FILTERS)
-                setPage(0)
+                setPage(1)
               }}
               type="button"
               variant="outline"
