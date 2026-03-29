@@ -46,7 +46,8 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	cookieConfig := config.ProvideAuthCookieConfig(staticConfig)
 	authCookie := cookie.NewAuthCookie(cookieConfig)
 	auth := middleware.NewAuth(manager, userRepo, authCookie)
-	securityHeaders := middleware.NewSecurityHeaders()
+	allCaptchaConfig := config.ProvideCaptchaConfig(staticConfig)
+	securityHeaders := middleware.NewSecurityHeaders(allCaptchaConfig)
 	ratelimitConfig := config.ProvideRateLimitConfig(staticConfig)
 	redisConfig := config.ProvideRedisConfig(staticConfig)
 	client, err := redis.NewOptionalClient(redisConfig)
@@ -68,7 +69,6 @@ func Initialize(configDir string, strict bool) (*App, error) {
 		return nil, err
 	}
 	requestBodyLimit := middleware.NewRequestBodyLimit(settingService)
-	allCaptchaConfig := config.ProvideCaptchaConfig(staticConfig)
 	httpClient := captcha.NewHttpClient()
 	verifier, err := captcha.NewVerifier(allCaptchaConfig, httpClient)
 	if err != nil {

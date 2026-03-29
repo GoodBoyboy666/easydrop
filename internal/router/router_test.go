@@ -16,6 +16,7 @@ import (
 	"easydrop/internal/dto"
 	"easydrop/internal/handler"
 	"easydrop/internal/middleware"
+	"easydrop/internal/pkg/captcha"
 	cookiepkg "easydrop/internal/pkg/cookie"
 	"easydrop/internal/pkg/ratelimit"
 	"easydrop/internal/pkg/storage"
@@ -360,7 +361,7 @@ func TestBuildEngineServesLocalStorageFilesWithAPIURLPrefix(t *testing.T) {
 	if body := w.Body.String(); body != "hello attachment" {
 		t.Fatalf("expected file content, got %q", body)
 	}
-	assertSecurityHeaders(t, w)
+	assertSecurityHeaders(t, w, true)
 
 	apiRecorder := httptest.NewRecorder()
 	apiReq := httptest.NewRequest(http.MethodGet, "/api/v1/posts", nil)
@@ -368,7 +369,7 @@ func TestBuildEngineServesLocalStorageFilesWithAPIURLPrefix(t *testing.T) {
 	if apiRecorder.Code == http.StatusNotFound {
 		t.Fatalf("expected /api/v1 routes to remain reachable, got 404")
 	}
-	assertSecurityHeaders(t, apiRecorder)
+	assertSecurityHeaders(t, apiRecorder, true)
 }
 
 func TestBuildEngineLimitsNormalRequestBodyToTwoMegabytes(t *testing.T) {
@@ -558,7 +559,7 @@ func TestBuildEngineAppliesSecurityHeadersToSwagger(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected 200 for swagger UI, got %d", recorder.Code)
 	}
-	assertSecurityHeaders(t, recorder)
+	assertSecurityHeaders(t, recorder, false)
 }
 
 func TestBuildEngineDisablesSwaggerInProduction(t *testing.T) {
@@ -573,7 +574,7 @@ func TestBuildEngineDisablesSwaggerInProduction(t *testing.T) {
 	if recorder.Code != http.StatusNotFound {
 		t.Fatalf("expected 404 for swagger UI in production, got %d", recorder.Code)
 	}
-	assertSecurityHeaders(t, recorder)
+	assertSecurityHeaders(t, recorder, false)
 }
 
 var _ middleware.Auth = (*fakeAuthMiddleware)(nil)
@@ -589,7 +590,7 @@ func newTestAppWithMode(auth middleware.Auth, mode string) *di.App {
 			Server: config.ServerConfig{Mode: mode},
 		},
 		Middleware:             auth,
-		SecurityHeaders:        middleware.NewSecurityHeaders(),
+		SecurityHeaders:        middleware.NewSecurityHeaders(&captcha.AllCaptchaConfig{}),
 		RateLimit:              nil,
 		RequestBodyLimit:       middleware.NewRequestBodyLimit(nil),
 		AuthHandler:            handler.NewAuthHandler(nil, nil, cookiepkg.NewAuthCookie(nil)),
@@ -608,7 +609,7 @@ func newTestAppWithMode(auth middleware.Auth, mode string) *di.App {
 	}
 }
 
-func assertSecurityHeaders(t *testing.T, recorder *httptest.ResponseRecorder) {
+func assertSecurityHeaders(t *testing.T, recorder *httptest.ResponseRecorder, expectCSP bool) {
 	t.Helper()
 
 	if got := recorder.Header().Get("X-Content-Type-Options"); got != "nosniff" {
@@ -625,5 +626,11 @@ func assertSecurityHeaders(t *testing.T, recorder *httptest.ResponseRecorder) {
 	}
 	if got := recorder.Header().Get("Strict-Transport-Security"); got != "" {
 		t.Fatalf("expected Strict-Transport-Security to be empty, got %q", got)
+	}
+
+	if got := recorder.Header().Get("Content-Security-Policy"); expectCSP && got == "" {
+		t.Fatalf("expected Content-Security-Policy to be set")
+	} else if !expectCSP && got != "" {
+		t.Fatalf("expected Content-Security-Policy to be empty, got %q", got)
 	}
 }
