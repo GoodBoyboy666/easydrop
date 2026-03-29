@@ -31,8 +31,7 @@ func NewOverviewAdminHandler(overviewService service.AdminOverviewService) *Over
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /admin/overview [get]
 func (h *OverviewAdminHandler) Get(c *gin.Context) {
-	if h.overviewService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.overviewService) {
 		return
 	}
 

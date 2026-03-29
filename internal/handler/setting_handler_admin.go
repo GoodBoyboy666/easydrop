@@ -39,8 +39,7 @@ func NewSettingAdminHandler(settingService service.SettingService) *SettingAdmin
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /admin/settings [get]
 func (h *SettingAdminHandler) List(c *gin.Context) {
-	if h.settingService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.settingService) {
 		return
 	}
 
@@ -71,8 +70,7 @@ func (h *SettingAdminHandler) List(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /settings/public [get]
 func (h *SettingAdminHandler) Public(c *gin.Context) {
-	if h.settingService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.settingService) {
 		return
 	}
 
@@ -101,8 +99,7 @@ func (h *SettingAdminHandler) Public(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /admin/settings/{key} [patch]
 func (h *SettingAdminHandler) Update(c *gin.Context) {
-	if h.settingService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.settingService) {
 		return
 	}
 

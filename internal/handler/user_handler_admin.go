@@ -39,8 +39,7 @@ func NewUserAdminHandler(userService service.UserService) *UserAdminHandler {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /admin/users [get]
 func (h *UserAdminHandler) List(c *gin.Context) {
-	if h.userService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.userService) {
 		return
 	}
 
@@ -78,8 +77,7 @@ func (h *UserAdminHandler) List(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /admin/users [post]
 func (h *UserAdminHandler) Create(c *gin.Context) {
-	if h.userService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.userService) {
 		return
 	}
 
@@ -115,8 +113,7 @@ func (h *UserAdminHandler) Create(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /admin/users/{id} [patch]
 func (h *UserAdminHandler) Update(c *gin.Context) {
-	if h.userService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.userService) {
 		return
 	}
 
@@ -156,8 +153,7 @@ func (h *UserAdminHandler) Update(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /admin/users/{id} [delete]
 func (h *UserAdminHandler) Delete(c *gin.Context) {
-	if h.userService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.userService) {
 		return
 	}
 
@@ -191,8 +187,7 @@ func (h *UserAdminHandler) Delete(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /admin/users/{id}/avatar [post]
 func (h *UserAdminHandler) UploadAvatar(c *gin.Context) {
-	if h.userService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.userService) {
 		return
 	}
 
@@ -251,8 +246,7 @@ func (h *UserAdminHandler) UploadAvatar(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /admin/users/{id}/avatar [delete]
 func (h *UserAdminHandler) DeleteAvatar(c *gin.Context) {
-	if h.userService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.userService) {
 		return
 	}
 

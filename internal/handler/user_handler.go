@@ -33,8 +33,7 @@ func NewUserHandler(userService service.UserService) *UserHandler {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /users/me [get]
 func (h *UserHandler) GetProfile(c *gin.Context) {
-	if h.userService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.userService) {
 		return
 	}
 
@@ -67,8 +66,7 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /users/me/profile [patch]
 func (h *UserHandler) UpdateProfile(c *gin.Context) {
-	if h.userService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.userService) {
 		return
 	}
 
@@ -108,8 +106,7 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /users/me/password [patch]
 func (h *UserHandler) ChangePassword(c *gin.Context) {
-	if h.userService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.userService) {
 		return
 	}
 
@@ -150,8 +147,7 @@ func (h *UserHandler) ChangePassword(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /users/me/email-change [post]
 func (h *UserHandler) RequestEmailChange(c *gin.Context) {
-	if h.userService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.userService) {
 		return
 	}
 
@@ -192,8 +188,7 @@ func (h *UserHandler) RequestEmailChange(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /users/me/avatar [post]
 func (h *UserHandler) UploadAvatar(c *gin.Context) {
-	if h.userService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.userService) {
 		return
 	}
 
@@ -249,8 +244,7 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /users/me/avatar [delete]
 func (h *UserHandler) DeleteAvatar(c *gin.Context) {
-	if h.userService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.userService) {
 		return
 	}
 

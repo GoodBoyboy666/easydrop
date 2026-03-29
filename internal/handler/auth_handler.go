@@ -42,8 +42,7 @@ func NewAuthHandler(authService service.AuthService, userService service.UserSer
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /auth/register [post]
 func (h *AuthHandler) Register(c *gin.Context) {
-	if h.authService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.authService) {
 		return
 	}
 
@@ -83,8 +82,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
-	if h.authService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.authService) {
 		return
 	}
 
@@ -137,8 +135,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /auth/password-reset/request [post]
 func (h *AuthHandler) RequestPasswordReset(c *gin.Context) {
-	if h.authService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.authService) {
 		return
 	}
 
@@ -172,8 +169,7 @@ func (h *AuthHandler) RequestPasswordReset(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /auth/password-reset/confirm [post]
 func (h *AuthHandler) ConfirmPasswordReset(c *gin.Context) {
-	if h.authService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.authService) {
 		return
 	}
 
@@ -204,8 +200,7 @@ func (h *AuthHandler) ConfirmPasswordReset(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /auth/verify-email/confirm [post]
 func (h *AuthHandler) ConfirmVerifyEmail(c *gin.Context) {
-	if h.authService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.authService) {
 		return
 	}
 
@@ -237,8 +232,7 @@ func (h *AuthHandler) ConfirmVerifyEmail(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /auth/email-change/confirm [post]
 func (h *AuthHandler) ConfirmEmailChange(c *gin.Context) {
-	if h.userService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.userService) {
 		return
 	}
 

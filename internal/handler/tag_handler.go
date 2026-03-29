@@ -34,8 +34,7 @@ func NewTagHandler(tagService service.TagService) *TagHandler {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /tags [get]
 func (h *TagHandler) List(c *gin.Context) {
-	if h.tagService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.tagService) {
 		return
 	}
 

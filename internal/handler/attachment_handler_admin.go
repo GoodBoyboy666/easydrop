@@ -41,8 +41,7 @@ func NewAttachmentAdminHandler(attachmentService service.AttachmentService) *Att
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /admin/attachments [get]
 func (h *AttachmentAdminHandler) List(c *gin.Context) {
-	if h.attachmentService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.attachmentService) {
 		return
 	}
 
@@ -83,8 +82,7 @@ func (h *AttachmentAdminHandler) List(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /admin/attachments/{id} [delete]
 func (h *AttachmentAdminHandler) Delete(c *gin.Context) {
-	if h.attachmentService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.attachmentService) {
 		return
 	}
 
@@ -118,8 +116,7 @@ func (h *AttachmentAdminHandler) Delete(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /admin/attachments/batch-delete [post]
 func (h *AttachmentAdminHandler) BatchDelete(c *gin.Context) {
-	if h.attachmentService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.attachmentService) {
 		return
 	}
 

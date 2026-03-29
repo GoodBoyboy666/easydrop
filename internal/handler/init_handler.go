@@ -30,8 +30,7 @@ func NewInitHandler(initService service.InitService) *InitHandler {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /init/status [get]
 func (h *InitHandler) Status(c *gin.Context) {
-	if h.initService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.initService) {
 		return
 	}
 
@@ -57,8 +56,7 @@ func (h *InitHandler) Status(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /init [post]
 func (h *InitHandler) Initialize(c *gin.Context) {
-	if h.initService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.initService) {
 		return
 	}
 

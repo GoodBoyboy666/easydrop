@@ -40,8 +40,7 @@ func NewAttachmentHandler(attachmentService service.AttachmentService, settingSe
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /attachments [post]
 func (h *AttachmentHandler) Upload(c *gin.Context) {
-	if h.attachmentService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.attachmentService) {
 		return
 	}
 
@@ -111,8 +110,7 @@ func (h *AttachmentHandler) Upload(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /attachments/{id} [get]
 func (h *AttachmentHandler) Get(c *gin.Context) {
-	if h.attachmentService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.attachmentService) {
 		return
 	}
 
@@ -160,8 +158,7 @@ func (h *AttachmentHandler) Get(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /attachments [get]
 func (h *AttachmentHandler) List(c *gin.Context) {
-	if h.attachmentService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.attachmentService) {
 		return
 	}
 
@@ -203,8 +200,7 @@ func (h *AttachmentHandler) List(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /attachments/{id} [delete]
 func (h *AttachmentHandler) Delete(c *gin.Context) {
-	if h.attachmentService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.attachmentService) {
 		return
 	}
 

@@ -33,8 +33,7 @@ func NewPostHandler(postService service.PostService) *PostHandler {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /posts/{id} [get]
 func (h *PostHandler) Get(c *gin.Context) {
-	if h.postService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.postService) {
 		return
 	}
 
@@ -73,8 +72,7 @@ func (h *PostHandler) Get(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /posts [get]
 func (h *PostHandler) List(c *gin.Context) {
-	if h.postService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.postService) {
 		return
 	}
 

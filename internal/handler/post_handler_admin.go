@@ -41,8 +41,7 @@ func NewPostAdminHandler(postService service.PostService) *PostAdminHandler {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /admin/posts [get]
 func (h *PostAdminHandler) List(c *gin.Context) {
-	if h.postService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.postService) {
 		return
 	}
 
@@ -78,8 +77,7 @@ func (h *PostAdminHandler) List(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /admin/posts/{id} [get]
 func (h *PostAdminHandler) Get(c *gin.Context) {
-	if h.postService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.postService) {
 		return
 	}
 
@@ -113,8 +111,7 @@ func (h *PostAdminHandler) Get(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /admin/posts [post]
 func (h *PostAdminHandler) Create(c *gin.Context) {
-	if h.postService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.postService) {
 		return
 	}
 
@@ -157,8 +154,7 @@ func (h *PostAdminHandler) Create(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /admin/posts/{id} [patch]
 func (h *PostAdminHandler) Update(c *gin.Context) {
-	if h.postService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.postService) {
 		return
 	}
 
@@ -199,8 +195,7 @@ func (h *PostAdminHandler) Update(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /admin/posts/{id} [delete]
 func (h *PostAdminHandler) Delete(c *gin.Context) {
-	if h.postService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.postService) {
 		return
 	}
 

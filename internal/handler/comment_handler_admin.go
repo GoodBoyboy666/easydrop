@@ -38,8 +38,7 @@ func NewCommentAdminHandler(commentService service.CommentService) *CommentAdmin
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /admin/comments [get]
 func (h *CommentAdminHandler) List(c *gin.Context) {
-	if h.commentService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.commentService) {
 		return
 	}
 
@@ -74,8 +73,7 @@ func (h *CommentAdminHandler) List(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /admin/comments/{id} [get]
 func (h *CommentAdminHandler) Get(c *gin.Context) {
-	if h.commentService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.commentService) {
 		return
 	}
 
@@ -111,8 +109,7 @@ func (h *CommentAdminHandler) Get(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /admin/comments/{id} [patch]
 func (h *CommentAdminHandler) Update(c *gin.Context) {
-	if h.commentService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.commentService) {
 		return
 	}
 
@@ -153,8 +150,7 @@ func (h *CommentAdminHandler) Update(c *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /admin/comments/{id} [delete]
 func (h *CommentAdminHandler) Delete(c *gin.Context) {
-	if h.commentService == nil {
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Message: service.ErrInternal.Error()})
+	if !ensureServiceReady(c, h.commentService) {
 		return
 	}
 
