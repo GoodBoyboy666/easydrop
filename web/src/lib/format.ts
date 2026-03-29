@@ -93,5 +93,42 @@ export function safeRedirectPath(path?: string) {
   } catch {
     return '/'
   }
+}
 
+export function safeHttpUrl(input?: string | null) {
+  if (typeof input !== 'string') {
+    return null
+  }
+
+  const normalizedInput = input.trim()
+  if (!normalizedInput) {
+    return null
+  }
+
+  const isAbsoluteHttpUrl = /^https?:\/\//i.test(normalizedInput)
+  const isRelativePath = normalizedInput.startsWith('/')
+
+  if (!isAbsoluteHttpUrl && !isRelativePath) {
+    return null
+  }
+
+  if (normalizedInput.startsWith('//') || normalizedInput.startsWith('/\\')) {
+    return null
+  }
+
+  try {
+    const origin =
+      typeof window !== 'undefined' && window.location.origin
+        ? window.location.origin
+        : 'http://localhost'
+    const parsedUrl = new URL(normalizedInput, origin)
+
+    if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+      return null
+    }
+
+    return parsedUrl.toString()
+  } catch {
+    return null
+  }
 }

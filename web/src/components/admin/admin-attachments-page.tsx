@@ -10,7 +10,7 @@ import {
   parseOptionalInteger,
 } from '#/lib/admin'
 import { api } from '#/lib/api'
-import { formatDateTime } from '#/lib/format'
+import { formatDateTime, safeHttpUrl } from '#/lib/format'
 import { adminAttachmentsQueryOptions, queryKeys } from '#/lib/query-options'
 import type { AttachmentDTO } from '#/lib/types'
 import {
@@ -410,76 +410,95 @@ export function AdminAttachmentsPage() {
         attachments.length > 0 ? (
           <>
             <div className="overflow-hidden bg-transparent">
-              {attachments.map((attachment, index) => (
-                <div key={attachment.id}>
-                  <AdminMotionItem className="p-4" delay={index * 0.03}>
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="flex min-w-0 items-start gap-3">
-                        <input
-                          checked={selectedIds.includes(attachment.id)}
-                          className="mt-1 size-4 rounded border-border"
-                          onChange={() => toggleSelected(attachment.id)}
-                          type="checkbox"
-                        />
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <div className="font-medium">
-                              附件ID: {attachment.id}
+              {attachments.map((attachment, index) => {
+                const safeAttachmentUrl = safeHttpUrl(attachment.url)
+
+                return (
+                  <div key={attachment.id}>
+                    <AdminMotionItem className="p-4" delay={index * 0.03}>
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="flex min-w-0 items-start gap-3">
+                          <input
+                            checked={selectedIds.includes(attachment.id)}
+                            className="mt-1 size-4 rounded border-border"
+                            onChange={() => toggleSelected(attachment.id)}
+                            type="checkbox"
+                          />
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <div className="font-medium">
+                                附件ID: {attachment.id}
+                              </div>
                             </div>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            
-                          </div>
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            用户ID: {attachment.user_id} ·{' '}
-                            {formatAttachmentBizType(attachment.biz_type)} ·
-                            文件大小: {formatBytes(attachment.file_size)} ·
-                            存储类型: {attachment.storage_type} · 上传时间:{' '}
-                            {formatDateTime(attachment.created_at)}
-                          </div>
-                          <div className="mt-2 text-xs text-muted-foreground break-all">
-                            对象键: {attachment.file_key}
-                          </div>
-                          <div className="mt-1 text-xs text-muted-foreground break-all">
-                            访问地址: {attachment.url}
+                            <div className="text-sm text-muted-foreground"></div>
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              用户ID: {attachment.user_id} ·{' '}
+                              {formatAttachmentBizType(attachment.biz_type)} ·
+                              文件大小: {formatBytes(attachment.file_size)} ·
+                              存储类型: {attachment.storage_type} · 上传时间:{' '}
+                              {formatDateTime(attachment.created_at)}
+                            </div>
+                            <div className="mt-2 text-xs text-muted-foreground break-all">
+                              对象键: {attachment.file_key}
+                            </div>
+                            <div className="mt-1 text-xs text-muted-foreground break-all">
+                              访问地址: {attachment.url || '无'}
+                            </div>
+                            {!safeAttachmentUrl ? (
+                              <div className="mt-1 text-xs text-destructive">
+                                访问链接不安全或格式错误，已禁用打开操作。
+                              </div>
+                            ) : null}
                           </div>
                         </div>
-                      </div>
 
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          asChild
-                          size="sm"
-                          type="button"
-                          variant="outline"
-                        >
-                          <a
-                            href={attachment.url}
-                            rel="noreferrer"
-                            target="_blank"
+                        <div className="flex flex-wrap gap-2">
+                          {safeAttachmentUrl ? (
+                            <Button
+                              asChild
+                              size="sm"
+                              type="button"
+                              variant="outline"
+                            >
+                              <a
+                                href={safeAttachmentUrl}
+                                rel="noopener noreferrer"
+                                target="_blank"
+                              >
+                                <ExternalLinkIcon data-icon="inline-start" />
+                                打开文件
+                              </a>
+                            </Button>
+                          ) : (
+                            <Button
+                              disabled
+                              size="sm"
+                              type="button"
+                              variant="outline"
+                            >
+                              <ExternalLinkIcon data-icon="inline-start" />
+                              链接无效
+                            </Button>
+                          )}
+                          <Button
+                            onClick={() => setPendingDelete(attachment)}
+                            size="sm"
+                            type="button"
+                            variant="destructive"
                           >
-                            <ExternalLinkIcon data-icon="inline-start" />
-                            打开文件
-                          </a>
-                        </Button>
-                        <Button
-                          onClick={() => setPendingDelete(attachment)}
-                          size="sm"
-                          type="button"
-                          variant="destructive"
-                        >
-                          <Trash2Icon data-icon="inline-start" />
-                          删除
-                        </Button>
+                            <Trash2Icon data-icon="inline-start" />
+                            删除
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  </AdminMotionItem>
+                    </AdminMotionItem>
 
-                  {index < attachments.length - 1 ? (
-                    <Separator className="bg-border/80 data-horizontal:h-0.5" />
-                  ) : null}
-                </div>
-              ))}
+                    {index < attachments.length - 1 ? (
+                      <Separator className="bg-border/80 data-horizontal:h-0.5" />
+                    ) : null}
+                  </div>
+                )
+              })}
             </div>
 
             <AdminPagination
