@@ -7,7 +7,10 @@ import { api, ApiError } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
 import { formatDateTime, formatRelativeTime, getInitials } from '#/lib/format'
 import { hasMarkdownContent, normalizeMarkdownContent } from '#/lib/markdown'
-import { queryKeys } from '#/lib/query-options'
+import {
+  invalidatePostCardDeleteQueries,
+  invalidatePostCardUpdateQueries,
+} from '#/lib/query-invalidation'
 import type { PostDTO } from '#/lib/types'
 import { PostCommentsSection } from '#/components/post/post-comments-section'
 import { MarkdownContent } from '#/components/markdown/markdown-content'
@@ -157,20 +160,7 @@ export function PostCard({
 
     try {
       await deletePostMutation.mutateAsync()
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.postPrefix(),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.postsPrefix(),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.latestCommentsPrefix(),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.tagsPrefix(),
-        }),
-      ])
+      await invalidatePostCardDeleteQueries(queryClient)
       onPostDeleted?.(postState.id)
     } catch (error) {
       handleApiError(error, '删除日志失败')
@@ -226,17 +216,7 @@ export function PostCard({
       handlePostUpdated(updatedPost)
       setEditDraft(updatedPost.content)
       setEditingPost(false)
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.postPrefix(),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.postsPrefix(),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.tagsPrefix(),
-        }),
-      ])
+      await invalidatePostCardUpdateQueries(queryClient)
     } catch (error) {
       handleApiError(error, '更新日志失败')
     }

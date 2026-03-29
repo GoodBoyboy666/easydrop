@@ -3,7 +3,8 @@ import { SaveIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { api } from '#/lib/api'
-import { adminSettingsQueryOptions, queryKeys } from '#/lib/query-options'
+import { adminSettingsQueryOptions } from '#/lib/query-options'
+import { invalidateAdminSettingQueries } from '#/lib/query-invalidation'
 import type { SettingItem } from '#/lib/types'
 import {
   AdminEmptyState,
@@ -83,14 +84,7 @@ export function AdminSettingsPage() {
   }, [settings])
 
   async function invalidateSettingQueries() {
-    await Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.adminSettingsPrefix(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.publicSettings(),
-      }),
-    ])
+    await invalidateAdminSettingQueries(queryClient)
   }
 
   async function handleSaveSetting(setting: SettingItem) {

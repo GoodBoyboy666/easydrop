@@ -12,7 +12,8 @@ import { useEffect, useState } from 'react'
 import { api } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
 import { hasMarkdownContent, normalizeMarkdownContent } from '#/lib/markdown'
-import { postsQueryOptions, queryKeys } from '#/lib/query-options'
+import { postsQueryOptions } from '#/lib/query-options'
+import { invalidatePublicFeedQueries } from '#/lib/query-invalidation'
 import { MarkdownEditor } from '#/components/markdown/markdown-editor'
 import { PostCard } from '#/components/home/post-card'
 import { SiteSidebar } from '#/components/site/site-sidebar'
@@ -197,17 +198,7 @@ function HomePage() {
       setPublishHidden(false)
       setPublishPinned(false)
       setPublishPin('')
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.postsPrefix(),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.latestCommentsPrefix(),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.tagsPrefix(),
-        }),
-      ])
+      await invalidatePublicFeedQueries(queryClient)
     } catch (error) {
       setPublishError(error instanceof Error ? error.message : '发布失败')
     }
@@ -421,17 +412,7 @@ function HomePage() {
                       >
                         <PostCard
                           onPostDeleted={() => {
-                            void Promise.all([
-                              queryClient.invalidateQueries({
-                                queryKey: queryKeys.postsPrefix(),
-                              }),
-                              queryClient.invalidateQueries({
-                                queryKey: queryKeys.latestCommentsPrefix(),
-                              }),
-                              queryClient.invalidateQueries({
-                                queryKey: queryKeys.tagsPrefix(),
-                              }),
-                            ])
+                            void invalidatePublicFeedQueries(queryClient)
                           }}
                           post={post}
                         />

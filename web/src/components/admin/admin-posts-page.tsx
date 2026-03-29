@@ -11,7 +11,8 @@ import {
 } from '#/lib/admin'
 import { api } from '#/lib/api'
 import { formatDateTime } from '#/lib/format'
-import { adminPostsQueryOptions, queryKeys } from '#/lib/query-options'
+import { adminPostsQueryOptions } from '#/lib/query-options'
+import { invalidateAdminPostQueries } from '#/lib/query-invalidation'
 import type { PostDTO } from '#/lib/types'
 import {
   AdminDangerDialog,
@@ -76,30 +77,7 @@ export function AdminPostsPage() {
   const posts = postsQuery.data?.items ?? []
 
   async function invalidatePostQueries(postId?: number) {
-    await Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.adminPostsPrefix(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.postsPrefix(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.latestCommentsPrefix(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.adminCommentsPrefix(),
-      }),
-      ...(postId
-        ? [
-            queryClient.invalidateQueries({
-              queryKey: queryKeys.postPrefix(),
-            }),
-            queryClient.invalidateQueries({
-              queryKey: queryKeys.postCommentsPrefix(postId),
-            }),
-          ]
-        : []),
-    ])
+    await invalidateAdminPostQueries(queryClient, { postId })
   }
 
   async function handleDeletePost() {

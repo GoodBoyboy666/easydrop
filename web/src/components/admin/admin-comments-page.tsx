@@ -11,7 +11,8 @@ import {
 import { api } from '#/lib/api'
 import { formatDateTime } from '#/lib/format'
 import { hasMarkdownContent, normalizeMarkdownContent } from '#/lib/markdown'
-import { adminCommentsQueryOptions, queryKeys } from '#/lib/query-options'
+import { adminCommentsQueryOptions } from '#/lib/query-options'
+import { invalidateAdminCommentQueries } from '#/lib/query-invalidation'
 import type { CommentDTO } from '#/lib/types'
 import {
   AdminDangerDialog,
@@ -92,20 +93,7 @@ export function AdminCommentsPage() {
   }
 
   async function invalidateCommentQueries(comment: CommentDTO) {
-    await Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.adminCommentsPrefix(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.latestCommentsPrefix(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.postCommentsPrefix(comment.post_id),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.myCommentsPrefix(),
-      }),
-    ])
+    await invalidateAdminCommentQueries(queryClient, comment.post_id)
   }
 
   async function handleSaveComment(event: React.FormEvent<HTMLFormElement>) {

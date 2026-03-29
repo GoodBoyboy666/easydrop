@@ -8,7 +8,8 @@ import { api, ApiError } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
 import { formatDateTime, formatRelativeTime } from '#/lib/format'
 import { hasMarkdownContent, normalizeMarkdownContent } from '#/lib/markdown'
-import { myCommentsQueryOptions, queryKeys } from '#/lib/query-options'
+import { myCommentsQueryOptions } from '#/lib/query-options'
+import { invalidateMyCommentQueries } from '#/lib/query-invalidation'
 import type { CommentDTO } from '#/lib/types'
 import { MarkdownContent } from '#/components/markdown/markdown-content'
 import { MarkdownEditor } from '#/components/markdown/markdown-editor'
@@ -140,17 +141,7 @@ function MyCommentsPage() {
   }
 
   async function invalidateCommentQueries(comment: CommentDTO) {
-    await Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.latestCommentsPrefix(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.myCommentsPrefix(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.postCommentsPrefix(comment.post_id),
-      }),
-    ])
+    await invalidateMyCommentQueries(queryClient, comment.post_id)
   }
 
   function startEditComment(comment: CommentDTO) {

@@ -11,7 +11,8 @@ import {
 } from '#/lib/admin'
 import { api } from '#/lib/api'
 import { formatDateTime, safeHttpUrl } from '#/lib/format'
-import { adminAttachmentsQueryOptions, queryKeys } from '#/lib/query-options'
+import { adminAttachmentsQueryOptions } from '#/lib/query-options'
+import { invalidateAdminAttachmentQueries } from '#/lib/query-invalidation'
 import type { AttachmentDTO } from '#/lib/types'
 import {
   AdminDangerDialog,
@@ -99,14 +100,7 @@ export function AdminAttachmentsPage() {
     attachments.every((attachment) => selectedIds.includes(attachment.id))
 
   async function invalidateAttachmentQueries() {
-    await Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.adminAttachmentsPrefix(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.adminUsersPrefix(),
-      }),
-    ])
+    await invalidateAdminAttachmentQueries(queryClient)
   }
 
   function toggleSelected(id: number) {

@@ -10,7 +10,8 @@ import {
 } from '#/lib/admin'
 import { api } from '#/lib/api'
 import { formatDateTime, getInitials } from '#/lib/format'
-import { adminUsersQueryOptions, queryKeys } from '#/lib/query-options'
+import { adminUsersQueryOptions } from '#/lib/query-options'
+import { invalidateAdminUserQueries } from '#/lib/query-invalidation'
 import type { CreateUserInput, UpdateUserInput, UserDTO } from '#/lib/types'
 import {
   AdminDangerDialog,
@@ -182,13 +183,7 @@ export function AdminUsersPage() {
   }
 
   async function refreshUserQueries(targetUserId?: number) {
-    await queryClient.invalidateQueries({
-      queryKey: queryKeys.adminUsersPrefix(),
-    })
-
-    await queryClient.invalidateQueries({
-      queryKey: queryKeys.currentUser(),
-    })
+    await invalidateAdminUserQueries(queryClient)
 
     if (targetUserId && targetUserId === auth.user?.id) {
       try {

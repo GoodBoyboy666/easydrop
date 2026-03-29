@@ -14,6 +14,7 @@ import { useAuth } from '#/lib/auth'
 import { formatRelativeTime, getInitials } from '#/lib/format'
 import { hasMarkdownContent, normalizeMarkdownContent } from '#/lib/markdown'
 import { postCommentsQueryOptions, queryKeys } from '#/lib/query-options'
+import { invalidatePostCommentQueries } from '#/lib/query-invalidation'
 import type { CommentDTO, PostDTO } from '#/lib/types'
 import { MarkdownContent } from '#/components/markdown/markdown-content'
 import { MarkdownEditor } from '#/components/markdown/markdown-editor'
@@ -184,23 +185,7 @@ export function PostCommentsSection({
   }
 
   async function invalidatePostQueries() {
-    await Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.postPrefix(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.postsPrefix(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.latestCommentsPrefix(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.postCommentsPrefix(post.id),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.myCommentsPrefix(),
-      }),
-    ])
+    await invalidatePostCommentQueries(queryClient, post.id)
   }
 
   function isCommentOwner(comment: CommentDTO) {

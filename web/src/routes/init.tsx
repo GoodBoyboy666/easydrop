@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { ApiError, api } from '#/lib/api'
 import { initStatusQueryOptions } from '#/lib/query-options'
+import { invalidateInitStatusQueries } from '#/lib/query-invalidation'
 import type { InitInput } from '#/lib/types'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import { Button } from '#/components/ui/button'
@@ -66,7 +67,7 @@ function InitPage() {
   const initializeMutation = useMutation({
     mutationFn: api.initializeSystem,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['init-status'] })
+      await invalidateInitStatusQueries(queryClient)
     },
   })
 
