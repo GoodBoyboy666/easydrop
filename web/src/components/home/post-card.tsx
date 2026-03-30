@@ -1,8 +1,9 @@
 'use client'
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Suspense, lazy, useEffect, useState } from 'react'
-import { SquarePenIcon, Trash2Icon } from 'lucide-react'
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
+import { CopyIcon, Share2Icon, SquarePenIcon, Trash2Icon } from 'lucide-react'
+import { toast } from 'sonner'
 import { api } from '#/lib/api'
 import { useUnauthorizedHandler } from '#/lib/auth-guards'
 import { formatDateTime, formatRelativeTime, getInitials } from '#/lib/format'
@@ -43,6 +44,13 @@ import {
   FieldLabel,
   FieldTitle,
 } from '#/components/ui/field'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '#/components/ui/dialog'
 import { Input } from '#/components/ui/input'
 import { Separator } from '#/components/ui/separator'
 import { Switch } from '#/components/ui/switch'
@@ -59,6 +67,14 @@ const MarkdownEditor = lazy(async () => {
 
   return {
     default: module.MarkdownEditor,
+  }
+})
+
+const PostSharePlatforms = lazy(async () => {
+  const module = await import('#/components/home/post-share-platforms.tsx')
+
+  return {
+    default: module.PostSharePlatforms,
   }
 })
 
@@ -81,6 +97,30 @@ export function PostCard({
   )
   const [editError, setEditError] = useState<string | null>(null)
   const [pendingDeletePost, setPendingDeletePost] = useState(false)
+  const [shareDialogOpen, setShareDialogOpen] = useState(false)
+  const [hasCopiedShareUrl, setHasCopiedShareUrl] = useState(false)
+  const sharePath = `/posts/${postState.id}`
+  const shareUrl = useMemo(() => {
+    if (typeof window === 'undefined') {
+      return sharePath
+    }
+
+    try {
+      return new URL(sharePath, window.location.origin).toString()
+    } catch {
+      return sharePath
+    }
+  }, [sharePath])
+  const shareTitle = useMemo(() => {
+    const normalizedContent = postState.content.replace(/\s+/g, ' ').trim()
+    const summary = normalizedContent.slice(0, 80)
+
+    if (summary.length > 0) {
+      return `${postState.author.nickname}：${summary}`
+    }
+
+    return `${postState.author.nickname} 发布了一条日志`
+  }, [postState.author.nickname, postState.content])
 
   const deletePostMutation = useMutation({
     mutationFn: () => api.deleteAdminPost(postState.id),
@@ -104,7 +144,23 @@ export function PostCard({
     setEditError(null)
     setEditingPost(false)
     setPendingDeletePost(false)
+    setShareDialogOpen(false)
+    setHasCopiedShareUrl(false)
   }, [post])
+
+  useEffect(() => {
+    if (!hasCopiedShareUrl) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setHasCopiedShareUrl(false)
+    }, 1600)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [hasCopiedShareUrl])
 
   function handleApiError(error: unknown, fallbackMessage: string) {
     if (handleUnauthorized(error)) {
@@ -223,6 +279,21 @@ export function PostCard({
     }
   }
 
+  async function handleCopyShareUrl() {
+    try {
+      if (typeof navigator === 'undefined') {
+        throw new Error('clipboard_not_supported')
+      }
+
+      await navigator.clipboard.writeText(shareUrl)
+      setHasCopiedShareUrl(true)
+      toast.success('日志链接已复制')
+    } catch {
+      setHasCopiedShareUrl(false)
+      toast.error('复制失败，请手动复制链接')
+    }
+  }
+
   return (
     <>
       <AlertDialog
@@ -257,6 +328,60 @@ export function PostCard({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={shareDialogOpen}
+        onOpenChange={(open) => {
+          setShareDialogOpen(open)
+
+          if (!open) {
+            setHasCopiedShareUrl(false)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md p-5">
+          <DialogHeader>
+            <DialogTitle>分享这条日志</DialogTitle>
+            <DialogDescription>
+              复制链接或选择平台快速分享。
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-4">
+            <div className="px-1 pt-1">
+              <div className="mb-2 text-xs text-muted-foreground">日志链接</div>
+              <div className="flex items-center gap-2">
+                <Input className="h-8 text-xs" readOnly value={shareUrl} />
+                <Button
+                  aria-label="复制日志链接"
+                  onClick={() => void handleCopyShareUrl()}
+                  size="sm"
+                  type="button"
+                  variant={hasCopiedShareUrl ? 'secondary' : 'outline'}
+                >
+                  <CopyIcon />
+                  {hasCopiedShareUrl ? '已复制' : '复制'}
+                </Button>
+              </div>
+            </div>
+            <Separator/>
+            <div className="px-1">
+              <div className="mb-2 text-xs text-muted-foreground">分享到</div>
+              {shareDialogOpen ? (
+                <Suspense
+                  fallback={
+                    <div className="text-sm text-muted-foreground">
+                      正在加载分享平台…
+                    </div>
+                  }
+                >
+                  <PostSharePlatforms shareTitle={shareTitle} shareUrl={shareUrl} />
+                </Suspense>
+              ) : null}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Card className="bg-card/50 shadow-sm">
         <CardHeader className="gap-4 border-b border-border/60">
@@ -310,8 +435,18 @@ export function PostCard({
                 </div>
               </div>
             </div>
-            {auth.isAdmin ? (
-              <div className="flex shrink-0 items-center gap-1">
+            <div className="flex shrink-0 items-center gap-1">
+              <Button
+                aria-label="分享日志"
+                onClick={() => setShareDialogOpen(true)}
+                size="icon-sm"
+                type="button"
+                variant="ghost"
+              >
+                <Share2Icon />
+              </Button>
+              {auth.isAdmin ? (
+                <>
                 <Button
                   aria-label="编辑日志"
                   disabled={editPostMutation.isPending}
@@ -334,8 +469,9 @@ export function PostCard({
                 >
                   <Trash2Icon />
                 </Button>
-              </div>
-            ) : null}
+                </>
+              ) : null}
+            </div>
           </div>
         </CardHeader>
 
