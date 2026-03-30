@@ -164,7 +164,7 @@ export function MarkdownEditor({
   useEffect(() => {
     let cancelled = false
 
-    void import('@uiw/react-md-editor').then((module) => {
+    void import('@uiw/react-md-editor/nohighlight').then((module) => {
       if (!cancelled) {
         setEditorComponent(() => module.default)
       }

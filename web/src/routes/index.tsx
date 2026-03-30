@@ -8,13 +8,12 @@ import {
 } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import type { HTMLMotionProps, Transition } from 'motion/react'
-import { useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { api } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
 import { hasMarkdownContent, normalizeMarkdownContent } from '#/lib/markdown'
 import { queryKeys } from '#/lib/query-options'
 import { invalidatePublicFeedQueries } from '#/lib/query-invalidation'
-import { MarkdownEditor } from '#/components/markdown/markdown-editor'
 import { PostCard } from '#/components/home/post-card'
 import { SiteSidebar } from '#/components/site/site-sidebar'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
@@ -66,6 +65,14 @@ const GPU_ACCELERATED_MOTION_PROPS = {
   style: { willChange: 'transform, opacity' },
   transformTemplate: gpuTransformTemplate,
 } as const
+
+const MarkdownEditor = lazy(async () => {
+  const module = await import('#/components/markdown/markdown-editor')
+
+  return {
+    default: module.MarkdownEditor,
+  }
+})
 
 function HomePage() {
   const auth = useAuth()
@@ -254,12 +261,20 @@ function HomePage() {
                   <form onSubmit={handlePublish}>
                     <FieldGroup>
                       <Field data-invalid={!!publishError}>
-                        <MarkdownEditor
-                          height={150}
-                          onChange={setPublishDraft}
-                          placeholder="快写下你的想法吧，支持 Markdown。"
-                          value={publishDraft}
-                        />
+                        <Suspense
+                          fallback={
+                            <div className="flex h-37.5 items-center justify-center rounded-xl border border-border/60 bg-card/70 px-3 text-sm text-muted-foreground">
+                              编辑器加载中…
+                            </div>
+                          }
+                        >
+                          <MarkdownEditor
+                            height={150}
+                            onChange={setPublishDraft}
+                            placeholder="快写下你的想法吧，支持 Markdown。"
+                            value={publishDraft}
+                          />
+                        </Suspense>
                         <FieldError>{publishError}</FieldError>
                       </Field>
 

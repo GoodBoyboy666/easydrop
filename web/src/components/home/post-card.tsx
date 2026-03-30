@@ -1,7 +1,7 @@
 'use client'
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { SquarePenIcon, Trash2Icon } from 'lucide-react'
 import { api } from '#/lib/api'
 import { useUnauthorizedHandler } from '#/lib/auth-guards'
@@ -14,7 +14,6 @@ import {
 import type { PostDTO } from '#/lib/types'
 import { PostCommentsSection } from '#/components/post/post-comments-section'
 import { MarkdownContent } from '#/components/markdown/markdown-content'
-import { MarkdownEditor } from '#/components/markdown/markdown-editor'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,6 +53,14 @@ interface PostCardProps {
   post: PostDTO
   showComments?: boolean
 }
+
+const MarkdownEditor = lazy(async () => {
+  const module = await import('#/components/markdown/markdown-editor')
+
+  return {
+    default: module.MarkdownEditor,
+  }
+})
 
 export function PostCard({
   onPostDeleted,
@@ -341,12 +348,23 @@ export function PostCard({
               >
                 <FieldGroup>
                   <Field data-invalid={!!editError}>
-                    <MarkdownEditor
-                      height={180}
-                      onChange={setEditDraft}
-                      placeholder="编辑当前日志内容，支持 Markdown。"
-                      value={editDraft}
-                    />
+                    <Suspense
+                      fallback={
+                        <div
+                          className="flex items-center justify-center rounded-xl border border-border/60 bg-card/70 px-3 text-sm text-muted-foreground"
+                          style={{ height: 180 }}
+                        >
+                          编辑器加载中…
+                        </div>
+                      }
+                    >
+                      <MarkdownEditor
+                        height={180}
+                        onChange={setEditDraft}
+                        placeholder="编辑当前日志内容，支持 Markdown。"
+                        value={editDraft}
+                      />
+                    </Suspense>
                     <FieldError>{editError}</FieldError>
                   </Field>
 

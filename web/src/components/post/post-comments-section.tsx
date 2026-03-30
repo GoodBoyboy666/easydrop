@@ -5,7 +5,7 @@ import {
   useMutation,
   useQueryClient,
 } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import {
   ChevronDownIcon,
   MessageSquareMoreIcon,
@@ -21,7 +21,6 @@ import { queryKeys } from '#/lib/query-options'
 import { invalidatePostCommentQueries } from '#/lib/query-invalidation'
 import type { CommentDTO, PostDTO } from '#/lib/types'
 import { MarkdownContent } from '#/components/markdown/markdown-content'
-import { MarkdownEditor } from '#/components/markdown/markdown-editor'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import {
   AlertDialog,
@@ -56,6 +55,14 @@ interface PostCommentsSectionProps {
 type PendingDeleteComment = CommentDTO | null
 
 const COMMENT_PAGE_SIZE = 5
+
+const MarkdownEditor = lazy(async () => {
+  const module = await import('#/components/markdown/markdown-editor')
+
+  return {
+    default: module.MarkdownEditor,
+  }
+})
 
 export function PostCommentsSection({
   alwaysExpanded = false,
@@ -569,12 +576,23 @@ export function PostCommentsSection({
 
                 <FieldGroup>
                   <Field data-invalid={!!submitError}>
-                    <MarkdownEditor
-                      height={120}
-                      onChange={setCommentDraft}
-                      placeholder={commentPlaceholder}
-                      value={commentDraft}
-                    />
+                    <Suspense
+                      fallback={
+                        <div
+                          className="flex items-center justify-center rounded-xl border border-border/60 bg-card/70 px-3 text-sm text-muted-foreground"
+                          style={{ height: 120 }}
+                        >
+                          编辑器加载中…
+                        </div>
+                      }
+                    >
+                      <MarkdownEditor
+                        height={120}
+                        onChange={setCommentDraft}
+                        placeholder={commentPlaceholder}
+                        value={commentDraft}
+                      />
+                    </Suspense>
                     <FieldError>{submitError}</FieldError>
                   </Field>
                 </FieldGroup>
@@ -647,12 +665,23 @@ export function PostCommentsSection({
                             >
                               <FieldGroup>
                                 <Field data-invalid={!!editingCommentError}>
-                                  <MarkdownEditor
-                                    height={120}
-                                    onChange={setEditingCommentDraft}
-                                    placeholder="编辑这条评论，支持 Markdown。"
-                                    value={editingCommentDraft}
-                                  />
+                                  <Suspense
+                                    fallback={
+                                      <div
+                                        className="flex items-center justify-center rounded-xl border border-border/60 bg-card/70 px-3 text-sm text-muted-foreground"
+                                        style={{ height: 120 }}
+                                      >
+                                        编辑器加载中…
+                                      </div>
+                                    }
+                                  >
+                                    <MarkdownEditor
+                                      height={120}
+                                      onChange={setEditingCommentDraft}
+                                      placeholder="编辑这条评论，支持 Markdown。"
+                                      value={editingCommentDraft}
+                                    />
+                                  </Suspense>
                                   <FieldError>{editingCommentError}</FieldError>
                                 </Field>
                               </FieldGroup>
