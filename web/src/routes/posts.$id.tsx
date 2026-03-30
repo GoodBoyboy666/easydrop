@@ -113,7 +113,7 @@ function PostDetailPage() {
         transition={getEntranceTransition()}
         {...GPU_ACCELERATED_MOTION_PROPS}
       >
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid gap-6 md:grid-cols-[minmax(0,50%)_clamp(240px,26vw,320px)] md:justify-center">
           <div className="flex min-w-0 flex-col gap-4">
             <motion.div
               animate={motionReady ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
@@ -169,7 +169,7 @@ function PostDetailPage() {
         transition={getEntranceTransition()}
         {...GPU_ACCELERATED_MOTION_PROPS}
       >
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid gap-6 md:grid-cols-[minmax(0,50%)_clamp(240px,26vw,320px)] md:justify-center">
           <motion.div
             animate={motionReady ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
             className="min-w-0"
@@ -216,7 +216,7 @@ function PostDetailPage() {
       transition={getEntranceTransition()}
       {...GPU_ACCELERATED_MOTION_PROPS}
     >
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid gap-6 md:grid-cols-[minmax(0,50%)_clamp(240px,26vw,320px)] md:justify-center">
         <div className="flex min-w-0 flex-col gap-4">
           <motion.div
             animate={motionReady ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}

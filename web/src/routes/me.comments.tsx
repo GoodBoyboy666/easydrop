@@ -318,7 +318,7 @@ function MyCommentsPage() {
       {loading ? (
         <motion.div
           animate={motionReady ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
-          className="flex flex-col gap-4"
+          className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
           initial={false}
           transition={getEntranceTransition(0.1)}
           {...GPU_ACCELERATED_MOTION_PROPS}
@@ -351,7 +351,7 @@ function MyCommentsPage() {
           {...GPU_ACCELERATED_MOTION_PROPS}
         >
           <Alert variant="destructive">
-            <AlertTitle>我的评论读取失败</AlertTitle>
+            <AlertTitle>评论读取失败</AlertTitle>
             <AlertDescription>{loadError}</AlertDescription>
           </Alert>
         </motion.div>
@@ -379,7 +379,7 @@ function MyCommentsPage() {
       ) : null}
 
       {!loading && !loadError ? (
-        <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           <AnimatePresence initial={false}>
             {comments.map((comment, index) => (
               <motion.div

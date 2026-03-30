@@ -434,7 +434,7 @@ export function PostCard({
                 </div>
               </form>
             ) : (
-              <MarkdownContent content={postState.content} />
+              <MarkdownContent className='px-2' content={postState.content} />
             )}
             {postState.tags?.length ? (
               <div className="flex flex-wrap gap-2">

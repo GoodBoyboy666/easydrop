@@ -238,7 +238,7 @@ function HomePage() {
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
       <motion.section
         animate={motionReady ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-        className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]"
+        className="grid gap-6 md:grid-cols-[minmax(0,50%)_clamp(240px,26vw,320px)] md:justify-center"
         initial={false}
         transition={getEntranceTransition()}
         {...GPU_ACCELERATED_MOTION_PROPS}

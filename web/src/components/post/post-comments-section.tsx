@@ -495,7 +495,7 @@ export function PostCommentsSection({
             >
               <CollapsibleTrigger asChild>
                 <Button
-                  className="h-auto px-0 py-0 text-sm font-medium text-foreground hover:bg-transparent"
+                  className="h-auto text-sm font-medium text-foreground hover:bg-transparent"
                   size="sm"
                   type="button"
                   variant="ghost"
