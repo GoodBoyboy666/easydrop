@@ -1,7 +1,7 @@
 'use client'
 
 import { motion, useReducedMotion } from 'motion/react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { HashIcon, MegaphoneIcon, MessageSquareTextIcon } from 'lucide-react'
@@ -36,6 +36,16 @@ import { Skeleton } from '#/components/ui/skeleton'
 const LATEST_COMMENTS_PAGE_SIZE = 6
 const LATEST_COMMENTS_FETCH_SIZE = 24
 const SIDEBAR_MOTION_DELAY_SECONDS = 0.12
+const DESKTOP_BREAKPOINT_PX = 768
+const SIDEBAR_TOP_GAP_PX = 16
+const SIDEBAR_BOTTOM_GAP_PX = 16
+const SCROLL_DIRECTION_THRESHOLD_PX = 2
+
+type StickyBounds = {
+  enabled: boolean
+  maxTop: number
+  minTop: number
+}
 
 function isTopLevelComment(comment: CommentDTO) {
   return comment.root_id == null && comment.parent_id == null
@@ -45,6 +55,15 @@ export function SiteSidebar() {
   const auth = useAuth()
   const prefersReducedMotion = useReducedMotion()
   const [motionReady, setMotionReady] = useState(prefersReducedMotion)
+  const sidebarRef = useRef<HTMLElement | null>(null)
+  const boundsRef = useRef<StickyBounds>({
+    enabled: false,
+    maxTop: 0,
+    minTop: 0,
+  })
+  const hasStickyTopRef = useRef(false)
+  const stickyTopRef = useRef(0)
+  const lastScrollYRef = useRef(0)
   const {
     error: settingsError,
     loading: settingsLoading,
@@ -127,11 +146,193 @@ export function SiteSidebar() {
     }
   }, [prefersReducedMotion])
 
+  useEffect(() => {
+    const sidebarElement = sidebarRef.current
+
+    if (!sidebarElement) {
+      return
+    }
+
+    let scrollFrame = 0
+    let syncFrame = 0
+
+    const getHeaderHeight = () => {
+      const headerElement = document.querySelector<HTMLElement>(
+        '[data-site-header-root]'
+      )
+
+      return headerElement?.getBoundingClientRect().height ?? 0
+    }
+
+    const applyStaticMode = () => {
+      boundsRef.current = {
+        enabled: false,
+        maxTop: 0,
+        minTop: 0,
+      }
+      hasStickyTopRef.current = false
+      stickyTopRef.current = 0
+      sidebarElement.style.position = ''
+      sidebarElement.style.top = ''
+    }
+
+    const applyStickyTop = (nextTop: number) => {
+      stickyTopRef.current = nextTop
+      hasStickyTopRef.current = true
+      sidebarElement.style.position = 'sticky'
+      sidebarElement.style.top = `${nextTop}px`
+    }
+
+    const clampStickyTop = (nextTop: number) => {
+      const { maxTop, minTop } = boundsRef.current
+
+      return Math.min(maxTop, Math.max(minTop, nextTop))
+    }
+
+    const syncBounds = () => {
+      const isDesktop = window.innerWidth >= DESKTOP_BREAKPOINT_PX
+
+      if (!isDesktop) {
+        applyStaticMode()
+        return
+      }
+
+      const headerHeight = getHeaderHeight()
+      const maxTop = Math.max(headerHeight + SIDEBAR_TOP_GAP_PX, 0)
+      const sidebarHeight = sidebarElement.getBoundingClientRect().height
+      const availableHeight =
+        window.innerHeight -
+        headerHeight -
+        SIDEBAR_TOP_GAP_PX -
+        SIDEBAR_BOTTOM_GAP_PX
+
+      if (sidebarHeight <= availableHeight) {
+        applyStaticMode()
+        return
+      }
+
+      const minTop = window.innerHeight - sidebarHeight - SIDEBAR_BOTTOM_GAP_PX
+
+      boundsRef.current = {
+        enabled: true,
+        maxTop,
+        minTop,
+      }
+
+      const nextTop = hasStickyTopRef.current
+        ? clampStickyTop(stickyTopRef.current)
+        : maxTop
+
+      if (Math.abs(nextTop - stickyTopRef.current) > 0.5 || !hasStickyTopRef.current) {
+        applyStickyTop(nextTop)
+      }
+    }
+
+    const runScrollStep = () => {
+      scrollFrame = 0
+      const currentScrollY = window.scrollY
+      const deltaY = currentScrollY - lastScrollYRef.current
+
+      lastScrollYRef.current = currentScrollY
+
+      if (!boundsRef.current.enabled) {
+        return
+      }
+
+      if (Math.abs(deltaY) < SCROLL_DIRECTION_THRESHOLD_PX) {
+        return
+      }
+
+      const renderedTop = sidebarElement.getBoundingClientRect().top
+      const nextTop = clampStickyTop(renderedTop - deltaY)
+
+      if (Math.abs(nextTop - stickyTopRef.current) < 0.5) {
+        return
+      }
+
+      applyStickyTop(nextTop)
+    }
+
+    const queueScrollStep = () => {
+      if (scrollFrame !== 0) {
+        return
+      }
+
+      scrollFrame = window.requestAnimationFrame(runScrollStep)
+    }
+
+    const queueSyncBounds = () => {
+      if (syncFrame !== 0) {
+        return
+      }
+
+      syncFrame = window.requestAnimationFrame(() => {
+        syncFrame = 0
+        syncBounds()
+      })
+    }
+
+    const sidebarResizeObserver = new ResizeObserver(() => {
+      queueSyncBounds()
+    })
+    sidebarResizeObserver.observe(sidebarElement)
+
+    const headerElement = document.querySelector<HTMLElement>(
+      '[data-site-header-root]'
+    )
+    const headerResizeObserver = new ResizeObserver(() => {
+      queueSyncBounds()
+    })
+
+    if (headerElement) {
+      headerResizeObserver.observe(headerElement)
+    }
+
+    const mediaQuery = window.matchMedia(
+      `(min-width: ${DESKTOP_BREAKPOINT_PX}px)`
+    )
+    const handleMediaQueryChange = () => {
+      queueSyncBounds()
+    }
+
+    mediaQuery.addEventListener('change', handleMediaQueryChange)
+
+    lastScrollYRef.current = window.scrollY
+    syncBounds()
+
+    window.addEventListener('scroll', queueScrollStep, {
+      passive: true,
+    })
+    window.addEventListener('resize', queueSyncBounds)
+
+    return () => {
+      window.removeEventListener('scroll', queueScrollStep)
+      window.removeEventListener('resize', queueSyncBounds)
+
+      mediaQuery.removeEventListener('change', handleMediaQueryChange)
+
+      sidebarResizeObserver.disconnect()
+      headerResizeObserver.disconnect()
+
+      if (scrollFrame !== 0) {
+        window.cancelAnimationFrame(scrollFrame)
+      }
+
+      if (syncFrame !== 0) {
+        window.cancelAnimationFrame(syncFrame)
+      }
+
+      sidebarElement.style.position = ''
+      sidebarElement.style.top = ''
+    }
+  }, [])
+
   return (
     <motion.aside
       animate={motionReady ? { opacity: 1, x: 0 } : { opacity: 0, x: 10 }}
-      className="flex min-w-0 flex-col gap-4"
+      className="flex min-w-0 flex-col gap-4 md:self-start"
       initial={false}
+      ref={sidebarRef}
       transition={
         prefersReducedMotion
           ? { duration: 0 }

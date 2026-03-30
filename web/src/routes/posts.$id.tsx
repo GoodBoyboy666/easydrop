@@ -29,7 +29,7 @@ const GPU_ACCELERATED_MOTION_PROPS = {
 } as const
 const PAGE_ENTER_INITIAL = { opacity: 0, y: 10 }
 const SECTION_ENTER_INITIAL = { opacity: 0, y: 12 }
-const SIDEBAR_ENTER_INITIAL = { opacity: 0, x: 12 }
+const SIDEBAR_ENTER_INITIAL = { opacity: 0 }
 
 function PostDetailPage() {
   const auth = useAuth()
@@ -147,7 +147,7 @@ function PostDetailPage() {
           </div>
 
           <motion.div
-            animate={motionReady ? { opacity: 1, x: 0 } : { opacity: 0, x: 12 }}
+            animate={motionReady ? { opacity: 1 } : { opacity: 0 }}
             initial={prefersReducedMotion ? false : SIDEBAR_ENTER_INITIAL}
             transition={getEntranceTransition(0.12)}
             {...GPU_ACCELERATED_MOTION_PROPS}
@@ -191,7 +191,7 @@ function PostDetailPage() {
           </motion.div>
 
           <motion.div
-            animate={motionReady ? { opacity: 1, x: 0 } : { opacity: 0, x: 12 }}
+            animate={motionReady ? { opacity: 1 } : { opacity: 0 }}
             initial={prefersReducedMotion ? false : SIDEBAR_ENTER_INITIAL}
             transition={getEntranceTransition(0.1)}
             {...GPU_ACCELERATED_MOTION_PROPS}
@@ -254,7 +254,7 @@ function PostDetailPage() {
         </div>
 
         <motion.div
-          animate={motionReady ? { opacity: 1, x: 0 } : { opacity: 0, x: 12 }}
+          animate={motionReady ? { opacity: 1 } : { opacity: 0 }}
           initial={prefersReducedMotion ? false : SIDEBAR_ENTER_INITIAL}
           transition={getEntranceTransition(0.12)}
           {...GPU_ACCELERATED_MOTION_PROPS}

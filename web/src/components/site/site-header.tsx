@@ -106,7 +106,10 @@ export function SiteHeader() {
         : SunIcon
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border/80 bg-background/90 backdrop-blur">
+    <header
+      className="sticky top-0 z-30 border-b border-border/80 bg-background/90 backdrop-blur"
+      data-site-header-root
+    >
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-4">
           <Link
