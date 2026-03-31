@@ -70,7 +70,7 @@ function LoginPage() {
 
   useEffect(() => {
     if (auth.status === 'authenticated') {
-      void navigate({ href: safeRedirectPath(redirect) })
+      void navigate({ href: safeRedirectPath(redirect), replace: true })
     }
   }, [auth.status, navigate, redirect])
 
@@ -95,7 +95,6 @@ function LoginPage() {
         password,
       })
       await auth.refreshUser()
-      void navigate({ href: safeRedirectPath(redirect) })
     } catch (submitError) {
       if (captchaConfigQuery.data?.enabled) {
         setCaptcha(createEmptyCaptchaInput())

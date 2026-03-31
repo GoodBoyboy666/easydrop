@@ -1,7 +1,9 @@
 import { redirect, useNavigate } from '@tanstack/react-router'
-import { api, isUnauthorizedApiError } from '#/lib/api'
+import { isUnauthorizedApiError } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
 import { safeRedirectPath } from '#/lib/format'
+import { getQueryClient } from '#/lib/query-client'
+import { currentUserQueryOptions } from '#/lib/query-options'
 import type { UserDTO } from '#/lib/types'
 
 function resolveCurrentRedirectPath() {
@@ -20,8 +22,10 @@ export function buildLoginRedirectHref(redirectPath: string) {
 }
 
 export async function requireAuthenticatedRoute(): Promise<UserDTO> {
+  const queryClient = getQueryClient()
+
   try {
-    return await api.getCurrentUser()
+    return await queryClient.fetchQuery(currentUserQueryOptions())
   } catch (error) {
     if (isUnauthorizedApiError(error)) {
       throw redirect({
