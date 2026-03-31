@@ -454,34 +454,35 @@ export function CaptchaPanel(props: {
   }
 
   return (
-    <div className="mt-4 space-y-3">
-      <Alert>
-        <AlertTitle>安全验证</AlertTitle>
-        <AlertDescription>
-          请完成 {getProviderLabel(provider)} 验证后再提交表单。
-        </AlertDescription>
-      </Alert>
-
-      {widgetError ? (
-        <Alert variant="destructive">
-          <AlertTitle>验证码不可用</AlertTitle>
-          <AlertDescription>{widgetError}</AlertDescription>
+    <div className="mt-2">
+      <div className="space-y-3 rounded-xl bg-transparent py-3">
+        <Alert className="border-0 bg-transparent px-0 py-0">
+          <AlertTitle>安全验证</AlertTitle>
+          <AlertDescription>
+            请完成 {getProviderLabel(provider)} 验证。
+          </AlertDescription>
         </Alert>
-      ) : null}
 
-      <div
-        className="min-h-20 rounded-xl border border-border/70 bg-muted/20 p-3"
-        id={containerId}
-        ref={containerRef}
-      />
+        {widgetError ? (
+          <Alert
+            className="border-0 bg-transparent px-0 py-0"
+            variant="destructive"
+          >
+            <AlertTitle>验证码不可用</AlertTitle>
+            <AlertDescription>{widgetError}</AlertDescription>
+          </Alert>
+        ) : null}
 
-      {!widgetReady && !widgetError ? (
-        <div className="text-sm text-muted-foreground">验证码控件加载中…</div>
-      ) : null}
+        <div
+          className="min-h-20 rounded-xl bg-card py-3"
+          id={containerId}
+          ref={containerRef}
+        />
 
-      {widgetReady && isCaptchaComplete(config, value) ? (
-        <div className="text-sm text-emerald-600">验证已完成，可以提交。</div>
-      ) : null}
+        {!widgetReady && !widgetError ? (
+          <div className="text-sm text-muted-foreground">验证码控件加载中…</div>
+        ) : null}
+      </div>
     </div>
   )
 }

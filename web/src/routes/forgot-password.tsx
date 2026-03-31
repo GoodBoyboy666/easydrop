@@ -118,31 +118,12 @@ function ForgotPasswordPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <motion.div
-              animate={{ opacity: 1, y: 0 }}
-              initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
-              transition={sectionTransition(0.16)}
-            >
-              <CaptchaPanel
-                config={captchaConfigQuery.data}
-                errorMessage={
-                  captchaConfigQuery.error instanceof Error
-                    ? captchaConfigQuery.error.message
-                    : null
-                }
-                isLoading={captchaConfigQuery.isLoading}
-                onChange={setCaptcha}
-                resetSignal={captchaResetSignal}
-                value={captcha}
-              />
-            </motion.div>
-
             <motion.form
               animate={{ opacity: 1, y: 0 }}
               className="space-y-4"
               initial={prefersReducedMotion ? false : { opacity: 0, y: 12 }}
               onSubmit={handleSubmit}
-              transition={sectionTransition(0.22)}
+              transition={sectionTransition(0.16)}
             >
               <FieldGroup>
                 <Field>
@@ -157,6 +138,24 @@ function ForgotPasswordPage() {
                   />
                 </Field>
               </FieldGroup>
+              <motion.div
+              animate={{ opacity: 1, y: 0 }}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+              transition={sectionTransition(0.22)}
+            >
+              <CaptchaPanel
+                config={captchaConfigQuery.data}
+                errorMessage={
+                  captchaConfigQuery.error instanceof Error
+                    ? captchaConfigQuery.error.message
+                    : null
+                }
+                isLoading={captchaConfigQuery.isLoading}
+                onChange={setCaptcha}
+                resetSignal={captchaResetSignal}
+                value={captcha}
+              />
+            </motion.div>
 
               {requestError ? <FieldError>{requestError}</FieldError> : null}
               {requestSuccess ? (
@@ -175,7 +174,10 @@ function ForgotPasswordPage() {
               >
                 <Button
                   className="sm:flex-1"
-                  disabled={requestMutation.isPending}
+                  disabled={
+                    requestMutation.isPending ||
+                    !isCaptchaComplete(captchaConfigQuery.data, captcha)
+                  }
                   type="submit"
                 >
                   {requestMutation.isPending ? '发送中…' : '发送重置邮件'}

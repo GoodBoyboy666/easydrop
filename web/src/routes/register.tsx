@@ -267,7 +267,11 @@ function RegisterPage() {
               transition={sectionTransition(0.34)}
             >
               <Button
-                disabled={!allowRegister || registerMutation.isPending}
+                disabled={
+                  !allowRegister ||
+                  registerMutation.isPending ||
+                  !isCaptchaComplete(captchaConfigQuery.data, captcha)
+                }
                 type="submit"
               >
                 <UserPlusIcon data-icon="inline-start" />

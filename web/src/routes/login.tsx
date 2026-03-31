@@ -187,7 +187,13 @@ function LoginPage() {
               initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
               transition={sectionTransition(0.32)}
             >
-              <Button disabled={loginMutation.isPending} type="submit">
+              <Button
+                disabled={
+                  loginMutation.isPending ||
+                  !isCaptchaComplete(captchaConfigQuery.data, captcha)
+                }
+                type="submit"
+              >
                 <LogInIcon data-icon="inline-start" />
                 {loginMutation.isPending ? '正在登录…' : '立即登录'}
               </Button>
