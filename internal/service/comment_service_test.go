@@ -2,14 +2,36 @@ package service
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
+	"easydrop/internal/pkg/captcha"
 	"easydrop/internal/repo"
 
 	"gorm.io/gorm"
 )
+
+type mockCommentCaptchaVerifier struct {
+	enabled    bool
+	err        error
+	verifyCall bool
+	payload    captcha.Payload
+}
+
+func (m *mockCommentCaptchaVerifier) Enabled() bool {
+	return m.enabled
+}
+
+func (m *mockCommentCaptchaVerifier) Verify(_ context.Context, payload captcha.Payload) (captcha.Result, error) {
+	m.verifyCall = true
+	m.payload = payload
+	if m.err != nil {
+		return captcha.Result{}, m.err
+	}
+	return captcha.Result{Success: true}, nil
+}
 
 type mockCommentRepoForDelete struct {
 	comments            map[uint]*model.Comment
@@ -430,5 +452,136 @@ func TestCommentServiceListPublicAllowsHiddenPostsForAdmin(t *testing.T) {
 	}
 	if !commentRepo.listPublicIncludeHidden {
 		t.Fatal("expected admin public list to include hidden posts")
+	}
+}
+
+func TestCommentServiceCreateRequiresCaptchaWhenEnabled(t *testing.T) {
+	commentRepo := &mockCommentRepoForVisibility{}
+	postRepo := &mockPostRepoForVisibility{
+		posts: map[uint]*model.Post{
+			9: {ID: 9},
+		},
+	}
+	userRepo := &mockUserRepoForVisibility{
+		users: map[uint]*model.User{
+			7: {ID: 7},
+		},
+	}
+	verifier := &mockCommentCaptchaVerifier{enabled: true}
+	svc := &commentService{
+		commentRepo:      commentRepo,
+		postRepo:         postRepo,
+		userRepo:         userRepo,
+		visibilityPolicy: NewPostVisibilityPolicy(),
+		captcha:          verifier,
+	}
+
+	_, err := svc.Create(context.Background(), dto.CommentCreateInput{
+		PostID:  9,
+		UserID:  7,
+		Content: "hello",
+	})
+
+	if err != ErrCaptchaRequired {
+		t.Fatalf("expected ErrCaptchaRequired, got %v", err)
+	}
+	if verifier.verifyCall {
+		t.Fatal("expected captcha verifier not to be called when captcha input is missing")
+	}
+	if commentRepo.createCalled {
+		t.Fatal("expected create to be blocked when captcha is required")
+	}
+}
+
+func TestCommentServiceCreateReturnsCaptchaFailedWhenVerifierFails(t *testing.T) {
+	commentRepo := &mockCommentRepoForVisibility{}
+	postRepo := &mockPostRepoForVisibility{
+		posts: map[uint]*model.Post{
+			9: {ID: 9},
+		},
+	}
+	userRepo := &mockUserRepoForVisibility{
+		users: map[uint]*model.User{
+			7: {ID: 7},
+		},
+	}
+	verifier := &mockCommentCaptchaVerifier{enabled: true, err: errors.New("verify failed")}
+	svc := &commentService{
+		commentRepo:      commentRepo,
+		postRepo:         postRepo,
+		userRepo:         userRepo,
+		visibilityPolicy: NewPostVisibilityPolicy(),
+		captcha:          verifier,
+	}
+
+	_, err := svc.Create(context.Background(), dto.CommentCreateInput{
+		PostID:  9,
+		UserID:  7,
+		Content: "hello",
+		Captcha: &dto.CaptchaInput{
+			Token:    "captcha-ok",
+			RemoteIP: "192.0.2.1",
+		},
+	})
+
+	if err != ErrCaptchaFailed {
+		t.Fatalf("expected ErrCaptchaFailed, got %v", err)
+	}
+	if !verifier.verifyCall {
+		t.Fatal("expected captcha verifier to be called")
+	}
+	if verifier.payload.Token != "captcha-ok" {
+		t.Fatalf("expected captcha token to be passed, got %q", verifier.payload.Token)
+	}
+	if commentRepo.createCalled {
+		t.Fatal("expected create to be blocked when captcha verification fails")
+	}
+}
+
+func TestCommentServiceCreateIgnoresCaptchaWhenDisabled(t *testing.T) {
+	commentRepo := &mockCommentRepoForVisibility{
+		getByIDComments: map[uint]*model.Comment{
+			99: {
+				ID:      99,
+				PostID:  9,
+				UserID:  7,
+				Content: "hello",
+				User:    model.User{ID: 7, Nickname: "tester"},
+			},
+		},
+	}
+	postRepo := &mockPostRepoForVisibility{
+		posts: map[uint]*model.Post{
+			9: {ID: 9},
+		},
+	}
+	userRepo := &mockUserRepoForVisibility{
+		users: map[uint]*model.User{
+			7: {ID: 7},
+		},
+	}
+	verifier := &mockCommentCaptchaVerifier{enabled: false}
+	svc := &commentService{
+		commentRepo:      commentRepo,
+		postRepo:         postRepo,
+		userRepo:         userRepo,
+		visibilityPolicy: NewPostVisibilityPolicy(),
+		captcha:          verifier,
+	}
+
+	result, err := svc.Create(context.Background(), dto.CommentCreateInput{
+		PostID:  9,
+		UserID:  7,
+		Content: "hello",
+	})
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result == nil || result.ID != 99 {
+		t.Fatalf("expected created comment id 99, got %+v", result)
+	}
+	if verifier.verifyCall {
+		t.Fatal("expected captcha verifier not to be called when disabled")
 	}
 }

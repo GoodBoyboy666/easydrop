@@ -59,6 +59,9 @@ func (h *CommentHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "请求参数格式错误"})
 		return
 	}
+	if input.Captcha != nil {
+		input.Captcha.RemoteIP = c.ClientIP()
+	}
 	input.UserID = userID
 	input.PostID = uriReq.ID
 	input.CanViewHidden = canViewHiddenPost(c)
@@ -355,7 +358,9 @@ func mapCommentErrorStatus(err error) int {
 	case errors.Is(err, service.ErrEmptyCommentContent),
 		errors.Is(err, service.ErrInvalidCommentPost),
 		errors.Is(err, service.ErrInvalidCommentUser),
-		errors.Is(err, service.ErrInvalidCommentParent):
+		errors.Is(err, service.ErrInvalidCommentParent),
+		errors.Is(err, service.ErrCaptchaRequired),
+		errors.Is(err, service.ErrCaptchaFailed):
 		return http.StatusBadRequest
 	case errors.Is(err, service.ErrCommentNotFound),
 		errors.Is(err, service.ErrPostNotFound),

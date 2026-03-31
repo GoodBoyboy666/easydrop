@@ -3,11 +3,12 @@ package dto
 import "time"
 
 type CommentCreateInput struct {
-	PostID        uint   `json:"-"`
-	UserID        uint   `json:"-"`
-	CanViewHidden bool   `json:"-"`
-	Content       string `json:"content"`
-	ParentID      *uint  `json:"parent_id"`
+	PostID        uint          `json:"-"`
+	UserID        uint          `json:"-"`
+	CanViewHidden bool          `json:"-"`
+	Content       string        `json:"content"`
+	ParentID      *uint         `json:"parent_id"`
+	Captcha       *CaptchaInput `json:"captcha"`
 }
 
 type CommentIDURIInput struct {

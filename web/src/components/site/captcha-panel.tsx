@@ -474,7 +474,7 @@ export function CaptchaPanel(props: {
         ) : null}
 
         <div
-          className="min-h-20 rounded-xl bg-card py-3"
+          className="min-h-20 rounded-xl bg-transparent py-3"
           id={containerId}
           ref={containerRef}
         />

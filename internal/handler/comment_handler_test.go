@@ -177,6 +177,53 @@ func TestCommentHandlerCreateWhenPostCommentDisabled(t *testing.T) {
 	}
 }
 
+func TestCommentHandlerCreatePassesCaptchaRemoteIP(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	h := NewCommentHandler(&mockCommentServiceForHandler{
+		createFn: func(_ context.Context, input dto.CommentCreateInput) (*dto.CommentDTO, error) {
+			if input.Captcha == nil {
+				t.Fatal("expected captcha input")
+			}
+			if input.Captcha.RemoteIP != "192.0.2.1" {
+				t.Fatalf("expected remote ip 192.0.2.1, got %q", input.Captcha.RemoteIP)
+			}
+			return &dto.CommentDTO{ID: 1, Author: dto.CommentAuthorDTO{ID: input.UserID}, PostID: input.PostID}, nil
+		},
+	})
+
+	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/posts/9/comments", `{"content":"hello","captcha":{"token":"abc"}}`)
+	c.Request.RemoteAddr = "192.0.2.1:1234"
+	c.Params = gin.Params{{Key: "id", Value: "9"}}
+	c.Set(middleware.ContextUserIDKey, uint(101))
+
+	h.Create(c)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected status 201, got %d", w.Code)
+	}
+}
+
+func TestCommentHandlerCreateCaptchaRequiredReturnsBadRequest(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	h := NewCommentHandler(&mockCommentServiceForHandler{
+		createFn: func(_ context.Context, _ dto.CommentCreateInput) (*dto.CommentDTO, error) {
+			return nil, service.ErrCaptchaRequired
+		},
+	})
+
+	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/posts/9/comments", `{"content":"hello"}`)
+	c.Params = gin.Params{{Key: "id", Value: "9"}}
+	c.Set(middleware.ContextUserIDKey, uint(101))
+
+	h.Create(c)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", w.Code)
+	}
+}
+
 func TestCommentHandlerGetNotOwner(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -517,6 +564,12 @@ func TestCommentHandlerUnauthorized(t *testing.T) {
 
 func TestMapCommentErrorStatus(t *testing.T) {
 	if got := mapCommentErrorStatus(service.ErrInvalidCommentPost); got != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", got)
+	}
+	if got := mapCommentErrorStatus(service.ErrCaptchaRequired); got != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", got)
+	}
+	if got := mapCommentErrorStatus(service.ErrCaptchaFailed); got != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", got)
 	}
 	if got := mapCommentErrorStatus(service.ErrCommentNotFound); got != http.StatusNotFound {

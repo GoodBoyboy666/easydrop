@@ -3,6 +3,7 @@
 import {
   useInfiniteQuery,
   useMutation,
+  useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
 import { Suspense, lazy, useEffect, useState } from 'react'
@@ -17,10 +18,15 @@ import { api } from '#/lib/api'
 import { useUnauthorizedHandler } from '#/lib/auth-guards'
 import { formatRelativeTime, getInitials } from '#/lib/format'
 import { hasMarkdownContent, normalizeMarkdownContent } from '#/lib/markdown'
-import { queryKeys } from '#/lib/query-options'
+import { captchaConfigQueryOptions, queryKeys } from '#/lib/query-options'
 import { invalidatePostCommentQueries } from '#/lib/query-invalidation'
 import type { CommentDTO, PostDTO } from '#/lib/types'
 import { MarkdownContent } from '#/components/markdown/markdown-content'
+import {
+  CaptchaPanel,
+  createEmptyCaptchaInput,
+  isCaptchaComplete,
+} from '#/components/site/captcha-panel'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import {
   AlertDialog,
@@ -78,6 +84,8 @@ export function PostCommentsSection({
   const [commentSectionOpen, setCommentSectionOpen] = useState(false)
   const [composerOpen, setComposerOpen] = useState(false)
   const [commentDraft, setCommentDraft] = useState('')
+  const [captcha, setCaptcha] = useState(createEmptyCaptchaInput)
+  const [captchaResetSignal, setCaptchaResetSignal] = useState(0)
   const [replyTarget, setReplyTarget] = useState<CommentDTO | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null)
@@ -86,6 +94,7 @@ export function PostCommentsSection({
     null,
   )
   const [pendingDelete, setPendingDelete] = useState<PendingDeleteComment>(null)
+  const captchaConfigQuery = useQuery(captchaConfigQueryOptions())
 
   const commentQueryBase = {
     order: 'created_at_desc',
@@ -141,6 +150,7 @@ export function PostCommentsSection({
         post.id,
         {
           content: normalizeMarkdownContent(commentDraft),
+          captcha: captchaConfigQuery.data?.enabled ? captcha : undefined,
           parent_id: replyTarget?.id,
         },
       ),
@@ -166,6 +176,8 @@ export function PostCommentsSection({
     setCommentError(null)
     setReplyTarget(null)
     setCommentDraft('')
+    setCaptcha(createEmptyCaptchaInput())
+    setCaptchaResetSignal(0)
     setSubmitError(null)
     setEditingCommentId(null)
     setEditingCommentDraft('')
@@ -187,9 +199,13 @@ export function PostCommentsSection({
 
     setReplyTarget(null)
     setCommentDraft('')
+    if (captchaConfigQuery.data?.enabled) {
+      setCaptcha(createEmptyCaptchaInput())
+      setCaptchaResetSignal((current) => current + 1)
+    }
     setSubmitError(null)
     setComposerOpen(false)
-  }, [post.disable_comment])
+  }, [captchaConfigQuery.data?.enabled, post.disable_comment])
 
   function handleApiError(error: unknown, fallbackMessage: string) {
     if (handleUnauthorized(error)) {
@@ -415,6 +431,11 @@ export function PostCommentsSection({
       return
     }
 
+    if (!isCaptchaComplete(captchaConfigQuery.data, captcha)) {
+      setSubmitError('请先完成验证码')
+      return
+    }
+
     if (auth.status !== 'authenticated') {
       redirectToLogin()
       return
@@ -429,8 +450,16 @@ export function PostCommentsSection({
       setCommentSectionOpen(true)
       setComposerOpen(true)
       setReplyTarget(null)
+      if (captchaConfigQuery.data?.enabled) {
+        setCaptcha(createEmptyCaptchaInput())
+        setCaptchaResetSignal((current) => current + 1)
+      }
       await invalidatePostQueries()
     } catch (error) {
+      if (captchaConfigQuery.data?.enabled) {
+        setCaptcha(createEmptyCaptchaInput())
+        setCaptchaResetSignal((current) => current + 1)
+      }
       if (handleApiError(error, '发表评论失败')) {
         return
       }
@@ -596,10 +625,26 @@ export function PostCommentsSection({
                     <FieldError>{submitError}</FieldError>
                   </Field>
                 </FieldGroup>
-
+                <div className='px-2'>
+                <CaptchaPanel
+                  config={captchaConfigQuery.data}
+                  errorMessage={
+                    captchaConfigQuery.error instanceof Error
+                      ? captchaConfigQuery.error.message
+                      : null
+                  }
+                  isLoading={captchaConfigQuery.isLoading}
+                  onChange={setCaptcha}
+                  resetSignal={captchaResetSignal}
+                  value={captcha}
+                />
+                </div>
                 <div className="mt-3 flex items-center justify-end">
                   <Button
-                    disabled={createCommentMutation.isPending}
+                    disabled={
+                      createCommentMutation.isPending ||
+                      !isCaptchaComplete(captchaConfigQuery.data, captcha)
+                    }
                     type="submit"
                   >
                     <SendHorizontalIcon data-icon="inline-start" />

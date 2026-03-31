@@ -8,6 +8,7 @@ import (
 
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
+	"easydrop/internal/pkg/captcha"
 	"easydrop/internal/pkg/storage"
 	"easydrop/internal/repo"
 
@@ -49,21 +50,27 @@ type commentService struct {
 	userRepo         repo.UserRepo
 	storageManager   storage.Manager
 	visibilityPolicy PostVisibilityPolicy
+	captcha          captcha.Verifier
 }
 
 // NewCommentService 创建评论服务实例。
-func NewCommentService(commentRepo repo.CommentRepo, postRepo repo.PostRepo, userRepo repo.UserRepo, storageManager storage.Manager, visibilityPolicy PostVisibilityPolicy) CommentService {
+func NewCommentService(commentRepo repo.CommentRepo, postRepo repo.PostRepo, userRepo repo.UserRepo, storageManager storage.Manager, visibilityPolicy PostVisibilityPolicy, captchaVerifier captcha.Verifier) CommentService {
 	return &commentService{
 		commentRepo:      commentRepo,
 		postRepo:         postRepo,
 		userRepo:         userRepo,
 		storageManager:   storageManager,
 		visibilityPolicy: visibilityPolicy,
+		captcha:          captchaVerifier,
 	}
 }
 
 // Create 校验评论输入并创建。
 func (s *commentService) Create(ctx context.Context, input dto.CommentCreateInput) (*dto.CommentDTO, error) {
+	if err := s.verifyCaptcha(ctx, input.Captcha); err != nil {
+		return nil, err
+	}
+
 	if input.PostID == 0 {
 		return nil, ErrInvalidCommentPost
 	}
@@ -353,6 +360,30 @@ func (s *commentService) ensureUserExists(ctx context.Context, userID uint) erro
 		}
 		log.Printf("查询用户失败: %v", err)
 		return ErrInternal
+	}
+	return nil
+}
+
+func (s *commentService) verifyCaptcha(ctx context.Context, input *dto.CaptchaInput) error {
+	if s.captcha == nil || !s.captcha.Enabled() {
+		return nil
+	}
+	if input == nil {
+		return ErrCaptchaRequired
+	}
+
+	payload := captcha.Payload{
+		Token:         strings.TrimSpace(input.Token),
+		RemoteIP:      strings.TrimSpace(input.RemoteIP),
+		LotNumber:     strings.TrimSpace(input.LotNumber),
+		CaptchaOutput: strings.TrimSpace(input.CaptchaOutput),
+		PassToken:     strings.TrimSpace(input.PassToken),
+		GenTime:       strings.TrimSpace(input.GenTime),
+	}
+
+	if _, err := s.captcha.Verify(ctx, payload); err != nil {
+		log.Printf("评论验证码校验失败: %v", err)
+		return ErrCaptchaFailed
 	}
 	return nil
 }

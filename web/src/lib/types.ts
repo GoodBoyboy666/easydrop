@@ -203,6 +203,7 @@ export interface UpdatePostInput {
 }
 
 export interface CreateCommentInput {
+  captcha?: CaptchaInput
   content: string
   parent_id?: number
 }

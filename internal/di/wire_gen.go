@@ -107,7 +107,7 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	commentRepo := repo.NewCommentRepo(db)
 	postRepo := repo.NewPostRepo(db)
 	postVisibilityPolicy := service.NewPostVisibilityPolicy()
-	commentService := service.NewCommentService(commentRepo, postRepo, userRepo, storageManager, postVisibilityPolicy)
+	commentService := service.NewCommentService(commentRepo, postRepo, userRepo, storageManager, postVisibilityPolicy, verifier)
 	commentHandler := handler.NewCommentHandler(commentService)
 	commentAdminHandler := handler.NewCommentAdminHandler(commentService)
 	overviewRepo := repo.NewOverviewRepo(db)
