@@ -99,7 +99,9 @@ export function AdminAccessNotice({
             <CardTitle>{title}</CardTitle>
             <CardDescription>{description}</CardDescription>
           </CardHeader>
-          {actions ? <CardContent className="flex gap-2">{actions}</CardContent> : null}
+          {actions ? (
+            <CardContent className="flex gap-2">{actions}</CardContent>
+          ) : null}
         </Card>
       </motion.div>
     </div>
@@ -175,7 +177,7 @@ function AdminNavButton({
         'rounded-xl px-3 py-3 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
         active
           ? 'bg-primary/6 text-foreground'
-          : 'bg-transparent hover:bg-muted/25'
+          : 'bg-transparent hover:bg-muted/25',
       )}
     >
       <div className="flex items-center gap-3">
@@ -184,7 +186,7 @@ function AdminNavButton({
             'flex size-10 items-center justify-center rounded-xl',
             active
               ? 'bg-primary/12 text-primary'
-              : 'bg-transparent text-muted-foreground'
+              : 'bg-transparent text-muted-foreground',
           )}
         >
           <Icon />
@@ -209,7 +211,9 @@ export function AdminPageHeader({
   return (
     <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
       <div>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">{title}</h1>
+        <h1 className="font-heading text-2xl font-semibold tracking-tight">
+          {title}
+        </h1>
         {description ? (
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         ) : null}
@@ -434,7 +438,9 @@ export function AdminDividerLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="my-4">
       <Separator />
-      <div className="-mt-2 text-center text-xs text-muted-foreground">{children}</div>
+      <div className="-mt-2 text-center text-xs text-muted-foreground">
+        {children}
+      </div>
     </div>
   )
 }

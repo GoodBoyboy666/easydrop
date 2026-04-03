@@ -272,7 +272,7 @@ function MyCommentsPage() {
             </AlertDialogMedia>
             <AlertDialogTitle>删除这条评论？</AlertDialogTitle>
             <AlertDialogDescription>
-              删除后这条评论会从“我的评论”和对应日志评论区中移除，此操作不可撤销。
+              此操作将不可撤销。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

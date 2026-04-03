@@ -8,6 +8,7 @@ import { MailIcon, ShieldCheckIcon, UserCircleIcon } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import type { HTMLMotionProps, Transition } from 'motion/react'
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { api } from '#/lib/api'
 import {
   requireAuthenticatedRoute,
@@ -25,7 +26,7 @@ import {
   CardHeader,
   CardTitle,
 } from '#/components/ui/card'
-import { Field, FieldError, FieldGroup, FieldLabel } from '#/components/ui/field'
+import { Field, FieldGroup, FieldLabel } from '#/components/ui/field'
 import { Input } from '#/components/ui/input'
 import { Separator } from '#/components/ui/separator'
 
@@ -55,19 +56,13 @@ function MePage() {
   const location = useLocation()
   const prefersReducedMotion = useReducedMotion()
   const [nickname, setNickname] = useState('')
-  const [nicknameError, setNicknameError] = useState<string | null>(null)
-  const [nicknameSuccess, setNicknameSuccess] = useState<string | null>(null)
 
   const [oldPassword, setOldPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [passwordError, setPasswordError] = useState<string | null>(null)
-  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null)
 
   const [newEmail, setNewEmail] = useState('')
   const [emailPassword, setEmailPassword] = useState('')
-  const [emailError, setEmailError] = useState<string | null>(null)
-  const [emailSuccess, setEmailSuccess] = useState<string | null>(null)
   const [motionReady, setMotionReady] = useState(prefersReducedMotion)
 
   const updateProfileMutation = useMutation({
@@ -130,25 +125,22 @@ function MePage() {
       return
     }
 
-    setNicknameError(null)
-    setNicknameSuccess(null)
-
     const normalizedNickname = nickname.trim()
     if (normalizedNickname === auth.user.nickname) {
-      setNicknameSuccess('昵称没有变化')
+      toast.message('昵称没有变化')
       return
     }
 
     try {
       await updateProfileMutation.mutateAsync(normalizedNickname)
       await auth.refreshUser()
-      setNicknameSuccess('昵称已更新')
+      toast.success('昵称已更新')
     } catch (error) {
       if (handleUnauthorized(error)) {
         return
       }
 
-      setNicknameError(error instanceof Error ? error.message : '更新昵称失败')
+      toast.error(error instanceof Error ? error.message : '更新昵称失败')
     }
   }
 
@@ -159,16 +151,13 @@ function MePage() {
       return
     }
 
-    setPasswordError(null)
-    setPasswordSuccess(null)
-
     if (newPassword.trim() === '' || oldPassword.trim() === '') {
-      setPasswordError('请填写旧密码和新密码')
+      toast.error('请填写旧密码和新密码')
       return
     }
 
     if (newPassword !== confirmPassword) {
-      setPasswordError('两次输入的新密码不一致')
+      toast.error('两次输入的新密码不一致')
       return
     }
 
@@ -180,13 +169,13 @@ function MePage() {
       setOldPassword('')
       setNewPassword('')
       setConfirmPassword('')
-      setPasswordSuccess('密码已修改')
+      toast.success('密码已修改')
     } catch (error) {
       if (handleUnauthorized(error)) {
         return
       }
 
-      setPasswordError(error instanceof Error ? error.message : '修改密码失败')
+      toast.error(error instanceof Error ? error.message : '修改密码失败')
     }
   }
 
@@ -197,17 +186,14 @@ function MePage() {
       return
     }
 
-    setEmailError(null)
-    setEmailSuccess(null)
-
     const normalizedEmail = newEmail.trim()
     if (normalizedEmail === '') {
-      setEmailError('请输入新邮箱')
+      toast.error('请输入新邮箱')
       return
     }
 
     if (emailPassword.trim() === '') {
-      setEmailError('请输入当前密码')
+      toast.error('请输入当前密码')
       return
     }
 
@@ -217,13 +203,13 @@ function MePage() {
         new_email: normalizedEmail,
       })
       setEmailPassword('')
-      setEmailSuccess('验证邮件已发送到新邮箱，请按邮件指引完成确认')
+      toast.success('验证邮件已发送到新邮箱，请按邮件指引完成确认')
     } catch (error) {
       if (handleUnauthorized(error)) {
         return
       }
 
-      setEmailError(error instanceof Error ? error.message : '提交邮箱修改失败')
+      toast.error(error instanceof Error ? error.message : '提交邮箱修改失败')
     }
   }
 
@@ -352,12 +338,6 @@ function MePage() {
                           />
                         </Field>
                       </FieldGroup>
-                      {nicknameError ? <FieldError>{nicknameError}</FieldError> : null}
-                      {nicknameSuccess ? (
-                        <Alert>
-                          <AlertDescription>{nicknameSuccess}</AlertDescription>
-                        </Alert>
-                      ) : null}
                       <Button disabled={updateProfileMutation.isPending} type="submit">
                         {updateProfileMutation.isPending ? '保存中…' : '保存昵称'}
                       </Button>
@@ -420,12 +400,6 @@ function MePage() {
                           />
                         </Field>
                       </FieldGroup>
-                      {passwordError ? <FieldError>{passwordError}</FieldError> : null}
-                      {passwordSuccess ? (
-                        <Alert>
-                          <AlertDescription>{passwordSuccess}</AlertDescription>
-                        </Alert>
-                      ) : null}
                       <Button disabled={changePasswordMutation.isPending} type="submit">
                         {changePasswordMutation.isPending ? '提交中…' : '修改密码'}
                       </Button>
@@ -474,12 +448,6 @@ function MePage() {
                         />
                       </Field>
                     </FieldGroup>
-                    {emailError ? <FieldError>{emailError}</FieldError> : null}
-                    {emailSuccess ? (
-                      <Alert>
-                        <AlertDescription>{emailSuccess}</AlertDescription>
-                      </Alert>
-                    ) : null}
                     <Button disabled={changeEmailMutation.isPending} type="submit">
                       {changeEmailMutation.isPending ? '提交中…' : '发送验证邮件'}
                     </Button>

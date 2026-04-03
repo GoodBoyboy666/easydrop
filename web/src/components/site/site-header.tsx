@@ -51,7 +51,6 @@ import {
 
 const navItems = [
   { label: '日志', to: '/' as const },
-  { label: '我的评论', to: '/me/comments' as const },
 ]
 
 export function SiteHeader() {

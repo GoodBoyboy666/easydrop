@@ -39,7 +39,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSessionCheckEnabled(true)
 
     try {
-      return await queryClient.fetchQuery(currentUserQueryOptions())
+      return await queryClient.fetchQuery({
+        ...currentUserQueryOptions(),
+        staleTime: 0,
+      })
     } catch (error) {
       if (isUnauthorizedApiError(error)) {
         setSessionCheckEnabled(false)

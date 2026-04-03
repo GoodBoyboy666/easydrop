@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { CaptchaConfigResult, CaptchaInput } from '#/lib/types'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
+import { Label } from '../ui/label'
 
 const TURNSTILE_PROVIDER = 'turnstile'
 const RECAPTCHA_PROVIDER = 'recaptcha'
@@ -184,7 +185,7 @@ async function waitFor<T>(
 ) {
   const startedAt = Date.now()
 
-  while (Date.now()-startedAt < timeoutMs) {
+  while (Date.now() - startedAt < timeoutMs) {
     const value = reader()
     if (value !== undefined) {
       return value
@@ -246,7 +247,9 @@ export function CaptchaPanel(props: {
       return
     }
     if (!provider || !SCRIPT_BY_PROVIDER[provider]) {
-      setWidgetError(`当前前端暂不支持 ${getProviderLabel(provider)} 验证控件。`)
+      setWidgetError(
+        `当前前端暂不支持 ${getProviderLabel(provider)} 验证控件。`,
+      )
       setWidgetReady(false)
       return
     }
@@ -454,35 +457,26 @@ export function CaptchaPanel(props: {
   }
 
   return (
-    <div className="mt-2">
-      <div className="space-y-3 rounded-xl bg-transparent py-3">
-        <Alert className="border-0 bg-transparent px-0 py-0">
-          <AlertTitle>安全验证</AlertTitle>
-          <AlertDescription>
-            请完成 {getProviderLabel(provider)} 验证。
-          </AlertDescription>
+    <div className="rounded-xl bg-transparent">
+      {widgetError ? (
+        <Alert
+          className="border-0 bg-transparent px-0 py-0"
+          variant="destructive"
+        >
+          <AlertTitle>验证码不可用</AlertTitle>
+          <AlertDescription>{widgetError}</AlertDescription>
         </Alert>
+      ) : null}
 
-        {widgetError ? (
-          <Alert
-            className="border-0 bg-transparent px-0 py-0"
-            variant="destructive"
-          >
-            <AlertTitle>验证码不可用</AlertTitle>
-            <AlertDescription>{widgetError}</AlertDescription>
-          </Alert>
-        ) : null}
+      <div
+        className="min-h-20 rounded-xl bg-transparent py-3"
+        id={containerId}
+        ref={containerRef}
+      />
 
-        <div
-          className="min-h-20 rounded-xl bg-transparent py-3"
-          id={containerId}
-          ref={containerRef}
-        />
-
-        {!widgetReady && !widgetError ? (
-          <div className="text-sm text-muted-foreground">验证码控件加载中…</div>
-        ) : null}
-      </div>
+      {!widgetReady && !widgetError ? (
+        <div className="text-sm text-muted-foreground">验证码控件加载中…</div>
+      ) : null}
     </div>
   )
 }

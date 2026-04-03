@@ -20,7 +20,7 @@ import { formatRelativeTime, getInitials } from '#/lib/format'
 import { hasMarkdownContent, normalizeMarkdownContent } from '#/lib/markdown'
 import { captchaConfigQueryOptions, queryKeys } from '#/lib/query-options'
 import { invalidatePostCommentQueries } from '#/lib/query-invalidation'
-import type { CommentDTO, PostDTO } from '#/lib/types'
+import type { CaptchaInput, CommentDTO, PostDTO } from '#/lib/types'
 import { MarkdownContent } from '#/components/markdown/markdown-content'
 import {
   CaptchaPanel,
@@ -48,6 +48,14 @@ import {
   CollapsibleTrigger,
 } from '#/components/ui/collapsible'
 import { Field, FieldError, FieldGroup } from '#/components/ui/field'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '#/components/ui/dialog'
 import { Skeleton } from '#/components/ui/skeleton'
 
 interface PostCommentsSectionProps {
@@ -86,6 +94,8 @@ export function PostCommentsSection({
   const [commentDraft, setCommentDraft] = useState('')
   const [captcha, setCaptcha] = useState(createEmptyCaptchaInput)
   const [captchaResetSignal, setCaptchaResetSignal] = useState(0)
+  const [captchaDialogOpen, setCaptchaDialogOpen] = useState(false)
+  const [pendingCommentSubmit, setPendingCommentSubmit] = useState(false)
   const [replyTarget, setReplyTarget] = useState<CommentDTO | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null)
@@ -115,7 +125,9 @@ export function PostCommentsSection({
         0,
       )
 
-      return loadedCommentCount < lastPage.total ? allPages.length + 1 : undefined
+      return loadedCommentCount < lastPage.total
+        ? allPages.length + 1
+        : undefined
     },
   })
   const toggleCommentAvailabilityMutation = useMutation({
@@ -131,29 +143,20 @@ export function PostCommentsSection({
   const editCommentMutation = useMutation({
     mutationFn: (comment: CommentDTO) =>
       auth.isAdmin
-        ? api.updateAdminComment(
-            comment.id,
-            {
-              content: normalizeMarkdownContent(editingCommentDraft),
-            },
-          )
-        : api.updateMyComment(
-            comment.id,
-            {
-              content: normalizeMarkdownContent(editingCommentDraft),
-            },
-          ),
+        ? api.updateAdminComment(comment.id, {
+            content: normalizeMarkdownContent(editingCommentDraft),
+          })
+        : api.updateMyComment(comment.id, {
+            content: normalizeMarkdownContent(editingCommentDraft),
+          }),
   })
   const createCommentMutation = useMutation({
-    mutationFn: () =>
-      api.createPostComment(
-        post.id,
-        {
-          content: normalizeMarkdownContent(commentDraft),
-          captcha: captchaConfigQuery.data?.enabled ? captcha : undefined,
-          parent_id: replyTarget?.id,
-        },
-      ),
+    mutationFn: (input: { captcha?: CaptchaInput }) =>
+      api.createPostComment(post.id, {
+        content: normalizeMarkdownContent(commentDraft),
+        captcha: input.captcha,
+        parent_id: replyTarget?.id,
+      }),
   })
 
   const allCommentPages = commentsQuery.data?.pages ?? []
@@ -178,6 +181,8 @@ export function PostCommentsSection({
     setCommentDraft('')
     setCaptcha(createEmptyCaptchaInput())
     setCaptchaResetSignal(0)
+    setCaptchaDialogOpen(false)
+    setPendingCommentSubmit(false)
     setSubmitError(null)
     setEditingCommentId(null)
     setEditingCommentDraft('')
@@ -203,6 +208,8 @@ export function PostCommentsSection({
       setCaptcha(createEmptyCaptchaInput())
       setCaptchaResetSignal((current) => current + 1)
     }
+    setCaptchaDialogOpen(false)
+    setPendingCommentSubmit(false)
     setSubmitError(null)
     setComposerOpen(false)
   }, [captchaConfigQuery.data?.enabled, post.disable_comment])
@@ -418,6 +425,66 @@ export function PostCommentsSection({
     }
   }
 
+  function resetCaptchaWidget() {
+    setCaptcha(createEmptyCaptchaInput())
+    setCaptchaResetSignal((current) => current + 1)
+  }
+
+  function handleCaptchaDialogOpenChange(open: boolean) {
+    if (!open && createCommentMutation.isPending) {
+      return
+    }
+
+    setCaptchaDialogOpen(open)
+
+    if (!open) {
+      setPendingCommentSubmit(false)
+      setSubmitError(null)
+      if (captchaConfigQuery.data?.enabled) {
+        resetCaptchaWidget()
+      }
+    }
+  }
+
+  async function submitCommentWithCaptcha(captchaValue?: CaptchaInput) {
+    if (createCommentMutation.isPending) {
+      return
+    }
+
+    setPendingCommentSubmit(false)
+    setSubmitError(null)
+    setCommentError(null)
+
+    try {
+      await createCommentMutation.mutateAsync({
+        captcha: captchaValue,
+      })
+      setCommentDraft('')
+      setCommentSectionOpen(true)
+      setComposerOpen(true)
+      setReplyTarget(null)
+      setCaptchaDialogOpen(false)
+      if (captchaConfigQuery.data?.enabled) {
+        resetCaptchaWidget()
+      }
+      await invalidatePostQueries()
+    } catch (error) {
+      if (handleApiError(error, '发表评论失败')) {
+        setPendingCommentSubmit(false)
+        setCaptchaDialogOpen(false)
+        return
+      }
+
+      setSubmitError(error instanceof Error ? error.message : '发表评论失败')
+
+      if (captchaConfigQuery.data?.enabled) {
+        setPendingCommentSubmit(true)
+        setCaptchaDialogOpen(true)
+        resetCaptchaWidget()
+      }
+    }
+  }
+
   async function handleCommentSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
@@ -431,48 +498,48 @@ export function PostCommentsSection({
       return
     }
 
-    if (!isCaptchaComplete(captchaConfigQuery.data, captcha)) {
-      setSubmitError('请先完成验证码')
-      return
-    }
-
     if (auth.status !== 'authenticated') {
       redirectToLogin()
       return
     }
 
     setSubmitError(null)
-    setCommentError(null)
-
-    try {
-      await createCommentMutation.mutateAsync()
-      setCommentDraft('')
-      setCommentSectionOpen(true)
-      setComposerOpen(true)
-      setReplyTarget(null)
-      if (captchaConfigQuery.data?.enabled) {
-        setCaptcha(createEmptyCaptchaInput())
-        setCaptchaResetSignal((current) => current + 1)
-      }
-      await invalidatePostQueries()
-    } catch (error) {
-      if (captchaConfigQuery.data?.enabled) {
-        setCaptcha(createEmptyCaptchaInput())
-        setCaptchaResetSignal((current) => current + 1)
-      }
-      if (handleApiError(error, '发表评论失败')) {
-        return
-      }
-
-      setSubmitError(error instanceof Error ? error.message : '发表评论失败')
+    if (!captchaConfigQuery.data?.enabled) {
+      await submitCommentWithCaptcha(undefined)
+      return
     }
+
+    setCommentError(null)
+    setPendingCommentSubmit(true)
+    setCaptchaDialogOpen(true)
+    resetCaptchaWidget()
   }
+
+  useEffect(() => {
+    if (
+      !pendingCommentSubmit ||
+      !captchaDialogOpen ||
+      createCommentMutation.isPending ||
+      !isCaptchaComplete(captchaConfigQuery.data, captcha)
+    ) {
+      return
+    }
+
+    void submitCommentWithCaptcha(captcha)
+  }, [
+    captcha,
+    captchaConfigQuery.data,
+    captchaDialogOpen,
+    createCommentMutation.isPending,
+    pendingCommentSubmit,
+  ])
 
   const hasMoreComments = !!commentsQuery.hasNextPage
   const commentPlaceholder = replyTarget
     ? `回复 ${replyTarget.author.nickname}，支持 Markdown 评论。`
     : '期待你的发言，支持 Markdown 评论。'
   const deleteDialogBusy = deleteCommentMutation.isPending
+  const captchaDialogBusy = createCommentMutation.isPending
   const currentCommentError = commentError ?? commentsLoadError
   const commentsVisible = alwaysExpanded || commentSectionOpen
 
@@ -510,6 +577,44 @@ export function PostCommentsSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={captchaDialogOpen}
+        onOpenChange={handleCaptchaDialogOpenChange}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>验证码</DialogTitle>
+          </DialogHeader>
+          <CaptchaPanel
+            config={captchaConfigQuery.data}
+            errorMessage={
+              captchaConfigQuery.error instanceof Error
+                ? captchaConfigQuery.error.message
+                : null
+            }
+            isLoading={captchaConfigQuery.isLoading}
+            onChange={setCaptcha}
+            resetSignal={captchaResetSignal}
+            value={captcha}
+          />
+
+          {captchaDialogBusy ? (
+            <div className="text-sm text-muted-foreground">评论提交中…</div>
+          ) : null}
+
+          <DialogFooter>
+            <Button
+              disabled={captchaDialogBusy}
+              onClick={() => handleCaptchaDialogOpenChange(false)}
+              type="button"
+              variant="outline"
+            >
+              取消
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3">
@@ -625,26 +730,9 @@ export function PostCommentsSection({
                     <FieldError>{submitError}</FieldError>
                   </Field>
                 </FieldGroup>
-                <div className='px-2'>
-                <CaptchaPanel
-                  config={captchaConfigQuery.data}
-                  errorMessage={
-                    captchaConfigQuery.error instanceof Error
-                      ? captchaConfigQuery.error.message
-                      : null
-                  }
-                  isLoading={captchaConfigQuery.isLoading}
-                  onChange={setCaptcha}
-                  resetSignal={captchaResetSignal}
-                  value={captcha}
-                />
-                </div>
                 <div className="mt-3 flex items-center justify-end">
                   <Button
-                    disabled={
-                      createCommentMutation.isPending ||
-                      !isCaptchaComplete(captchaConfigQuery.data, captcha)
-                    }
+                    disabled={createCommentMutation.isPending}
                     type="submit"
                   >
                     <SendHorizontalIcon data-icon="inline-start" />
