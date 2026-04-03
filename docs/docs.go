@@ -1967,7 +1967,7 @@ const docTemplate = `{
         },
         "/auth/register": {
             "post": {
-                "description": "注册新用户并返回登录态信息",
+                "description": "注册新用户并发送邮箱验证邮件",
                 "consumes": [
                     "application/json"
                 ],
@@ -1993,7 +1993,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/dto.AuthResult"
+                            "$ref": "#/definitions/dto.MessageResponse"
                         }
                     },
                     "400": {
@@ -2992,13 +2992,13 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "参数校验失败",
+                        "description": "参数校验失败或密码错误",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "密码错误或未登录",
+                        "description": "未登录或登录失效",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -3055,13 +3055,13 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "参数校验失败",
+                        "description": "参数校验失败或旧密码错误",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "旧密码错误或未登录",
+                        "description": "未登录或登录失效",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -3326,6 +3326,9 @@ const docTemplate = `{
         "dto.CommentCreateInput": {
             "type": "object",
             "properties": {
+                "captcha": {
+                    "$ref": "#/definitions/dto.CaptchaInput"
+                },
                 "content": {
                     "type": "string"
                 },
