@@ -253,7 +253,7 @@ function HomePage() {
               transition={getEntranceTransition(0.06)}
               {...GPU_ACCELERATED_MOTION_PROPS}
             >
-              <Card className="bg-primary/5 shadow-sm">
+              <Card className="bg-card shadow-sm">
                 <CardHeader>
                   <CardTitle>快捷发布</CardTitle>
                 </CardHeader>

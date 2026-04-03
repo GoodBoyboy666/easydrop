@@ -344,7 +344,7 @@ export function SiteSidebar() {
             }
       }
     >
-      <Card className="bg-card/50 shadow-sm">
+      <Card className="shadow-sm">
         <CardHeader>
           <CardTitle>{siteOwner}</CardTitle>
           <CardDescription>{siteOwnerDescription}</CardDescription>
@@ -379,7 +379,7 @@ export function SiteSidebar() {
         </CardContent>
       </Card>
 
-      <Card className="bg-card/50 shadow-sm">
+      <Card className="shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MegaphoneIcon className="size-4 text-muted-foreground" />
@@ -391,7 +391,7 @@ export function SiteSidebar() {
         </CardContent>
       </Card>
 
-      <Card className="bg-card/50 shadow-sm">
+      <Card className="shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MessageSquareTextIcon className="size-4 text-muted-foreground" />
@@ -483,7 +483,7 @@ export function SiteSidebar() {
         </CardContent>
       </Card>
 
-      <Card className="bg-card/50 shadow-sm">
+      <Card className="shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <HashIcon className="size-4 text-muted-foreground" />

@@ -240,7 +240,7 @@ function PostDetailPage() {
             transition={getEntranceTransition(0.1)}
             {...GPU_ACCELERATED_MOTION_PROPS}
           >
-            <Card className="bg-card/50 shadow-sm">
+            <Card className="shadow-sm">
               <CardContent className="pt-2">
                 <PostCommentsSection
                   alwaysExpanded

@@ -94,7 +94,7 @@ export function AdminAccessNotice({
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
       <motion.div {...getAdminMotionProps(prefersReducedMotion)}>
-        <Card className="border border-border/70 bg-transparent shadow-sm backdrop-blur-sm">
+        <Card className="border border-border/70 bg-card shadow-sm backdrop-blur-sm">
           <CardHeader>
             <CardTitle>{title}</CardTitle>
             <CardDescription>{description}</CardDescription>
@@ -120,7 +120,7 @@ export function AdminLayout({
       <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
         <aside className="space-y-4">
           <motion.div {...getAdminMotionProps(prefersReducedMotion)}>
-            <Card className="overflow-hidden border border-border/70 bg-transparent shadow-sm ring-0 backdrop-blur-sm">
+            <Card className="overflow-hidden border border-border/70 bg-card shadow-sm ring-0 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle>后台管理</CardTitle>
               </CardHeader>
@@ -136,7 +136,7 @@ export function AdminLayout({
           </motion.div>
 
           <motion.div {...getAdminMotionProps(prefersReducedMotion, 0.05)}>
-            <Card className="border border-border/70 bg-transparent shadow-sm backdrop-blur-sm">
+            <Card className="border border-border/70 bg-card shadow-sm backdrop-blur-sm">
               <CardHeader>
                 <CardTitle>菜单</CardTitle>
               </CardHeader>
@@ -172,10 +172,10 @@ function AdminNavButton({
     <Link
       to={item.to}
       className={cn(
-        'rounded-xl border px-3 py-3 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'rounded-xl px-3 py-3 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
         active
-          ? 'border-primary/40 bg-primary/6 text-foreground'
-          : 'border-border/70 bg-transparent hover:bg-muted/25'
+          ? 'bg-primary/6 text-foreground'
+          : 'bg-transparent hover:bg-muted/25'
       )}
     >
       <div className="flex items-center gap-3">
@@ -230,7 +230,7 @@ export function AdminStatCard({
 
   return (
     <motion.div {...getAdminMotionProps(prefersReducedMotion)}>
-      <Card className="border border-border/70 bg-transparent shadow-sm backdrop-blur-sm">
+      <Card className="border border-border/70 bg-card shadow-sm backdrop-blur-sm">
         <CardHeader>
           <CardDescription>{title}</CardDescription>
           <CardTitle className="text-2xl">{value}</CardTitle>
@@ -253,7 +253,7 @@ export function AdminSection({
 
   return (
     <motion.div {...getAdminMotionProps(prefersReducedMotion, 0.04)}>
-      <Card className="border border-border/70 bg-transparent shadow-sm backdrop-blur-sm">
+      <Card className="border border-border/70 bg-card shadow-sm backdrop-blur-sm">
         <CardHeader>
           <CardTitle>{title}</CardTitle>
           {description ? (
@@ -276,7 +276,7 @@ export function AdminListSkeleton({ rows = 3 }: { rows?: number }) {
           key={index}
           {...getAdminMotionProps(prefersReducedMotion, index * 0.04)}
         >
-          <Card className="border border-border/70 bg-transparent shadow-sm backdrop-blur-sm">
+          <Card className="border border-border/70 bg-card shadow-sm backdrop-blur-sm">
             <CardContent className="flex flex-col gap-3 pt-4">
               <Skeleton className="h-4 w-40" />
               <Skeleton className="h-4 w-full" />

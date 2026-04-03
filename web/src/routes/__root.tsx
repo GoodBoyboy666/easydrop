@@ -60,22 +60,26 @@ function RootApp() {
 
 function AppShell({ children }: { children: React.ReactNode }) {
   const { siteBackgroundImageUrl } = useSiteSettings()
+  const siteBackgroundStyle = siteBackgroundImageUrl
+    ? { backgroundImage: `url("${siteBackgroundImageUrl}")` }
+    : null
 
   return (
-    <div
-      className="relative min-h-screen bg-background text-foreground"
-      style={
-        siteBackgroundImageUrl
-          ? {
-              backgroundImage: `url("${siteBackgroundImageUrl}")`,
-              backgroundPosition: 'center',
-              backgroundRepeat: 'no-repeat',
+    <div className="relative min-h-screen bg-background text-foreground">
+      {siteBackgroundStyle ? (
+        <div aria-hidden className="pointer-events-none fixed inset-0 z-0">
+          <div
+            className="absolute inset-0 bg-center bg-no-repeat brightness-95 dark:brightness-45"
+            style={{
+              ...siteBackgroundStyle,
               backgroundSize: 'cover',
-            }
-          : undefined
-      }
-    >
-      <div className="relative flex min-h-screen flex-col">
+            }}
+          />
+          <div className="absolute inset-0 bg-background/28 dark:bg-background/72" />
+        </div>
+      ) : null}
+
+      <div className="relative z-10 flex min-h-screen flex-col">
         <SiteHeader />
         <main className="flex-1">{children}</main>
         <SiteFooter />
@@ -131,7 +135,9 @@ function NotFoundPage() {
               transition={sectionTransition(0.16)}
             >
               <Button asChild className="sm:flex-1">
-                <Link to="/">回到首页</Link>
+                <Link search={{ content: undefined }} to="/">
+                  回到首页
+                </Link>
               </Button>
             </motion.div>
           </CardContent>

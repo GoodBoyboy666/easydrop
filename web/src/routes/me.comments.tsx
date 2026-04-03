@@ -399,7 +399,7 @@ function MyCommentsPage() {
                 transition={getEntranceTransition(Math.min(index * 0.03, 0.18))}
                 {...GPU_ACCELERATED_MOTION_PROPS}
               >
-                <Card className="border border-border/70 bg-card/50 shadow-sm">
+                <Card className="border border-border/70 shadow-sm">
                   <CardHeader className="px-4">
                     <CardTitle className="text-sm">
                       <Link

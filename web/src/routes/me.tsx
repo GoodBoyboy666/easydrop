@@ -47,6 +47,8 @@ const GPU_ACCELERATED_MOTION_PROPS = {
 } as const
 const PAGE_ENTER_INITIAL = { opacity: 0, y: 10 }
 const SECTION_ENTER_INITIAL = { opacity: 0, y: 12 }
+const FLAT_PROFILE_FORM_CARD_CLASSNAME =
+  'rounded-none bg-transparent py-0 ring-0 shadow-none'
 
 function MePage() {
   const { auth, handleUnauthorized } = useUnauthorizedHandler('/me')
@@ -262,7 +264,7 @@ function MePage() {
         transition={getEntranceTransition(0.04)}
         {...GPU_ACCELERATED_MOTION_PROPS}
       >
-        <Card className="border border-border/70 bg-card/50 shadow-sm">
+        <Card className="border border-border/70 shadow-sm">
           <CardHeader>
             <CardTitle>个人信息</CardTitle>
           </CardHeader>
@@ -306,14 +308,14 @@ function MePage() {
               transition={getEntranceTransition(0.1)}
               {...GPU_ACCELERATED_MOTION_PROPS}
             >
-              <div className="rounded-2xl bg-transparent p-4">
+              <div className="rounded-2xl bg-transparent px-2">
                 <div className="text-sm text-muted-foreground">邮箱</div>
                 <div className="mt-2 flex items-center gap-2 text-sm">
                   <MailIcon />
                   <span>{auth.user.email || '未设置邮箱'}</span>
                 </div>
               </div>
-              <div className="rounded-2xl bg-transparent p-4">
+              <div className="rounded-2xl bg-transparent px-2">
                 <div className="text-sm text-muted-foreground">注册时间</div>
                 <div className="mt-2 text-sm">
                   {formatDateTime(auth.user.created_at)}
@@ -330,7 +332,7 @@ function MePage() {
                 transition={getEntranceTransition(0.12)}
                 {...GPU_ACCELERATED_MOTION_PROPS}
               >
-                <Card className='bg-card/50'>
+                <Card className={FLAT_PROFILE_FORM_CARD_CLASSNAME}>
                   <CardHeader>
                     <CardTitle className="text-base">修改昵称</CardTitle>
                     <CardDescription>
@@ -370,7 +372,7 @@ function MePage() {
                 transition={getEntranceTransition(0.16)}
                 {...GPU_ACCELERATED_MOTION_PROPS}
               >
-                <Card className='bg-card/50'>
+                <Card className={FLAT_PROFILE_FORM_CARD_CLASSNAME}>
                   <CardHeader>
                     <CardTitle className="text-base">修改密码</CardTitle>
                     <CardDescription>
@@ -439,7 +441,7 @@ function MePage() {
               transition={getEntranceTransition(0.2)}
               {...GPU_ACCELERATED_MOTION_PROPS}
             >
-              <Card className='bg-card/50'>
+              <Card className={FLAT_PROFILE_FORM_CARD_CLASSNAME}>
                 <CardHeader>
                   <CardTitle className="text-base">修改邮箱</CardTitle>
                   <CardDescription>
