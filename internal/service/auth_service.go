@@ -183,7 +183,7 @@ func (s *authService) RequestPasswordReset(ctx context.Context, input dto.Passwo
 	return nil
 }
 
-// ConfirmPasswordReset 校验 token 并重置用户密码。
+// ConfirmPasswordReset 校验 token 并重置用户密码，同时更新邮箱验证状态。
 func (s *authService) ConfirmPasswordReset(ctx context.Context, input dto.PasswordResetConfirmInput) error {
 	if s.tokenManager == nil {
 		return ErrInternal
@@ -225,6 +225,7 @@ func (s *authService) ConfirmPasswordReset(ctx context.Context, input dto.Passwo
 	}
 
 	user.Password = string(hash)
+	user.EmailVerified = true
 	if err := s.userRepo.Update(ctx, user); err != nil {
 		log.Printf("更新重置密码失败: %v", err)
 		return ErrInternal

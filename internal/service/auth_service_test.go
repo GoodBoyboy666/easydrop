@@ -232,6 +232,9 @@ func TestAuthServiceConfirmPasswordReset(t *testing.T) {
 	if compareErr := bcrypt.CompareHashAndPassword([]byte(repo.users[5].Password), []byte("NewPass123")); compareErr != nil {
 		t.Fatalf("expected password updated, got %v", compareErr)
 	}
+	if !repo.users[5].EmailVerified {
+		t.Fatal("expected password reset to mark email as verified")
+	}
 }
 
 func TestAuthServiceConfirmPasswordResetRejectsInvalidToken(t *testing.T) {
