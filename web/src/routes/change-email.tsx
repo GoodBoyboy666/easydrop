@@ -51,7 +51,6 @@ function ChangeEmailPage() {
       return
     }
 
-    let cancelled = false
     setSubmittedToken(token)
     setError(null)
     setSuccessEmail(null)
@@ -59,10 +58,9 @@ function ChangeEmailPage() {
     confirmMutation
       .mutateAsync({ token })
       .then(async (user) => {
-        if (cancelled) {
-          return
-        }
-        setSuccessEmail(user.email ?? '新邮箱')
+        setError(null)
+        const nextEmail = user.email?.trim()
+        setSuccessEmail(nextEmail || '新邮箱')
         if (auth.status === 'authenticated') {
           try {
             await auth.refreshUser()
@@ -72,19 +70,13 @@ function ChangeEmailPage() {
         }
       })
       .catch((submitError) => {
-        if (cancelled) {
-          return
-        }
+        setSuccessEmail(null)
         setError(
           submitError instanceof Error
             ? submitError.message
             : '确认邮箱修改失败',
         )
       })
-
-    return () => {
-      cancelled = true
-    }
   }, [auth, confirmMutation, submittedToken, token])
 
   return (
@@ -107,7 +99,7 @@ function ChangeEmailPage() {
               确认修改邮箱
             </CardTitle>
             <CardDescription>
-              正在确认这次邮箱变更请求。
+              正在处理邮件中的邮箱变更确认链接。
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -142,7 +134,7 @@ function ChangeEmailPage() {
               </motion.div>
             ) : null}
 
-            {successEmail ? (
+            {successEmail !== null && error === null ? (
               <motion.div
                 animate={{ opacity: 1, y: 0 }}
                 initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
@@ -158,7 +150,7 @@ function ChangeEmailPage() {
               </motion.div>
             ) : null}
 
-            {error ? (
+            {error !== null ? (
               <motion.div
                 animate={{ opacity: 1, y: 0 }}
                 initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
@@ -178,7 +170,9 @@ function ChangeEmailPage() {
               transition={sectionTransition(0.3)}
             >
               <Button asChild className="sm:flex-1">
-                <Link to="/">返回首页</Link>
+                <Link search={{ content: undefined }} to="/">
+                  返回首页
+                </Link>
               </Button>
               <Button asChild className="sm:flex-1" variant="outline">
                 <Link to="/me">查看个人资料</Link>

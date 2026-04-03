@@ -51,7 +51,6 @@ function VerifyEmailPage() {
       return
     }
 
-    let cancelled = false
     setSubmittedToken(token)
     setError(null)
     setSuccess(null)
@@ -59,9 +58,6 @@ function VerifyEmailPage() {
     verifyMutation
       .mutateAsync({ token })
       .then(async () => {
-        if (cancelled) {
-          return
-        }
         setSuccess('邮箱验证已完成，你现在可以正常使用需要验证邮箱的功能。')
         if (auth.status === 'authenticated') {
           try {
@@ -72,17 +68,10 @@ function VerifyEmailPage() {
         }
       })
       .catch((submitError) => {
-        if (cancelled) {
-          return
-        }
         setError(
           submitError instanceof Error ? submitError.message : '邮箱验证失败',
         )
       })
-
-    return () => {
-      cancelled = true
-    }
   }, [auth, submittedToken, token, verifyMutation])
 
   return (
@@ -140,7 +129,7 @@ function VerifyEmailPage() {
               </motion.div>
             ) : null}
 
-            {success ? (
+            {success !== null ? (
               <motion.div
                 animate={{ opacity: 1, y: 0 }}
                 initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
@@ -154,7 +143,7 @@ function VerifyEmailPage() {
               </motion.div>
             ) : null}
 
-            {error ? (
+            {error !== null ? (
               <motion.div
                 animate={{ opacity: 1, y: 0 }}
                 initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
@@ -174,7 +163,9 @@ function VerifyEmailPage() {
               transition={sectionTransition(0.3)}
             >
               <Button asChild className="sm:flex-1">
-                <Link to="/">返回首页</Link>
+                <Link search={{ content: undefined }} to="/">
+                  返回首页
+                </Link>
               </Button>
               <Button asChild className="sm:flex-1" variant="outline">
                 <Link to="/login">前往登录</Link>

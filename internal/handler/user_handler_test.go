@@ -155,8 +155,25 @@ func TestUserHandlerChangePasswordInvalidPassword(t *testing.T) {
 
 	h.ChangePassword(c)
 
-	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("expected status 401, got %d", w.Code)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestUserHandlerRequestEmailChangeInvalidPassword(t *testing.T) {
+	h := NewUserHandler(&mockUserServiceForHandler{
+		requestEmailChangeFn: func(_ context.Context, _ dto.UserChangeEmailInput) error {
+			return service.ErrInvalidPassword
+		},
+	})
+
+	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/users/me/email-change", `{"current_password":"bad","new_email":"new@example.com"}`)
+	c.Set(middleware.ContextUserIDKey, uint(12))
+
+	h.RequestEmailChange(c)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", w.Code)
 	}
 }
 
@@ -297,8 +314,8 @@ func TestMapUserErrorStatus(t *testing.T) {
 	if got := mapUserErrorStatus(service.ErrStorageQuotaExceeded); got != http.StatusForbidden {
 		t.Fatalf("expected 403, got %d", got)
 	}
-	if got := mapUserErrorStatus(service.ErrInvalidPassword); got != http.StatusUnauthorized {
-		t.Fatalf("expected 401, got %d", got)
+	if got := mapUserErrorStatus(service.ErrInvalidPassword); got != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", got)
 	}
 }
 

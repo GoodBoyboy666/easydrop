@@ -101,8 +101,8 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 // @Security BearerAuth
 // @Param input body dto.UserChangePasswordInput true "密码修改参数"
 // @Success 200 {object} dto.ErrorResponse
-// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
-// @Failure 401 {object} dto.ErrorResponse "旧密码错误或未登录"
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败或旧密码错误"
+// @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /users/me/password [patch]
 func (h *UserHandler) ChangePassword(c *gin.Context) {
@@ -141,8 +141,8 @@ func (h *UserHandler) ChangePassword(c *gin.Context) {
 // @Security BearerAuth
 // @Param input body dto.UserChangeEmailInput true "邮箱修改请求参数"
 // @Success 200 {object} dto.ErrorResponse
-// @Failure 400 {object} dto.ErrorResponse "参数校验失败"
-// @Failure 401 {object} dto.ErrorResponse "密码错误或未登录"
+// @Failure 400 {object} dto.ErrorResponse "参数校验失败或密码错误"
+// @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
 // @Failure 409 {object} dto.ErrorResponse "邮箱已被占用"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /users/me/email-change [post]
@@ -271,14 +271,14 @@ func mapUserErrorStatus(err error) int {
 		errors.Is(err, validator.ErrPasswordMissingNumber),
 		errors.Is(err, validator.ErrEmptyEmail),
 		errors.Is(err, validator.ErrInvalidEmailFormat),
+		errors.Is(err, service.ErrInvalidPassword),
 		errors.Is(err, service.ErrInvalidEmailChange),
 		errors.Is(err, service.ErrEmptyAvatarContent),
 		errors.Is(err, service.ErrEmptyAvatarFilename),
 		errors.Is(err, service.ErrAvatarExtensionNotAllowed),
 		errors.Is(err, service.ErrAvatarMIMETypeNotAllowed):
 		return http.StatusBadRequest
-	case errors.Is(err, service.ErrUserNotFound),
-		errors.Is(err, service.ErrInvalidPassword):
+	case errors.Is(err, service.ErrUserNotFound):
 		return http.StatusUnauthorized
 	case errors.Is(err, service.ErrUserDisabled),
 		errors.Is(err, service.ErrStorageQuotaExceeded):
