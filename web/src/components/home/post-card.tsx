@@ -56,6 +56,8 @@ import { Separator } from '#/components/ui/separator'
 import { Switch } from '#/components/ui/switch'
 
 interface PostCardProps {
+  commentsAlwaysExpanded?: boolean
+  commentsLoginRedirectPath?: string
   onPostDeleted?: (postId: number) => void
   onPostUpdated?: (post: PostDTO) => void
   post: PostDTO
@@ -79,6 +81,8 @@ const PostSharePlatforms = lazy(async () => {
 })
 
 export function PostCard({
+  commentsAlwaysExpanded = false,
+  commentsLoginRedirectPath = '/',
   onPostDeleted,
   onPostUpdated,
   post,
@@ -87,7 +91,6 @@ export function PostCard({
   const { auth, handleUnauthorized } = useUnauthorizedHandler('/')
   const queryClient = useQueryClient()
   const [postState, setPostState] = useState(post)
-  const [commentTotal, setCommentTotal] = useState(0)
   const [editingPost, setEditingPost] = useState(false)
   const [editDraft, setEditDraft] = useState(post.content)
   const [editHidden, setEditHidden] = useState(!!post.hide)
@@ -136,7 +139,6 @@ export function PostCard({
 
   useEffect(() => {
     setPostState(post)
-    setCommentTotal(0)
     setEditDraft(post.content)
     setEditHidden(!!post.hide)
     setEditPinned(post.pin != null)
@@ -582,27 +584,18 @@ export function PostCard({
               </div>
             ) : null}
           </div>
-
-          {showComments ? (
-            <>
-              <Separator />
-              <PostCommentsSection
-                loginRedirectPath="/"
-                onCommentTotalChange={setCommentTotal}
-                onPostUpdated={handlePostUpdated}
-                post={postState}
-              />
-            </>
-          ) : null}
         </CardContent>
 
-        <CardFooter className="justify-between gap-3">
-          <div className="text-xs text-muted-foreground">
-            {showComments
-              ? `日志 #${postState.id} · 评论 ${commentTotal}`
-              : `日志 #${postState.id}`}
-          </div>
-        </CardFooter>
+        {showComments ? (
+          <CardFooter className="flex-col items-stretch">
+            <PostCommentsSection
+              alwaysExpanded={commentsAlwaysExpanded}
+              loginRedirectPath={commentsLoginRedirectPath}
+              onPostUpdated={handlePostUpdated}
+              post={postState}
+            />
+          </CardFooter>
+        ) : null}
       </Card>
     </>
   )

@@ -8,7 +8,6 @@ import { useAuth } from '#/lib/auth'
 import { postQueryOptions } from '#/lib/query-options'
 import type { PostDTO } from '#/lib/types'
 import { PostCard } from '#/components/home/post-card'
-import { PostCommentsSection } from '#/components/post/post-comments-section'
 import { SiteSidebar } from '#/components/site/site-sidebar'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import { Card, CardContent } from '#/components/ui/card'
@@ -225,31 +224,14 @@ function PostDetailPage() {
             {...GPU_ACCELERATED_MOTION_PROPS}
           >
             <PostCard
+              commentsAlwaysExpanded
+              commentsLoginRedirectPath={`/posts/${postState.id}`}
               onPostDeleted={() =>
                 void navigate({ to: '/', search: { content: undefined } })
               }
               onPostUpdated={setPostState}
               post={postState}
-              showComments={false}
             />
-          </motion.div>
-
-          <motion.div
-            animate={motionReady ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
-            initial={prefersReducedMotion ? false : SECTION_ENTER_INITIAL}
-            transition={getEntranceTransition(0.1)}
-            {...GPU_ACCELERATED_MOTION_PROPS}
-          >
-            <Card className="shadow-sm">
-              <CardContent className="pt-2">
-                <PostCommentsSection
-                  alwaysExpanded
-                  loginRedirectPath={`/posts/${postState.id}`}
-                  onPostUpdated={setPostState}
-                  post={postState}
-                />
-              </CardContent>
-            </Card>
           </motion.div>
         </div>
 
