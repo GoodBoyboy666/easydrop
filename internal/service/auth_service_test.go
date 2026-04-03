@@ -92,8 +92,8 @@ func TestAuthServiceRegisterSendsVerifyEmail(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Register returned error: %v", err)
 	}
-	if result.AccessToken != "jwt-1" {
-		t.Fatalf("expected access token jwt-1, got %q", result.AccessToken)
+	if result.Message != "注册成功，请先完成邮箱验证后登录" {
+		t.Fatalf("unexpected register message: %q", result.Message)
 	}
 	if len(emailSender.to) != 1 || emailSender.to[0] != "neo@example.com" {
 		t.Fatalf("expected verify email sent, got %#v", emailSender.to)
@@ -253,5 +253,104 @@ func TestAuthServiceConfirmPasswordResetRejectsInvalidToken(t *testing.T) {
 	})
 	if !errors.Is(err, ErrInvalidPasswordReset) {
 		t.Fatalf("expected ErrInvalidPasswordReset, got %v", err)
+	}
+}
+
+func TestAuthServiceLoginRequiresEmailVerificationWhenEnabled(t *testing.T) {
+	hash, err := bcrypt.GenerateFromPassword([]byte("Pass1234"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("seed hash failed: %v", err)
+	}
+
+	repo := &mockUserRepo{
+		users: map[uint]*model.User{
+			10: {
+				ID:            10,
+				Username:      "alice",
+				Email:         "alice@example.com",
+				Password:      string(hash),
+				EmailVerified: false,
+				Status:        1,
+			},
+		},
+	}
+	settings := &mockAuthSettingService{valueByKey: map[string]string{"auth.require_email_verification": "true"}}
+	svc := NewAuthService(repo, settings, &mockJWTManager{token: "jwt-login"}, nil, nil, nil)
+
+	result, err := svc.Login(context.Background(), dto.LoginInput{
+		Account:  "alice",
+		Password: "Pass1234",
+	})
+	if !errors.Is(err, ErrEmailNotVerified) {
+		t.Fatalf("expected ErrEmailNotVerified, got %v", err)
+	}
+	if result != nil {
+		t.Fatalf("expected nil result, got %#v", result)
+	}
+}
+
+func TestAuthServiceLoginAllowsUnverifiedWhenVerificationDisabled(t *testing.T) {
+	hash, err := bcrypt.GenerateFromPassword([]byte("Pass1234"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("seed hash failed: %v", err)
+	}
+
+	repo := &mockUserRepo{
+		users: map[uint]*model.User{
+			11: {
+				ID:            11,
+				Username:      "bob",
+				Email:         "bob@example.com",
+				Password:      string(hash),
+				EmailVerified: false,
+				Status:        1,
+			},
+		},
+	}
+	settings := &mockAuthSettingService{valueByKey: map[string]string{"auth.require_email_verification": "false"}}
+	svc := NewAuthService(repo, settings, &mockJWTManager{token: "jwt-login"}, nil, nil, nil)
+
+	result, err := svc.Login(context.Background(), dto.LoginInput{
+		Account:  "bob",
+		Password: "Pass1234",
+	})
+	if err != nil {
+		t.Fatalf("Login returned error: %v", err)
+	}
+	if result == nil || result.AccessToken != "jwt-login" {
+		t.Fatalf("unexpected login result: %#v", result)
+	}
+}
+
+func TestAuthServiceLoginRejectsInvalidRequireEmailSetting(t *testing.T) {
+	hash, err := bcrypt.GenerateFromPassword([]byte("Pass1234"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("seed hash failed: %v", err)
+	}
+
+	repo := &mockUserRepo{
+		users: map[uint]*model.User{
+			12: {
+				ID:            12,
+				Username:      "charlie",
+				Email:         "charlie@example.com",
+				Password:      string(hash),
+				EmailVerified: false,
+				Status:        1,
+			},
+		},
+	}
+	settings := &mockAuthSettingService{valueByKey: map[string]string{"auth.require_email_verification": "not-a-bool"}}
+	svc := NewAuthService(repo, settings, &mockJWTManager{token: "jwt-login"}, nil, nil, nil)
+
+	result, err := svc.Login(context.Background(), dto.LoginInput{
+		Account:  "charlie",
+		Password: "Pass1234",
+	})
+	if !errors.Is(err, ErrInvalidSiteSetting) {
+		t.Fatalf("expected ErrInvalidSiteSetting, got %v", err)
+	}
+	if result != nil {
+		t.Fatalf("expected nil result, got %#v", result)
 	}
 }

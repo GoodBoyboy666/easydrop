@@ -356,3 +356,54 @@ describe('api.createPostComment', () => {
     )
   })
 })
+
+describe('api.register', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('sends register payload and returns message response', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          message: '注册成功，请先完成邮箱验证后登录',
+        }),
+        {
+          headers: {
+            'content-type': 'application/json',
+          },
+          status: 201,
+        },
+      ),
+    )
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await api.register({
+      email: 'alice@example.com',
+      nickname: 'Alice',
+      password: 'Pass1234',
+      username: 'alice',
+    })
+
+    expect(result).toEqual({
+      message: '注册成功，请先完成邮箱验证后登录',
+    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/auth/register',
+      expect.objectContaining({
+        body: JSON.stringify({
+          email: 'alice@example.com',
+          nickname: 'Alice',
+          password: 'Pass1234',
+          username: 'alice',
+        }),
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+        }),
+        method: 'POST',
+      }),
+    )
+  })
+})

@@ -30,12 +30,12 @@ func NewAuthHandler(authService service.AuthService, userService service.UserSer
 
 // Register 用户注册
 // @Summary 用户注册
-// @Description 注册新用户并返回登录态信息
+// @Description 注册新用户并发送邮箱验证邮件
 // @Tags auth
 // @Accept json
 // @Produce json
 // @Param input body dto.RegisterInput true "注册信息"
-// @Success 201 {object} dto.AuthResult
+// @Success 201 {object} dto.MessageResponse
 // @Failure 400 {object} dto.ErrorResponse "参数校验失败或验证码缺失"
 // @Failure 403 {object} dto.ErrorResponse "注册关闭"
 // @Failure 409 {object} dto.ErrorResponse "用户名或邮箱已存在"
@@ -62,9 +62,6 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	if h.authCookie != nil {
-		h.authCookie.Set(c, result.AccessToken)
-	}
 	c.JSON(http.StatusCreated, result)
 }
 
@@ -273,7 +270,8 @@ func mapAuthErrorStatus(err error) int {
 		errors.Is(err, service.ErrInvalidPassword):
 		return http.StatusUnauthorized
 	case errors.Is(err, service.ErrRegisterClosed),
-		errors.Is(err, service.ErrUserDisabled):
+		errors.Is(err, service.ErrUserDisabled),
+		errors.Is(err, service.ErrEmailNotVerified):
 		return http.StatusForbidden
 	case errors.Is(err, service.ErrUsernameExists),
 		errors.Is(err, service.ErrEmailExists):

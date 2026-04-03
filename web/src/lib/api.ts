@@ -220,7 +220,7 @@ export const api = {
     })
   },
   register(input: RegisterInput) {
-    return request<AuthResult>('/auth/register', {
+    return request<{ message?: string }>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(input),
     })

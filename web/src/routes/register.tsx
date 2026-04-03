@@ -111,8 +111,10 @@ function RegisterPage() {
         password: form.password,
         username: form.username.trim(),
       })
-      await auth.refreshUser()
-      void navigate({ href: safeRedirectPath(redirect) })
+      void navigate({
+        search: { message: 'verify_email', redirect },
+        to: '/login',
+      })
     } catch (submitError) {
       if (captchaConfigQuery.data?.enabled) {
         setCaptcha(createEmptyCaptchaInput())

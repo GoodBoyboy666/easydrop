@@ -24,6 +24,7 @@ var (
 	ErrRegisterClosed       = errors.New("当前不允许注册")
 	ErrUsernameExists       = errors.New("用户名已存在")
 	ErrEmailExists          = errors.New("邮箱已存在")
+	ErrEmailNotVerified     = errors.New("请先完成邮箱验证后再登录")
 	ErrEmptyAccount         = errors.New("账号不能为空")
 	ErrUserNotFound         = errors.New("用户不存在")
 	ErrInvalidPassword      = errors.New("密码错误")
@@ -42,8 +43,8 @@ const (
 )
 
 type AuthService interface {
-	// Register 注册用户并返回登录态信息。
-	Register(ctx context.Context, input dto.RegisterInput) (*dto.AuthResult, error)
+	// Register 注册用户并发送邮箱验证邮件。
+	Register(ctx context.Context, input dto.RegisterInput) (*dto.MessageResponse, error)
 	// Login 使用用户名或邮箱登录并返回登录态信息。
 	Login(ctx context.Context, input dto.LoginInput) (*dto.AuthResult, error)
 	// RequestPasswordReset 发起忘记密码流程并发送重置邮件。
@@ -75,8 +76,8 @@ func NewAuthService(userRepo repo.UserRepo, settings SettingService, jwtManager 
 	}
 }
 
-// Register 校验注册参数、创建用户并签发访问令牌。
-func (s *authService) Register(ctx context.Context, input dto.RegisterInput) (*dto.AuthResult, error) {
+// Register 校验注册参数、创建用户并发送邮箱验证邮件。
+func (s *authService) Register(ctx context.Context, input dto.RegisterInput) (*dto.MessageResponse, error) {
 	username := strings.TrimSpace(input.Username)
 	if err := validator.ValidateUsername(username); err != nil {
 		return nil, err
@@ -138,12 +139,7 @@ func (s *authService) Register(ctx context.Context, input dto.RegisterInput) (*d
 
 	s.sendVerifyEmailAsync(ctx, user)
 
-	result, err := s.buildAuthResult(user)
-	if err != nil {
-		log.Printf("签发令牌失败: %v", err)
-		return nil, ErrInternal
-	}
-	return result, nil
+	return &dto.MessageResponse{Message: "注册成功，请先完成邮箱验证后登录"}, nil
 }
 
 // RequestPasswordReset 校验请求后发送密码重置邮件。
@@ -313,6 +309,10 @@ func (s *authService) Login(ctx context.Context, input dto.LoginInput) (*dto.Aut
 		return nil, ErrInvalidPassword
 	}
 
+	if err := s.ensureLoginEmailVerified(ctx, user); err != nil {
+		return nil, err
+	}
+
 	result, err := s.buildAuthResult(user)
 	if err != nil {
 		log.Printf("签发令牌失败: %v", err)
@@ -356,6 +356,33 @@ func (s *authService) ensureRegisterEnabled(ctx context.Context) error {
 	if !allow {
 		return ErrRegisterClosed
 	}
+	return nil
+}
+
+// ensureLoginEmailVerified 检查登录前是否需要邮箱验证。
+func (s *authService) ensureLoginEmailVerified(ctx context.Context, user *model.User) error {
+	if user == nil || user.EmailVerified || s.settings == nil {
+		return nil
+	}
+
+	value, ok, err := s.settings.GetValue(ctx, "auth.require_email_verification")
+	if err != nil {
+		log.Printf("读取登录邮箱验证配置失败: %v", err)
+		return ErrInternal
+	}
+	if !ok {
+		return nil
+	}
+
+	requireVerified, err := strconv.ParseBool(strings.TrimSpace(value))
+	if err != nil {
+		log.Printf("解析登录邮箱验证配置失败: %v", err)
+		return ErrInvalidSiteSetting
+	}
+	if requireVerified {
+		return ErrEmailNotVerified
+	}
+
 	return nil
 }
 

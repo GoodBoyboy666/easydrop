@@ -235,6 +235,13 @@ func initDefaultSettings(db *gorm.DB) error {
 			Public:   true,
 		},
 		{
+			Key:      "auth.require_email_verification",
+			Value:    "false",
+			Desc:     "登录前必须完成邮箱验证",
+			Category: "auth",
+			Public:   false,
+		},
+		{
 			Key:      "storage.quota",
 			Value:    "10737418240",
 			Desc:     "存储配额（字节，默认10GB）",

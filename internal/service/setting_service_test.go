@@ -135,6 +135,21 @@ func TestSettingServiceGetPublicItems(t *testing.T) {
 	}
 }
 
+func TestSettingServiceSeedsRequireEmailVerificationSetting(t *testing.T) {
+	svc, _ := newTestSettingService(t)
+
+	value, found, err := svc.GetValue(context.Background(), "auth.require_email_verification")
+	if err != nil {
+		t.Fatalf("GetValue returned error: %v", err)
+	}
+	if !found {
+		t.Fatal("expected auth.require_email_verification to exist")
+	}
+	if value != "false" {
+		t.Fatalf("expected default false, got %q", value)
+	}
+}
+
 func newTestSettingService(t *testing.T) (SettingService, *gorm.DB) {
 	t.Helper()
 

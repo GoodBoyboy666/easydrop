@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { ArrowRightIcon, LogInIcon } from 'lucide-react'
+import { ArrowRightIcon, CheckCircle2Icon, LogInIcon } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import type { Transition } from 'motion/react'
 import { useEffect, useState } from 'react'
@@ -14,6 +14,7 @@ import {
 import { safeRedirectPath } from '#/lib/format'
 import { captchaConfigQueryOptions } from '#/lib/query-options'
 import { useSiteSettings } from '#/lib/site-settings'
+import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import { Button } from '#/components/ui/button'
 import {
   Card,
@@ -31,12 +32,20 @@ import {
 import { Input } from '#/components/ui/input'
 
 export const Route = createFileRoute('/login')({
-  validateSearch: (search: Record<string, unknown>) => ({
-    redirect:
-      typeof search.redirect === 'string'
-        ? safeRedirectPath(search.redirect)
-        : '/',
-  }),
+  validateSearch: (search: Record<string, unknown>) => {
+    const nextSearch: { message?: string; redirect: string } = {
+      redirect:
+        typeof search.redirect === 'string'
+          ? safeRedirectPath(search.redirect)
+          : '/',
+    }
+
+    if (search.message === 'verify_email') {
+      nextSearch.message = 'verify_email'
+    }
+
+    return nextSearch
+  },
   component: LoginPage,
 })
 
@@ -45,7 +54,7 @@ function LoginPage() {
   const navigate = useNavigate()
   const prefersReducedMotion = useReducedMotion()
   const { allowRegister } = useSiteSettings()
-  const { redirect } = Route.useSearch()
+  const { message, redirect } = Route.useSearch()
   const [account, setAccount] = useState('')
   const [captcha, setCaptcha] = useState(createEmptyCaptchaInput)
   const [captchaResetSignal, setCaptchaResetSignal] = useState(0)
@@ -123,6 +132,21 @@ function LoginPage() {
             <CardDescription>Welcome back</CardDescription>
           </CardHeader>
           <CardContent>
+            {message === 'verify_email' ? (
+              <motion.div
+                animate={{ opacity: 1, y: 0 }}
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
+                transition={sectionTransition(0.12)}
+              >
+                <Alert className="mb-4">
+                  <CheckCircle2Icon className="size-4" />
+                  <AlertTitle>注册成功</AlertTitle>
+                  <AlertDescription>
+                    请先完成邮箱验证，再使用账号登录。
+                  </AlertDescription>
+                </Alert>
+              </motion.div>
+            ) : null}
             <motion.form
               animate={{ opacity: 1, y: 0 }}
               initial={prefersReducedMotion ? false : { opacity: 0, y: 12 }}

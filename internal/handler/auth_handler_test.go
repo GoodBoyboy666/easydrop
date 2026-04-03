@@ -12,19 +12,20 @@ import (
 
 	"easydrop/internal/dto"
 	cookiepkg "easydrop/internal/pkg/cookie"
+	"easydrop/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
 
 type mockAuthService struct {
 	loginFn                func(context.Context, dto.LoginInput) (*dto.AuthResult, error)
-	registerFn             func(context.Context, dto.RegisterInput) (*dto.AuthResult, error)
+	registerFn             func(context.Context, dto.RegisterInput) (*dto.MessageResponse, error)
 	requestPasswordResetFn func(context.Context, dto.PasswordResetRequestInput) error
 	confirmPasswordResetFn func(context.Context, dto.PasswordResetConfirmInput) error
 	confirmVerifyEmailFn   func(context.Context, dto.EmailVerifyConfirmInput) error
 }
 
-func (m *mockAuthService) Register(ctx context.Context, input dto.RegisterInput) (*dto.AuthResult, error) {
+func (m *mockAuthService) Register(ctx context.Context, input dto.RegisterInput) (*dto.MessageResponse, error) {
 	if m.registerFn == nil {
 		return nil, nil
 	}
@@ -114,6 +115,71 @@ func TestAuthHandlerLoginSetsCookieAndReturnsToken(t *testing.T) {
 	}
 	if cookie.SameSite != http.SameSiteLaxMode {
 		t.Fatalf("expected SameSite=Lax, got %v", cookie.SameSite)
+	}
+}
+
+func TestAuthHandlerRegisterReturnsMessageWithoutCookie(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	handler := NewAuthHandler(&mockAuthService{
+		registerFn: func(context.Context, dto.RegisterInput) (*dto.MessageResponse, error) {
+			return &dto.MessageResponse{Message: "注册成功，请先完成邮箱验证后登录"}, nil
+		},
+	}, nil, cookiepkg.NewAuthCookie(&cookiepkg.Config{
+		Name:     "session",
+		Path:     "/",
+		SameSite: "lax",
+		MaxAge:   2 * time.Hour,
+	}))
+
+	router := gin.New()
+	router.POST("/register", handler.Register)
+
+	body := bytes.NewBufferString(`{"username":"alice","nickname":"Alice","email":"alice@example.com","password":"Pass1234"}`)
+	req := httptest.NewRequest(http.MethodPost, "/register", body)
+	req.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", recorder.Code)
+	}
+
+	var payload dto.MessageResponse
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal response failed: %v", err)
+	}
+	if payload.Message != "注册成功，请先完成邮箱验证后登录" {
+		t.Fatalf("unexpected message: %s", payload.Message)
+	}
+
+	cookies := recorder.Result().Cookies()
+	if len(cookies) != 0 {
+		t.Fatalf("expected no cookie, got %d", len(cookies))
+	}
+}
+
+func TestAuthHandlerLoginEmailNotVerifiedReturnsForbidden(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	handler := NewAuthHandler(&mockAuthService{
+		loginFn: func(context.Context, dto.LoginInput) (*dto.AuthResult, error) {
+			return nil, service.ErrEmailNotVerified
+		},
+	}, nil, nil)
+
+	router := gin.New()
+	router.POST("/login", handler.Login)
+
+	req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(`{"account":"alice","password":"secret123"}`))
+	req.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", recorder.Code)
 	}
 }
 
