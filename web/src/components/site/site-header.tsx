@@ -196,7 +196,7 @@ export function SiteHeader() {
               ) : null}
             </>
           ) : user ? (
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <button
                   className="hidden rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring md:inline-flex"
@@ -412,7 +412,7 @@ export function SiteHeader() {
             </SheetContent>
           </Sheet>
 
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"

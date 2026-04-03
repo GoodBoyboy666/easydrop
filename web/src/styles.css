@@ -84,8 +84,8 @@
   --sidebar-accent-foreground: oklch(0.228 0.013 107.4);
   --sidebar-border: oklch(0.93 0.007 106.5);
   --sidebar-ring: oklch(0.737 0.021 106.9);
-  --scrollbar-track: color-mix(in oklab, var(--background) 82%, var(--muted) 18%);
-  --scrollbar-track-border: color-mix(in oklab, var(--border) 78%, transparent);
+  --scrollbar-track: transparent;
+  --scrollbar-track-border: transparent;
   --scrollbar-thumb: color-mix(in oklab, var(--primary) 56%, var(--muted-foreground) 44%);
   --scrollbar-thumb-hover: color-mix(in oklab, var(--primary) 70%, var(--foreground) 30%);
 }
@@ -122,8 +122,8 @@
   --sidebar-accent-foreground: oklch(0.988 0.003 106.5);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.58 0.031 107.3);
-  --scrollbar-track: color-mix(in oklab, var(--card) 84%, black 16%);
-  --scrollbar-track-border: color-mix(in oklab, var(--border) 72%, transparent);
+  --scrollbar-track: transparent;
+  --scrollbar-track-border: transparent;
   --scrollbar-thumb: color-mix(in oklab, var(--primary) 64%, var(--muted-foreground) 36%);
   --scrollbar-thumb-hover: color-mix(in oklab, var(--primary) 78%, var(--foreground) 22%);
 }
@@ -135,7 +135,6 @@
 
   html {
     @apply font-sans;
-    scrollbar-gutter: stable;
     scrollbar-width: thin;
     scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   }
