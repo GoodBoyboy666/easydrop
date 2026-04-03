@@ -124,67 +124,76 @@ function ResetPasswordPage() {
               </motion.div>
             ) : null}
 
-            <motion.form
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-4"
-              initial={prefersReducedMotion ? false : { opacity: 0, y: 12 }}
-              onSubmit={handleSubmit}
-              transition={sectionTransition(0.22)}
-            >
-              <FieldGroup>
-                <Field>
-                  <FieldLabel htmlFor="reset-new-password">新密码</FieldLabel>
-                  <Input
-                    autoComplete="new-password"
-                    id="reset-new-password"
-                    onChange={(event) => setNewPassword(event.target.value)}
-                    placeholder="请输入新密码"
-                    type="password"
-                    value={newPassword}
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="reset-confirm-password">
-                    确认新密码
-                  </FieldLabel>
-                  <Input
-                    autoComplete="new-password"
-                    id="reset-confirm-password"
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                    placeholder="请再次输入新密码"
-                    type="password"
-                    value={confirmPassword}
-                  />
-                </Field>
-              </FieldGroup>
-
-              {resetError ? <FieldError>{resetError}</FieldError> : null}
-              {resetSuccess ? (
+            {resetSuccess ? (
+              <motion.div
+                animate={{ opacity: 1, y: 0 }}
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+                transition={sectionTransition(0.22)}
+              >
                 <Alert>
                   <CheckCircle2Icon className="size-4" />
                   <AlertTitle>密码已重置</AlertTitle>
                   <AlertDescription>{resetSuccess}</AlertDescription>
                 </Alert>
-              ) : null}
-
-              <motion.div
-                animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col gap-3 sm:flex-row"
-                initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
-                transition={sectionTransition(0.28)}
-              >
-                <Button
-                  className="sm:flex-1"
-                  disabled={confirmMutation.isPending || !token}
-                  type="submit"
-                >
-                  {confirmMutation.isPending ? '提交中…' : '保存新密码'}
-                </Button>
-                <Button asChild className="sm:flex-1" variant="outline">
-                  <Link to="/login">返回登录</Link>
-                </Button>
               </motion.div>
-            </motion.form>
+            ) : (
+              <motion.form
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-4"
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 12 }}
+                onSubmit={handleSubmit}
+                transition={sectionTransition(0.22)}
+              >
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel htmlFor="reset-new-password">新密码</FieldLabel>
+                    <Input
+                      autoComplete="new-password"
+                      id="reset-new-password"
+                      onChange={(event) => setNewPassword(event.target.value)}
+                      placeholder="请输入新密码"
+                      type="password"
+                      value={newPassword}
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="reset-confirm-password">
+                      确认新密码
+                    </FieldLabel>
+                    <Input
+                      autoComplete="new-password"
+                      id="reset-confirm-password"
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      placeholder="请再次输入新密码"
+                      type="password"
+                      value={confirmPassword}
+                    />
+                  </Field>
+                </FieldGroup>
+
+                {resetError ? <FieldError>{resetError}</FieldError> : null}
+
+                <motion.div
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex flex-col gap-3 sm:flex-row"
+                  initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+                  transition={sectionTransition(0.28)}
+                >
+                  <Button
+                    className="sm:flex-1"
+                    disabled={confirmMutation.isPending || !token}
+                    type="submit"
+                  >
+                    {confirmMutation.isPending ? '提交中…' : '保存新密码'}
+                  </Button>
+                  <Button asChild className="sm:flex-1" variant="outline">
+                    <Link search={{ redirect: '/' }} to="/login">
+                      返回登录
+                    </Link>
+                  </Button>
+                </motion.div>
+              </motion.form>
+            )}
           </CardContent>
         </Card>
       </motion.div>

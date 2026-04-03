@@ -118,75 +118,84 @@ function ForgotPasswordPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <motion.form
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-4"
-              initial={prefersReducedMotion ? false : { opacity: 0, y: 12 }}
-              onSubmit={handleSubmit}
-              transition={sectionTransition(0.16)}
-            >
-              <FieldGroup>
-                <Field>
-                  <FieldLabel htmlFor="forgot-password-email">注册邮箱</FieldLabel>
-                  <Input
-                    autoComplete="email"
-                    id="forgot-password-email"
-                    onChange={(event) => setEmail(event.target.value)}
-                    placeholder="请输入注册邮箱"
-                    type="email"
-                    value={email}
-                  />
-                </Field>
-              </FieldGroup>
+            {requestSuccess ? (
               <motion.div
-              animate={{ opacity: 1, y: 0 }}
-              initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
-              transition={sectionTransition(0.22)}
-            >
-              <CaptchaPanel
-                config={captchaConfigQuery.data}
-                errorMessage={
-                  captchaConfigQuery.error instanceof Error
-                    ? captchaConfigQuery.error.message
-                    : null
-                }
-                isLoading={captchaConfigQuery.isLoading}
-                onChange={setCaptcha}
-                resetSignal={captchaResetSignal}
-                value={captcha}
-              />
-            </motion.div>
-
-              {requestError ? <FieldError>{requestError}</FieldError> : null}
-              {requestSuccess ? (
+                animate={{ opacity: 1, y: 0 }}
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+                transition={sectionTransition(0.16)}
+              >
                 <Alert>
                   <CheckCircle2Icon className="size-4" />
                   <AlertTitle>请求已提交</AlertTitle>
                   <AlertDescription>{requestSuccess}</AlertDescription>
                 </Alert>
-              ) : null}
-
-              <motion.div
-                animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col gap-3 sm:flex-row"
-                initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
-                transition={sectionTransition(0.28)}
-              >
-                <Button
-                  className="sm:flex-1"
-                  disabled={
-                    requestMutation.isPending ||
-                    !isCaptchaComplete(captchaConfigQuery.data, captcha)
-                  }
-                  type="submit"
-                >
-                  {requestMutation.isPending ? '发送中…' : '发送重置邮件'}
-                </Button>
-                <Button asChild className="sm:flex-1" variant="outline">
-                  <Link to="/login">返回登录</Link>
-                </Button>
               </motion.div>
-            </motion.form>
+            ) : (
+              <motion.form
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-4"
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 12 }}
+                onSubmit={handleSubmit}
+                transition={sectionTransition(0.16)}
+              >
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel htmlFor="forgot-password-email">注册邮箱</FieldLabel>
+                    <Input
+                      autoComplete="email"
+                      id="forgot-password-email"
+                      onChange={(event) => setEmail(event.target.value)}
+                      placeholder="请输入注册邮箱"
+                      type="email"
+                      value={email}
+                    />
+                  </Field>
+                </FieldGroup>
+                <motion.div
+                  animate={{ opacity: 1, y: 0 }}
+                  initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+                  transition={sectionTransition(0.22)}
+                >
+                  <CaptchaPanel
+                    config={captchaConfigQuery.data}
+                    errorMessage={
+                      captchaConfigQuery.error instanceof Error
+                        ? captchaConfigQuery.error.message
+                        : null
+                    }
+                    isLoading={captchaConfigQuery.isLoading}
+                    onChange={setCaptcha}
+                    resetSignal={captchaResetSignal}
+                    value={captcha}
+                  />
+                </motion.div>
+
+                {requestError ? <FieldError>{requestError}</FieldError> : null}
+
+                <motion.div
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex flex-col gap-3 sm:flex-row"
+                  initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+                  transition={sectionTransition(0.28)}
+                >
+                  <Button
+                    className="sm:flex-1"
+                    disabled={
+                      requestMutation.isPending ||
+                      !isCaptchaComplete(captchaConfigQuery.data, captcha)
+                    }
+                    type="submit"
+                  >
+                    {requestMutation.isPending ? '发送中…' : '发送重置邮件'}
+                  </Button>
+                  <Button asChild className="sm:flex-1" variant="outline">
+                    <Link search={{ redirect: '/' }} to="/login">
+                      返回登录
+                    </Link>
+                  </Button>
+                </motion.div>
+              </motion.form>
+            )}
           </CardContent>
         </Card>
       </motion.div>
