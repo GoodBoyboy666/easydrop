@@ -36,7 +36,6 @@ interface PostFilterState {
   content: string
   hide: string
   order: string
-  tagId: string
   userId: string
 }
 
@@ -44,7 +43,6 @@ const EMPTY_FILTERS: PostFilterState = {
   content: '',
   hide: 'all',
   order: 'created_at_desc',
-  tagId: '',
   userId: '',
 }
 
@@ -64,7 +62,6 @@ export function AdminPostsPage() {
       page,
       order: filters.order,
       size: ADMIN_PAGE_SIZE,
-      tag_id: parseOptionalInteger(filters.tagId),
       user_id: parseOptionalInteger(filters.userId),
     }),
     enabled: auth.status === 'authenticated',
@@ -120,7 +117,7 @@ export function AdminPostsPage() {
 
       <AdminSection title="筛选日志">
         <form
-          className="grid gap-4 lg:grid-cols-5"
+          className="grid gap-4 lg:grid-cols-4"
           onSubmit={(event) => {
             event.preventDefault()
             setFilters(draftFilters)
@@ -155,22 +152,6 @@ export function AdminPostsPage() {
               placeholder="例如 1"
               type="number"
               value={draftFilters.userId}
-            />
-          </Field>
-
-          <Field>
-            <FieldLabel htmlFor="admin-posts-tag">标签 ID</FieldLabel>
-            <Input
-              id="admin-posts-tag"
-              onChange={(event) =>
-                setDraftFilters((current) => ({
-                  ...current,
-                  tagId: event.target.value,
-                }))
-              }
-              placeholder="例如 3"
-              type="number"
-              value={draftFilters.tagId}
             />
           </Field>
 
@@ -211,7 +192,7 @@ export function AdminPostsPage() {
             </select>
           </Field>
 
-          <div className="flex flex-wrap gap-2 lg:col-span-5">
+          <div className="flex flex-wrap gap-2 lg:col-span-4">
             <Button type="submit">应用筛选</Button>
             <Button
               onClick={() => {

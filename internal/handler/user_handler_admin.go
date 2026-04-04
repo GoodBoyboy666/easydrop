@@ -22,10 +22,11 @@ func NewUserAdminHandler(userService service.UserService) *UserAdminHandler {
 
 // List 查询用户列表（管理端）
 // @Summary 管理端查询用户列表
-// @Description 分页查询用户列表，支持按用户名、邮箱、状态过滤
+// @Description 分页查询用户列表，支持按用户 ID、用户名、邮箱、状态过滤
 // @Tags user-admin
 // @Produce json
 // @Security BearerAuth
+// @Param user_id query int false "用户 ID（精确匹配）"
 // @Param username query string false "用户名（模糊匹配）"
 // @Param email query string false "邮箱（模糊匹配）"
 // @Param status query int false "用户状态"

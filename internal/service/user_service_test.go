@@ -217,9 +217,21 @@ func (m *mockUserRepo) Delete(_ context.Context, id uint) error {
 	return nil
 }
 
-func (m *mockUserRepo) List(_ context.Context, _ repo.UserFilter, _ repo.ListOptions) ([]model.User, int64, error) {
+func (m *mockUserRepo) List(_ context.Context, filter repo.UserFilter, _ repo.ListOptions) ([]model.User, int64, error) {
 	items := make([]model.User, 0, len(m.users))
 	for _, user := range m.users {
+		if filter.ID != nil && user.ID != *filter.ID {
+			continue
+		}
+		if filter.Status != nil && user.Status != *filter.Status {
+			continue
+		}
+		if username := strings.TrimSpace(filter.Username); username != "" && !strings.Contains(user.Username, username) {
+			continue
+		}
+		if email := strings.TrimSpace(filter.Email); email != "" && !strings.Contains(user.Email, email) {
+			continue
+		}
 		items = append(items, *cloneUser(user))
 	}
 	return items, int64(len(items)), nil
@@ -695,5 +707,42 @@ func TestUserServiceConfirmEmailChangeOldEmailMismatch(t *testing.T) {
 	_, err = svc.ConfirmEmailChange(context.Background(), dto.UserChangeEmailConfirmInput{VerificationToken: "confirm-old"})
 	if !errors.Is(err, ErrEmailChanged) {
 		t.Fatalf("expected ErrEmailChanged, got %v", err)
+	}
+}
+
+func TestUserServiceListFiltersByID(t *testing.T) {
+	repo := &mockUserRepo{
+		users: map[uint]*model.User{
+			7: {
+				ID:       7,
+				Username: "neo",
+				Nickname: "Neo",
+				Email:    "neo@example.com",
+				Status:   1,
+			},
+			8: {
+				ID:       8,
+				Username: "trinity",
+				Nickname: "Trinity",
+				Email:    "tri@example.com",
+				Status:   1,
+			},
+		},
+	}
+	svc := NewUserService(repo, nil, nil, nil, nil)
+	userID := uint(8)
+
+	result, err := svc.List(context.Background(), dto.UserListInput{ID: &userID})
+	if err != nil {
+		t.Fatalf("List returned error: %v", err)
+	}
+	if result.Total != 1 {
+		t.Fatalf("expected total=1, got %d", result.Total)
+	}
+	if len(result.Items) != 1 {
+		t.Fatalf("expected one item, got %d", len(result.Items))
+	}
+	if result.Items[0].ID != 8 {
+		t.Fatalf("expected user id 8, got %d", result.Items[0].ID)
 	}
 }

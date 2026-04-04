@@ -614,6 +614,7 @@ func (s *userService) List(ctx context.Context, input dto.UserListInput) (*dto.U
 	page, size := normalizeServiceListPageSize(input.Page, input.Size)
 
 	users, total, err := s.userRepo.List(ctx, repo.UserFilter{
+		ID:       input.ID,
 		Username: strings.TrimSpace(input.Username),
 		Email:    strings.TrimSpace(input.Email),
 		Status:   input.Status,

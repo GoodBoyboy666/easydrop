@@ -28,6 +28,7 @@ type UserRepo interface {
 
 // UserFilter 用户查询过滤条件。
 type UserFilter struct {
+	ID       *uint
 	Username string
 	Email    string
 	Status   *int
@@ -132,6 +133,9 @@ func (r *GormUserRepo) Delete(ctx context.Context, id uint) error {
 func (r *GormUserRepo) List(ctx context.Context, filter UserFilter, opts ListOptions) ([]model.User, int64, error) {
 	db := r.db.WithContext(withContext(ctx)).Model(&model.User{})
 
+	if filter.ID != nil {
+		db = db.Where("id = ?", *filter.ID)
+	}
 	if username := strings.TrimSpace(filter.Username); username != "" {
 		db = db.Where("username LIKE ?", "%"+username+"%")
 	}

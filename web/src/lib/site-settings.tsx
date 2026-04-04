@@ -16,6 +16,8 @@ interface SiteSettingsContextValue {
   siteBackground: string
   siteBackgroundImageUrl: string | null
   siteDescription: string
+  siteFavicon: string
+  siteFaviconUrl: string
   siteName: string
   siteUrl: string
 }
@@ -24,6 +26,7 @@ const DEFAULT_SITE_NAME = 'EasyDrop'
 const DEFAULT_SITE_DESCRIPTION = '一个轻量级日志说说平台'
 const DEFAULT_SITE_OWNER = 'Your Name'
 const DEFAULT_SITE_OWNER_DESCRIPTION = 'Do what you want to do.'
+const DEFAULT_SITE_FAVICON = '/favicon.ico'
 
 const SiteSettingsContext = createContext<SiteSettingsContextValue | null>(null)
 
@@ -70,6 +73,32 @@ function resolveBackgroundUrl(value: string) {
   }
 }
 
+function resolveFaviconUrl(value: string) {
+  const trimmedValue = value.trim()
+
+  if (!trimmedValue) {
+    return DEFAULT_SITE_FAVICON
+  }
+
+  try {
+    if (typeof window === 'undefined') {
+      return /^https?:\/\//i.test(trimmedValue) || trimmedValue.startsWith('/')
+        ? trimmedValue
+        : DEFAULT_SITE_FAVICON
+    }
+
+    const url = new URL(trimmedValue, window.location.origin)
+
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return DEFAULT_SITE_FAVICON
+    }
+
+    return url.toString()
+  } catch {
+    return DEFAULT_SITE_FAVICON
+  }
+}
+
 export function SiteSettingsProvider({
   children,
 }: {
@@ -101,6 +130,7 @@ export function SiteSettingsProvider({
     const siteUrl = getSetting(settingsMap, 'site.url', '')
     const siteAnnouncement = getSetting(settingsMap, 'site.announcement', '')
     const siteBackground = getSetting(settingsMap, 'site.background', '')
+    const siteFavicon = getSetting(settingsMap, 'site.favicon', '')
 
     return {
       allowRegister: parseBooleanSetting(
@@ -116,6 +146,8 @@ export function SiteSettingsProvider({
       siteBackground,
       siteBackgroundImageUrl: resolveBackgroundUrl(siteBackground),
       siteDescription,
+      siteFavicon,
+      siteFaviconUrl: resolveFaviconUrl(siteFavicon),
       siteName,
       siteUrl,
     }

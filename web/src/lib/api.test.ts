@@ -137,13 +137,14 @@ describe('api.getAdminUsers', () => {
         order: 'created_at_desc',
         size: 20,
         status: 1,
+        user_id: 42,
         username: 'neo',
       },
       'token-admin',
     )
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/v1/admin/users?page=3&order=created_at_desc&size=20&status=1&username=neo',
+      '/api/v1/admin/users?page=3&order=created_at_desc&size=20&status=1&user_id=42&username=neo',
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: 'Bearer token-admin',

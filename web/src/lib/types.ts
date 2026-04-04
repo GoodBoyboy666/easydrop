@@ -245,6 +245,7 @@ export interface AdminUserListQuery {
   size?: number
   order?: string
   status?: number
+  user_id?: number
   username?: string
 }
 
@@ -254,7 +255,6 @@ export interface AdminPostListQuery {
   page?: number
   size?: number
   order?: string
-  tag_id?: number
   user_id?: number
 }
 

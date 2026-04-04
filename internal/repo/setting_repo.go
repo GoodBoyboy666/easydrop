@@ -67,14 +67,18 @@ func (r *GormSettingRepo) SyncDefaults(ctx context.Context, defaults []model.Set
 
 		for i := range defaults {
 			if err := tx.Clauses(clause.OnConflict{
-				Columns: []clause.Column{{Name: "key"}},
-				DoUpdates: clause.AssignmentColumns([]string{
-					"desc",
-					"category",
-					"public",
-					"sensitive",
-				}),
+				Columns:   []clause.Column{{Name: "key"}},
+				DoNothing: true,
 			}).Create(&defaults[i]).Error; err != nil {
+				return err
+			}
+			if err := tx.Model(&model.Setting{}).
+				Where("key = ?", defaults[i].Key).
+				Updates(map[string]any{
+					"desc":     defaults[i].Desc,
+					"category": defaults[i].Category,
+					"public":   defaults[i].Public,
+				}).Error; err != nil {
 				return err
 			}
 		}

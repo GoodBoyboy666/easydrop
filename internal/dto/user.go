@@ -66,6 +66,7 @@ type UserAvatarUploadInput struct {
 }
 
 type UserListInput struct {
+	ID       *uint  `json:"id" form:"user_id"`
 	Username string `json:"username" form:"username"`
 	Email    string `json:"email" form:"email"`
 	Status   *int   `json:"status" form:"status"`

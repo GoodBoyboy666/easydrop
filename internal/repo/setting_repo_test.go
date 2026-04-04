@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 
 	"easydrop/internal/model"
@@ -98,10 +99,18 @@ func TestSettingRepoSyncDefaultsDeletesGhostAndSyncsMetadata(t *testing.T) {
 func newSettingRepoTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	dbPath := filepath.Join(t.TempDir(), "settings.db")
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite failed: %v", err)
 	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("open sql db failed: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = sqlDB.Close()
+	})
 	if err := db.AutoMigrate(&model.Setting{}); err != nil {
 		t.Fatalf("auto migrate failed: %v", err)
 	}

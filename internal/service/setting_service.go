@@ -220,6 +220,13 @@ func initDefaultSettings(settingRepo repo.SettingRepo) error {
 			Public:   true,
 		},
 		{
+			Key:      "site.favicon",
+			Value:    "",
+			Desc:     "网站 favicon",
+			Category: "site",
+			Public:   true,
+		},
+		{
 			Key:      "site.allow_register",
 			Value:    "true",
 			Desc:     "是否允许注册",

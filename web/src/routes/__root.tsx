@@ -6,6 +6,7 @@ import { CompassIcon } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import type { Transition } from 'motion/react'
 import { PhotoProvider } from 'react-photo-view'
+import { useEffect } from 'react'
 import { AuthProvider } from '#/lib/auth'
 import { getQueryClient } from '#/lib/query-client'
 import { SiteSettingsProvider, useSiteSettings } from '#/lib/site-settings'
@@ -59,10 +60,23 @@ function RootApp() {
 }
 
 function AppShell({ children }: { children: React.ReactNode }) {
-  const { siteBackgroundImageUrl } = useSiteSettings()
+  const { siteBackgroundImageUrl, siteFaviconUrl } = useSiteSettings()
   const siteBackgroundStyle = siteBackgroundImageUrl
     ? { backgroundImage: `url("${siteBackgroundImageUrl}")` }
     : null
+
+  useEffect(() => {
+    const selector = 'link[rel="icon"]'
+    let iconLink = document.head.querySelector<HTMLLinkElement>(selector)
+
+    if (!iconLink) {
+      iconLink = document.createElement('link')
+      iconLink.rel = 'icon'
+      document.head.appendChild(iconLink)
+    }
+
+    iconLink.href = siteFaviconUrl
+  }, [siteFaviconUrl])
 
   return (
     <div className="relative min-h-screen bg-background text-foreground">

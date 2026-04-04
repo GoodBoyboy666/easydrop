@@ -7,6 +7,7 @@ import {
   ADMIN_SELECT_CLASSNAME,
   formatBytes,
   formatUserStatus,
+  parseOptionalInteger,
 } from '#/lib/admin'
 import { api } from '#/lib/api'
 import { formatDateTime, getInitials } from '#/lib/format'
@@ -45,6 +46,7 @@ interface UserFilterState {
   email: string
   order: string
   status: string
+  userId: string
   username: string
 }
 
@@ -65,6 +67,7 @@ const EMPTY_FILTERS: UserFilterState = {
   email: '',
   order: 'created_at_desc',
   status: 'all',
+  userId: '',
   username: '',
 }
 
@@ -136,6 +139,7 @@ export function AdminUsersPage() {
       order: filters.order,
       size: ADMIN_PAGE_SIZE,
       status: filters.status === 'all' ? undefined : Number(filters.status),
+      user_id: parseOptionalInteger(filters.userId),
       username: filters.username.trim() || undefined,
     }),
     enabled: auth.status === 'authenticated',
@@ -380,6 +384,22 @@ export function AdminUsersPage() {
             setPage(1)
           }}
         >
+          <Field>
+            <FieldLabel htmlFor="admin-users-id">用户 ID</FieldLabel>
+            <Input
+              id="admin-users-id"
+              onChange={(event) =>
+                setDraftFilters((current) => ({
+                  ...current,
+                  userId: event.target.value,
+                }))
+              }
+              placeholder="例如 12"
+              type="number"
+              value={draftFilters.userId}
+            />
+          </Field>
+
           <Field>
             <FieldLabel htmlFor="admin-users-username">用户名</FieldLabel>
             <Input

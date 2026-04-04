@@ -151,6 +151,32 @@ func TestSettingServiceSeedsRequireEmailVerificationSetting(t *testing.T) {
 	}
 }
 
+func TestSettingServiceSeedsPublicSiteFaviconSetting(t *testing.T) {
+	svc, db := newTestSettingService(t)
+
+	value, found, err := svc.GetValue(context.Background(), "site.favicon")
+	if err != nil {
+		t.Fatalf("GetValue returned error: %v", err)
+	}
+	if !found {
+		t.Fatal("expected site.favicon to exist")
+	}
+	if value != "" {
+		t.Fatalf("expected default empty favicon, got %q", value)
+	}
+
+	var setting model.Setting
+	if err := db.Where("key = ?", "site.favicon").First(&setting).Error; err != nil {
+		t.Fatalf("load site.favicon failed: %v", err)
+	}
+	if setting.Category != "site" {
+		t.Fatalf("expected category site, got %q", setting.Category)
+	}
+	if !setting.Public {
+		t.Fatal("expected site.favicon to be public")
+	}
+}
+
 func TestNewSettingServiceDeletesGhostSettings(t *testing.T) {
 	db := newSettingServiceTestDB(t)
 	if err := db.Create(&model.Setting{
