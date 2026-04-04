@@ -10,6 +10,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -18,10 +19,18 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 )
 
 const generateJWTTokenCommand = "generate-jwt-token"
+
+var (
+	appDisplayName = "EasyDrop"
+	appVersion     = "dev"
+	buildTime      = "unknown"
+	gitCommit      = "unknown"
+)
 
 // @title           EasyDrop API
 // @version         1.0
@@ -103,6 +112,8 @@ func runServer(configDir string) error {
 		configDir = "data"
 	}
 
+	printBuildInfoBanner(os.Stdout)
+
 	app, err := di.Initialize(configDir, false)
 	if err != nil {
 		return fmt.Errorf("初始化应用失败: %w", err)
@@ -154,6 +165,37 @@ func runServer(configDir string) error {
 
 	log.Println("HTTP 服务已关闭")
 	return nil
+}
+
+func printBuildInfoBanner(w io.Writer) {
+	if w == nil {
+		return
+	}
+
+	content := strings.Join([]string{
+		fmt.Sprintf("Program    : %s", buildValueOrDefault(appDisplayName, "EasyDrop")),
+		fmt.Sprintf("Version    : %s", buildValueOrDefault(appVersion, "dev")),
+		fmt.Sprintf("Build Time : %s", buildValueOrDefault(buildTime, "unknown")),
+		fmt.Sprintf("Commit     : %s", buildValueOrDefault(gitCommit, "unknown")),
+	}, "\n")
+	
+	pterm.DefaultBox.
+		WithWriter(w).
+		WithTitle(" EasyDrop Runtime ").
+		WithTitleTopCenter().
+		WithHorizontalPadding(2).
+		WithVerticalPadding(1).
+		WithBoxStyle(pterm.NewStyle(pterm.FgLightCyan)).
+		Println(content)
+}
+
+func buildValueOrDefault(value string, fallback string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return fallback
+	}
+
+	return trimmed
 }
 
 func generateJWTTokenFiles(outputDir string, forceOverwrite bool) error {

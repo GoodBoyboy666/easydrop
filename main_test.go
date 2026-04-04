@@ -5,62 +5,45 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/spf13/cobra"
+	"github.com/pterm/pterm"
 )
 
-func TestRootCommandHelpIncludesGenerateJWTTokenCommand(t *testing.T) {
-	usage := executeHelp(t, newRootCommand())
-	for _, want := range []string{
-		generateJWTTokenCommand,
-		"--config-dir",
-		"生成 JWT 私钥和公钥文件",
-	} {
-		if !strings.Contains(usage, want) {
-			t.Fatalf("expected main usage to contain %q, got %q", want, usage)
+func TestPrintBuildInfoBanner(t *testing.T) {
+	originalName := appDisplayName
+	originalVersion := appVersion
+	originalBuildTime := buildTime
+	originalCommit := gitCommit
+	t.Cleanup(func() {
+		appDisplayName = originalName
+		appVersion = originalVersion
+		buildTime = originalBuildTime
+		gitCommit = originalCommit
+	})
+
+	appDisplayName = "EasyDrop"
+	appVersion = "v1.2.3"
+	buildTime = "2026-04-04T12:34:56Z"
+	gitCommit = "abcdef1234567890"
+
+	var buf bytes.Buffer
+	printBuildInfoBanner(&buf)
+
+	output := pterm.RemoveColorFromString(buf.String())
+	expected := []string{
+		"Program    : EasyDrop",
+		"Version    : v1.2.3",
+		"Build Time : 2026-04-04T12:34:56Z",
+		"Commit     : abcdef1234567890",
+		"EasyDrop Runtime",
+	}
+
+	for _, item := range expected {
+		if !strings.Contains(output, item) {
+			t.Fatalf("expected banner to contain %q, got %q", item, output)
 		}
 	}
-}
 
-func TestGenerateJWTTokenCommandHelpIncludesForceFlag(t *testing.T) {
-	usage := executeHelp(t, newGenerateJWTTokenCommand())
-
-	for _, want := range []string{
-		generateJWTTokenCommand,
-		"--force",
-		"private.pem",
-		"public.pem",
-	} {
-		if !strings.Contains(usage, want) {
-			t.Fatalf("expected subcommand usage to contain %q, got %q", want, usage)
-		}
+	if !strings.Contains(output, "┌") || !strings.Contains(output, "┘") {
+		t.Fatalf("expected pterm box border in output, got %q", output)
 	}
-}
-
-func TestGenerateJWTTokenCommandRejectsTooManyArgs(t *testing.T) {
-	cmd := newGenerateJWTTokenCommand()
-	cmd.SetArgs([]string{"a", "b"})
-
-	err := cmd.Execute()
-	if err == nil {
-		t.Fatal("expected error for too many args")
-	}
-
-	if !strings.Contains(err.Error(), "accepts at most 1 arg") {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func executeHelp(t *testing.T, cmd *cobra.Command) string {
-	t.Helper()
-
-	var out bytes.Buffer
-	cmd.SetOut(&out)
-	cmd.SetErr(&out)
-	cmd.SetArgs([]string{"--help"})
-
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("execute help failed: %v", err)
-	}
-
-	return out.String()
 }

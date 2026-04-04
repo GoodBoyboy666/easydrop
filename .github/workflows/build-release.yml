@@ -1,0 +1,134 @@
+name: 构建并上传 Release 附件
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-upload:
+    name: 构建并上传附件
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          check-latest: true
+
+      - name: 安装 pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: 安装 Swagger 工具
+        run: |
+          go install github.com/swaggo/swag/cmd/swag@v1.16.6
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: 生成 Wire 注入代码
+        run: go generate ./internal/di
+
+      - name: 重新生成 Swagger 文档
+        run: swag init --generalInfo main.go --output docs --parseInternal --parseDependency
+
+      - name: 安装前端依赖并构建
+        working-directory: web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: 读取发布元数据
+        id: meta
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME}"
+          build_time="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          commit="${GITHUB_SHA}"
+
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "build_time=${build_time}" >> "$GITHUB_OUTPUT"
+          echo "commit=${commit}" >> "$GITHUB_OUTPUT"
+
+          if [[ "${version}" == *"-beta"* ]] || [[ "${version}" == *"-rc"* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 构建并打包
+        shell: bash
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          BUILD_TIME: ${{ steps.meta.outputs.build_time }}
+          GIT_COMMIT: ${{ steps.meta.outputs.commit }}
+          APP_NAME: easydrop
+        run: |
+          set -euo pipefail
+
+          mkdir -p dist package
+          ldflags="-s -w -X main.appVersion=${VERSION} -X main.buildTime=${BUILD_TIME} -X main.gitCommit=${GIT_COMMIT}"
+
+          for goos in linux windows; do
+            for goarch in amd64 arm64; do
+              for variant in standard embed; do
+                package_name="${APP_NAME}-${VERSION}-${variant}-${goos}-${goarch}"
+                package_dir="package/${package_name}"
+                binary_name="${APP_NAME}"
+
+                if [[ "${goos}" == "windows" ]]; then
+                  binary_name="${binary_name}.exe"
+                fi
+
+                rm -rf "${package_dir}"
+                mkdir -p "${package_dir}"
+
+                if [[ "${variant}" == "embed" ]]; then
+                  CGO_ENABLED=0 GOOS="${goos}" GOARCH="${goarch}" go build -trimpath -ldflags "${ldflags}" -tags embed_frontend -o "${package_dir}/${binary_name}" .
+                else
+                  CGO_ENABLED=0 GOOS="${goos}" GOARCH="${goarch}" go build -trimpath -ldflags "${ldflags}" -o "${package_dir}/${binary_name}" .
+                fi
+
+                cp README.md "${package_dir}/"
+                cp LICENSE "${package_dir}/"
+                cp -r example "${package_dir}/example"
+
+                if [[ "${goos}" == "windows" ]]; then
+                  (
+                    cd package
+                    zip -rq "../dist/${package_name}.zip" "${package_name}"
+                  )
+                else
+                  tar -C package -czf "dist/${package_name}.tar.gz" "${package_name}"
+                fi
+              done
+            done
+          done
+
+          ls -lah dist
+
+      - name: 创建 Draft Release 并上传附件
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ steps.meta.outputs.version }}
+          tag_name: ${{ steps.meta.outputs.version }}
+          files: dist/*
+          draft: true
+          prerelease: ${{ steps.meta.outputs.prerelease }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          overwrite_files: true
