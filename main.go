@@ -9,7 +9,6 @@ import (
 	"easydrop/internal/router"
 	"encoding/pem"
 	"errors"
-	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -18,7 +17,11 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+
+	"github.com/spf13/cobra"
 )
+
+const generateJWTTokenCommand = "generate-jwt-token"
 
 // @title           EasyDrop API
 // @version         1.0
@@ -29,34 +32,83 @@ import (
 // @in              header
 // @name            Authorization
 func main() {
+	if err := newRootCommand().Execute(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func newRootCommand() *cobra.Command {
 	var configDir string
-	flag.StringVar(&configDir, "config-dir", "", "config directory containing config.yaml")
-	flag.Parse()
-	args := flag.Args()
 
-	if len(args) > 0 && args[0] == "generate-jwt-token" {
-		outputDir, forceOverwrite, err := parseGenerateJWTTokenArgs(args[1:])
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		if err := generateJWTTokenFiles(outputDir, forceOverwrite); err != nil {
-			log.Fatalf("生成 JWT 密钥文件失败: %v", err)
-		}
-		log.Printf("JWT 密钥文件已生成: %s, %s", filepath.Join(outputDir, "private.pem"), filepath.Join(outputDir, "public.pem"))
-		return
+	cmd := &cobra.Command{
+		Use:           "easydrop",
+		Short:         "EasyDrop 服务端程序",
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		Example: strings.Join([]string{
+			"easydrop",
+			"easydrop --config-dir data",
+			"easydrop generate-jwt-token data/jwt --force",
+		}, "\n"),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runServer(configDir)
+		},
 	}
 
+	cmd.CompletionOptions.DisableDefaultCmd = true
+	cmd.Flags().StringVar(&configDir, "config-dir", "", "config directory containing config.yaml")
+	cmd.AddCommand(newGenerateJWTTokenCommand())
+
+	return cmd
+}
+
+func newGenerateJWTTokenCommand() *cobra.Command {
+	var forceOverwrite bool
+
+	cmd := &cobra.Command{
+		Use:   generateJWTTokenCommand + " [目录路径]",
+		Short: "生成 JWT 私钥和公钥文件",
+		Long: strings.Join([]string{
+			"生成 JWT 私钥和公钥文件，默认输出到当前目录。",
+			"输出文件名固定为 private.pem 和 public.pem。",
+		}, "\n"),
+		Args: cobra.MaximumNArgs(1),
+		Example: strings.Join([]string{
+			"easydrop generate-jwt-token",
+			"easydrop generate-jwt-token data/jwt",
+			"easydrop generate-jwt-token data/jwt --force",
+		}, "\n"),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			outputDir := "."
+			if len(args) == 1 {
+				outputDir = args[0]
+			}
+
+			if err := generateJWTTokenFiles(outputDir, forceOverwrite); err != nil {
+				return fmt.Errorf("生成 JWT 密钥文件失败: %w", err)
+			}
+
+			log.Printf("JWT 密钥文件已生成: %s, %s", filepath.Join(outputDir, "private.pem"), filepath.Join(outputDir, "public.pem"))
+			return nil
+		},
+	}
+
+	cmd.Flags().BoolVar(&forceOverwrite, "force", false, "已存在时覆盖 private.pem 和 public.pem")
+
+	return cmd
+}
+
+func runServer(configDir string) error {
 	if configDir == "" {
 		configDir = "data"
 	}
 
 	app, err := di.Initialize(configDir, false)
 	if err != nil {
-		log.Fatalf("初始化应用失败: %v\n", err)
+		return fmt.Errorf("初始化应用失败: %w", err)
 	}
 	if app == nil || app.Config == nil {
-		log.Fatal("初始化应用失败: 应用配置为空")
+		return errors.New("初始化应用失败: 应用配置为空")
 	}
 
 	engine := router.BuildEngine(app)
@@ -89,7 +141,7 @@ func main() {
 
 	select {
 	case runErr := <-errCh:
-		log.Fatalf("HTTP 服务启动失败: %v", runErr)
+		return fmt.Errorf("HTTP 服务启动失败: %w", runErr)
 	case sig := <-sigCh:
 		log.Printf("收到退出信号: %s，开始关闭", sig.String())
 	}
@@ -97,32 +149,11 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Fatalf("HTTP 服务关闭失败: %v", err)
+		return fmt.Errorf("HTTP 服务关闭失败: %w", err)
 	}
 
 	log.Println("HTTP 服务已关闭")
-}
-
-func parseGenerateJWTTokenArgs(args []string) (string, bool, error) {
-	outputDir := "."
-	forceOverwrite := false
-
-	for _, arg := range args {
-		switch arg {
-		case "--force":
-			forceOverwrite = true
-		default:
-			if strings.HasPrefix(arg, "-") {
-				return "", false, fmt.Errorf("未知参数: %s，用法: generate-jwt-token [目录路径] [--force]", arg)
-			}
-			if outputDir != "." {
-				return "", false, errors.New("用法: generate-jwt-token [目录路径] [--force]")
-			}
-			outputDir = arg
-		}
-	}
-
-	return outputDir, forceOverwrite, nil
+	return nil
 }
 
 func generateJWTTokenFiles(outputDir string, forceOverwrite bool) error {
