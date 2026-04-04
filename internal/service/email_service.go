@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"easydrop/internal/config"
+	"easydrop/internal/consts"
 	"easydrop/internal/pkg/email"
 )
 
@@ -208,7 +209,7 @@ func (s *emailService) getSiteURL(ctx context.Context) string {
 		return ""
 	}
 
-	value, ok, err := s.settings.GetValue(ctx, "site.url")
+	value, ok, err := s.settings.GetValue(ctx, consts.SiteURLSettingKey)
 	if err != nil {
 		log.Printf("读取站点地址配置失败: %v", err)
 		return ""

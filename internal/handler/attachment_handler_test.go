@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"easydrop/internal/consts"
 	"easydrop/internal/dto"
 	"easydrop/internal/middleware"
 	"easydrop/internal/service"
@@ -397,7 +398,7 @@ func TestAttachmentHandlerUploadBlockedForNonAdminWhenStorageUploadDisabled(t *t
 		},
 	}, &mockSettingService{
 		getValueFn: func(ctx context.Context, key string) (string, bool, error) {
-			if key != "storage.upload" {
+			if key != consts.StorageUploadSettingKey {
 				t.Fatalf("unexpected setting key: %s", key)
 			}
 			return "false", true, nil
@@ -448,7 +449,7 @@ func TestAttachmentHandlerUploadAllowedForAdminWhenStorageUploadDisabled(t *test
 		},
 	}, &mockSettingService{
 		getValueFn: func(ctx context.Context, key string) (string, bool, error) {
-			if key != "storage.upload" {
+			if key != consts.StorageUploadSettingKey {
 				t.Fatalf("unexpected setting key: %s", key)
 			}
 			return "false", true, nil

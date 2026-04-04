@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"easydrop/internal/consts"
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
 	"easydrop/internal/pkg/captcha"
@@ -340,7 +341,7 @@ func (s *authService) ensureRegisterEnabled(ctx context.Context) error {
 		return ErrInvalidSiteSetting
 	}
 
-	value, ok, err := s.settings.GetValue(ctx, "site.allow_register")
+	value, ok, err := s.settings.GetValue(ctx, consts.SiteAllowRegisterSettingKey)
 	if err != nil {
 		log.Printf("读取注册配置失败: %v", err)
 		return ErrInternal
@@ -366,7 +367,7 @@ func (s *authService) ensureLoginEmailVerified(ctx context.Context, user *model.
 		return nil
 	}
 
-	value, ok, err := s.settings.GetValue(ctx, "auth.require_email_verification")
+	value, ok, err := s.settings.GetValue(ctx, consts.AuthRequireEmailVerificationSettingKey)
 	if err != nil {
 		log.Printf("读取登录邮箱验证配置失败: %v", err)
 		return ErrInternal

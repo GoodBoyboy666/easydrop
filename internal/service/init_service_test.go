@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"easydrop/internal/consts"
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
 	"easydrop/internal/repo"
@@ -177,16 +178,19 @@ func TestInitServiceInitializeSuccess(t *testing.T) {
 	if initRepo.lastInput.AdminUser.Status != 1 {
 		t.Fatalf("expected status=1, got %d", initRepo.lastInput.AdminUser.Status)
 	}
-	if initRepo.lastInput.AllowRegister != "false" {
-		t.Fatalf("expected allow_register=false, got %q", initRepo.lastInput.AllowRegister)
+	if len(initRepo.lastInput.Settings) != 5 {
+		t.Fatalf("expected 5 init settings, got %d", len(initRepo.lastInput.Settings))
+	}
+	if value := findInitSettingValue(initRepo.lastInput.Settings, consts.SiteAllowRegisterSettingKey); value != "false" {
+		t.Fatalf("expected allow_register=false, got %q", value)
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(initRepo.lastInput.AdminUser.Password), []byte("Pass1234")); err != nil {
 		t.Fatalf("expected password to be hashed, compare failed: %v", err)
 	}
-	if got := cache.values[settingCacheKey(initSettingKey)]; got != "true" {
+	if got := cache.values[settingCacheKey(consts.SystemInitializedSettingKey)]; got != "true" {
 		t.Fatalf("expected init cache true, got %q", got)
 	}
-	if got := cache.values[settingCacheKey("site.allow_register")]; got != "false" {
+	if got := cache.values[settingCacheKey(consts.SiteAllowRegisterSettingKey)]; got != "false" {
 		t.Fatalf("expected allow_register cache false, got %q", got)
 	}
 }
@@ -195,7 +199,7 @@ func TestInitServiceInitializeAlreadyInitialized(t *testing.T) {
 	t.Parallel()
 
 	initRepo := &mockInitRepo{}
-	settingSvc := &mockInitSettingService{values: map[string]string{initSettingKey: "true"}}
+	settingSvc := &mockInitSettingService{values: map[string]string{consts.SystemInitializedSettingKey: "true"}}
 	svc := NewInitService(&mockInitUserRepo{}, initRepo, settingSvc, &mockInitCache{})
 
 	err := svc.Initialize(context.Background(), dto.InitInput{})
@@ -241,4 +245,13 @@ func TestInitServiceInitializeInitRepoAlreadyInitialized(t *testing.T) {
 	if !errors.Is(err, ErrAlreadyInitialized) {
 		t.Fatalf("expected ErrAlreadyInitialized, got %v", err)
 	}
+}
+
+func findInitSettingValue(settings []repo.SettingValueInput, key string) string {
+	for _, setting := range settings {
+		if setting.Key == key {
+			return setting.Value
+		}
+	}
+	return ""
 }

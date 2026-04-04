@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"easydrop/internal/consts"
 	"easydrop/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -117,7 +118,7 @@ func resolveUploadMaxRequestBodyBytes(c *gin.Context, settings service.SettingSe
 		return DefaultUploadMaxRequestBodyBytes
 	}
 
-	value, found, err := settings.GetValue(c.Request.Context(), service.UploadMaxRequestBodySettingKey)
+	value, found, err := settings.GetValue(c.Request.Context(), consts.UploadMaxRequestBodySettingKey)
 	if err != nil {
 		log.Printf("读取上传请求体大小限制失败，使用默认值: %v", err)
 		return DefaultUploadMaxRequestBodyBytes

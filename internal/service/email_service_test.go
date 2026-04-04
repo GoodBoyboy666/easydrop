@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"easydrop/internal/config"
+	"easydrop/internal/consts"
 	"easydrop/internal/dto"
 	"easydrop/internal/pkg/cache"
 	"easydrop/internal/repo"
@@ -116,7 +117,7 @@ func TestEmailServiceBuildsAbsoluteActionURLFromSiteURL(t *testing.T) {
 	}
 
 	url := "https://example.com"
-	if err := settings.UpdateItem(context.Background(), dto.SettingUpdateInput{Key: "site.url", Value: &url}); err != nil {
+	if err := settings.UpdateItem(context.Background(), dto.SettingUpdateInput{Key: consts.SiteURLSettingKey, Value: &url}); err != nil {
 		t.Fatalf("set site.url failed: %v", err)
 	}
 

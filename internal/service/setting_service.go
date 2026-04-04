@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"easydrop/internal/consts"
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
 	"easydrop/internal/pkg/cache"
@@ -178,105 +179,105 @@ func normalizeSettingListOrder(order string) string {
 func initDefaultSettings(settingRepo repo.SettingRepo) error {
 	defaults := []model.Setting{
 		{
-			Key:      "site.name",
+			Key:      consts.SiteNameSettingKey,
 			Value:    "EasyDrop",
 			Desc:     "站点名称",
 			Category: "site",
 			Public:   true,
 		},
 		{
-			Key:      "site.description",
+			Key:      consts.SiteDescriptionSettingKey,
 			Value:    "一个轻量级日志说说平台",
 			Desc:     "站点描述",
 			Category: "site",
 			Public:   true,
 		},
 		{
-			Key:      "site.owner",
+			Key:      consts.SiteOwnerSettingKey,
 			Value:    "Your Name",
 			Desc:     "站长名称",
 			Category: "site",
 			Public:   true,
 		},
 		{
-			Key:      "site.owner.description",
+			Key:      consts.SiteOwnerDescriptionSettingKey,
 			Value:    "Do what you want to do.",
 			Desc:     "站长简介",
 			Category: "site",
 			Public:   true,
 		},
 		{
-			Key:      "site.url",
+			Key:      consts.SiteURLSettingKey,
 			Value:    "http://localhost:8080",
 			Desc:     "站点访问地址",
 			Category: "site",
 			Public:   true,
 		},
 		{
-			Key:      "site.background",
+			Key:      consts.SiteBackgroundSettingKey,
 			Value:    "",
 			Desc:     "网站背景",
 			Category: "site",
 			Public:   true,
 		},
 		{
-			Key:      "site.favicon",
+			Key:      consts.SiteFaviconSettingKey,
 			Value:    "",
 			Desc:     "网站 favicon",
 			Category: "site",
 			Public:   true,
 		},
 		{
-			Key:      "site.allow_register",
+			Key:      consts.SiteAllowRegisterSettingKey,
 			Value:    "true",
 			Desc:     "是否允许注册",
 			Category: "site",
 			Public:   true,
 		},
 		{
-			Key:      "site.announcement",
+			Key:      consts.SiteAnnouncementSettingKey,
 			Value:    "",
 			Desc:     "站点公告",
 			Category: "site",
 			Public:   true,
 		},
 		{
-			Key:      "auth.require_email_verification",
+			Key:      consts.AuthRequireEmailVerificationSettingKey,
 			Value:    "false",
 			Desc:     "登录前必须完成邮箱验证",
 			Category: "auth",
 			Public:   false,
 		},
 		{
-			Key:      "storage.quota",
+			Key:      consts.StorageQuotaSettingKey,
 			Value:    "10737418240",
 			Desc:     "存储配额（字节，默认10GB）",
 			Category: "storage",
 			Public:   true,
 		},
 		{
-			Key:      "storage.upload",
+			Key:      consts.StorageUploadSettingKey,
 			Value:    "true",
 			Desc:     "允许普通用户上传附件",
 			Category: "storage",
 			Public:   true,
 		},
 		{
-			Key:      attachmentAllowedExtensionsSettingKey,
-			Value:    "",
+			Key:      consts.AttachmentAllowedExtensionsSettingKey,
+			Value:    consts.DefaultAttachmentAllowedExtensionsSettingValue,
 			Desc:     "允许上传的附件扩展名，英文逗号分隔且不带点",
 			Category: "storage",
 			Public:   false,
 		},
 		{
-			Key:      UploadMaxRequestBodySettingKey,
+			Key:      consts.UploadMaxRequestBodySettingKey,
 			Value:    "52428800",
 			Desc:     "上传接口最大请求体大小（字节，默认 50MB）",
 			Category: "storage",
 			Public:   false,
 		},
 		{
-			Key:      "system.initialized",
+			Key:      consts.SystemInitializedSettingKey,
 			Value:    "false",
 			Desc:     "系统已初始化",
 			Category: "system",

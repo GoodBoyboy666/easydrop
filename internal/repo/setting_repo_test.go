@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"easydrop/internal/consts"
 	"easydrop/internal/model"
 
 	"github.com/glebarez/sqlite"
@@ -44,7 +45,7 @@ func TestSettingRepoSyncDefaultsDeletesGhostAndSyncsMetadata(t *testing.T) {
 			Public:   true,
 		},
 		{
-			Key:      "system.initialized",
+			Key:      consts.SystemInitializedSettingKey,
 			Value:    "false",
 			Desc:     "系统已初始化",
 			Category: "system",
@@ -85,7 +86,7 @@ func TestSettingRepoSyncDefaultsDeletesGhostAndSyncsMetadata(t *testing.T) {
 	}
 
 	var initialized model.Setting
-	if err := db.Where("key = ?", "system.initialized").First(&initialized).Error; err != nil {
+	if err := db.Where("key = ?", consts.SystemInitializedSettingKey).First(&initialized).Error; err != nil {
 		t.Fatalf("load system.initialized failed: %v", err)
 	}
 	if initialized.Value != "false" {

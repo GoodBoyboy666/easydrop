@@ -6,25 +6,26 @@ import (
 	"strconv"
 	"strings"
 
+	"easydrop/internal/consts"
 	"easydrop/internal/model"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
-const initSettingKey = "system.initialized"
-
 var (
 	ErrInitAlreadyInitialized = errors.New("system already initialized")
 	ErrInvalidInitState       = errors.New("invalid initialized state")
 )
 
+type SettingValueInput struct {
+	Key   string
+	Value string
+}
+
 type SystemInitInput struct {
-	AdminUser        model.User
-	SiteName         string
-	SiteURL          string
-	SiteAnnouncement string
-	AllowRegister    string
+	AdminUser model.User
+	Settings  []SettingValueInput
 }
 
 // InitRepo 定义系统初始化事务能力。
@@ -69,7 +70,7 @@ func (r *GormInitRepo) Initialize(ctx context.Context, input SystemInitInput) er
 
 func loadInitializedForUpdate(tx *gorm.DB) (bool, error) {
 	var setting model.Setting
-	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("key = ?", initSettingKey).First(&setting).Error
+	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("key = ?", consts.SystemInitializedSettingKey).First(&setting).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return false, nil
@@ -90,13 +91,11 @@ type initSettingUpdate struct {
 }
 
 func buildInitSettingUpdates(input SystemInitInput) []initSettingUpdate {
-	return []initSettingUpdate{
-		{key: "site.name", value: input.SiteName},
-		{key: "site.url", value: input.SiteURL},
-		{key: "site.announcement", value: input.SiteAnnouncement},
-		{key: "site.allow_register", value: input.AllowRegister},
-		{key: initSettingKey, value: "true"},
+	updates := make([]initSettingUpdate, 0, len(input.Settings))
+	for _, setting := range input.Settings {
+		updates = append(updates, initSettingUpdate{key: setting.Key, value: setting.Value})
 	}
+	return updates
 }
 
 func updateInitSettingValue(tx *gorm.DB, key, value string) error {

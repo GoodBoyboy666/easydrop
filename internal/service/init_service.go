@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"easydrop/internal/consts"
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
 	"easydrop/internal/pkg/cache"
@@ -16,8 +17,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
-
-const initSettingKey = "system.initialized"
 
 var (
 	ErrAlreadyInitialized = errors.New("系统已初始化")
@@ -79,11 +78,14 @@ func (s *initService) Initialize(ctx context.Context, input dto.InitInput) error
 	}
 
 	if err := s.initRepo.Initialize(ctx, repo.SystemInitInput{
-		AdminUser:        *adminUser,
-		SiteName:         input.SiteName,
-		SiteURL:          input.SiteURL,
-		SiteAnnouncement: input.SiteAnnouncement,
-		AllowRegister:    strconv.FormatBool(allowRegister),
+		AdminUser: *adminUser,
+		Settings: []repo.SettingValueInput{
+			{Key: consts.SiteNameSettingKey, Value: input.SiteName},
+			{Key: consts.SiteURLSettingKey, Value: input.SiteURL},
+			{Key: consts.SiteAnnouncementSettingKey, Value: input.SiteAnnouncement},
+			{Key: consts.SiteAllowRegisterSettingKey, Value: strconv.FormatBool(allowRegister)},
+			{Key: consts.SystemInitializedSettingKey, Value: "true"},
+		},
 	}); err != nil {
 		switch {
 		case errors.Is(err, repo.ErrInitAlreadyInitialized):
@@ -109,7 +111,7 @@ func (s *initService) isInitialized(ctx context.Context) (bool, error) {
 		return false, ErrInternal
 	}
 
-	v, ok, err := s.settingService.GetValue(ctx, initSettingKey)
+	v, ok, err := s.settingService.GetValue(ctx, consts.SystemInitializedSettingKey)
 	if err != nil {
 		return false, err
 	}
@@ -195,11 +197,11 @@ func (s *initService) ensureInitEmailAvailable(ctx context.Context, email string
 
 func (s *initService) syncInitSettingsCache(ctx context.Context, input dto.InitInput, allowRegister bool) error {
 	values := map[string]string{
-		"site.name":           input.SiteName,
-		"site.url":            input.SiteURL,
-		"site.announcement":   input.SiteAnnouncement,
-		"site.allow_register": strconv.FormatBool(allowRegister),
-		initSettingKey:        "true",
+		consts.SiteNameSettingKey:          input.SiteName,
+		consts.SiteURLSettingKey:           input.SiteURL,
+		consts.SiteAnnouncementSettingKey:  input.SiteAnnouncement,
+		consts.SiteAllowRegisterSettingKey: strconv.FormatBool(allowRegister),
+		consts.SystemInitializedSettingKey: "true",
 	}
 
 	for key, value := range values {

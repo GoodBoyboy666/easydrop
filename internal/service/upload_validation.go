@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"easydrop/internal/consts"
 )
 
 var (
@@ -95,7 +97,7 @@ func getAllowedAttachmentExtensions(ctx context.Context, settings SettingService
 		return nil, ErrAttachmentExtensionsNotConfigured
 	}
 
-	value, found, err := settings.GetValue(ctx, attachmentAllowedExtensionsSettingKey)
+	value, found, err := settings.GetValue(ctx, consts.AttachmentAllowedExtensionsSettingKey)
 	if err != nil {
 		return nil, ErrInternal
 	}

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+
+	"easydrop/internal/consts"
 )
 
 func TestParseAllowedAttachmentExtensions(t *testing.T) {
@@ -30,7 +32,7 @@ func TestValidateAttachmentUploadRejectsDisallowedExtension(t *testing.T) {
 	t.Parallel()
 
 	err := validateAttachmentUpload(context.Background(), &mockInitSettingService{
-		values: map[string]string{attachmentAllowedExtensionsSettingKey: "pdf,png"},
+		values: map[string]string{consts.AttachmentAllowedExtensionsSettingKey: "pdf,png"},
 	}, "evil.html", "text/html", []byte("<html></html>"))
 	if !errors.Is(err, ErrAttachmentExtensionNotAllowed) {
 		t.Fatalf("expected ErrAttachmentExtensionNotAllowed, got %v", err)
@@ -41,7 +43,7 @@ func TestValidateAttachmentUploadRejectsMIMEMismatch(t *testing.T) {
 	t.Parallel()
 
 	err := validateAttachmentUpload(context.Background(), &mockInitSettingService{
-		values: map[string]string{attachmentAllowedExtensionsSettingKey: "png"},
+		values: map[string]string{consts.AttachmentAllowedExtensionsSettingKey: "png"},
 	}, "avatar.png", "image/png", samplePlainTextData())
 	if !errors.Is(err, ErrAttachmentMIMETypeNotAllowed) {
 		t.Fatalf("expected ErrAttachmentMIMETypeNotAllowed, got %v", err)
@@ -52,7 +54,7 @@ func TestValidateAttachmentUploadAcceptsAllowedFile(t *testing.T) {
 	t.Parallel()
 
 	err := validateAttachmentUpload(context.Background(), &mockInitSettingService{
-		values: map[string]string{attachmentAllowedExtensionsSettingKey: "pdf"},
+		values: map[string]string{consts.AttachmentAllowedExtensionsSettingKey: "pdf"},
 	}, "report.PDF", "application/pdf", samplePDFData())
 	if err != nil {
 		t.Fatalf("validateAttachmentUpload returned error: %v", err)

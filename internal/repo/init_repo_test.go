@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"easydrop/internal/consts"
 	"easydrop/internal/model"
 
 	"github.com/glebarez/sqlite"
@@ -26,10 +27,13 @@ func TestInitRepoInitializeSuccess(t *testing.T) {
 			Status:        1,
 			EmailVerified: true,
 		},
-		SiteName:         "EasyDrop",
-		SiteURL:          "http://localhost:8080",
-		SiteAnnouncement: "hello",
-		AllowRegister:    "false",
+		Settings: []SettingValueInput{
+			{Key: consts.SiteNameSettingKey, Value: "EasyDrop"},
+			{Key: consts.SiteURLSettingKey, Value: "http://localhost:8080"},
+			{Key: consts.SiteAnnouncementSettingKey, Value: "hello"},
+			{Key: consts.SiteAllowRegisterSettingKey, Value: "false"},
+			{Key: consts.SystemInitializedSettingKey, Value: "true"},
+		},
 	})
 	if err != nil {
 		t.Fatalf("Initialize error: %v", err)
@@ -43,9 +47,9 @@ func TestInitRepoInitializeSuccess(t *testing.T) {
 		t.Fatalf("unexpected user flags: %+v", user)
 	}
 
-	assertSettingValue(t, db, "site.name", "EasyDrop")
-	assertSettingValue(t, db, "site.allow_register", "false")
-	assertSettingValue(t, db, initSettingKey, "true")
+	assertSettingValue(t, db, consts.SiteNameSettingKey, "EasyDrop")
+	assertSettingValue(t, db, consts.SiteAllowRegisterSettingKey, "false")
+	assertSettingValue(t, db, consts.SystemInitializedSettingKey, "true")
 }
 
 func TestInitRepoInitializeRollbackOnUserCreateFailure(t *testing.T) {
@@ -71,17 +75,20 @@ func TestInitRepoInitializeRollbackOnUserCreateFailure(t *testing.T) {
 			Status:        1,
 			EmailVerified: true,
 		},
-		SiteName:         "Changed",
-		SiteURL:          "http://changed.example.com",
-		SiteAnnouncement: "changed",
-		AllowRegister:    "false",
+		Settings: []SettingValueInput{
+			{Key: consts.SiteNameSettingKey, Value: "Changed"},
+			{Key: consts.SiteURLSettingKey, Value: "http://changed.example.com"},
+			{Key: consts.SiteAnnouncementSettingKey, Value: "changed"},
+			{Key: consts.SiteAllowRegisterSettingKey, Value: "false"},
+			{Key: consts.SystemInitializedSettingKey, Value: "true"},
+		},
 	})
 	if err == nil {
 		t.Fatal("expected Initialize to fail on duplicate user")
 	}
 
-	assertSettingValue(t, db, "site.name", "EasyDrop")
-	assertSettingValue(t, db, initSettingKey, "false")
+	assertSettingValue(t, db, consts.SiteNameSettingKey, "EasyDrop")
+	assertSettingValue(t, db, consts.SystemInitializedSettingKey, "false")
 
 	var total int64
 	if err := db.Model(&model.User{}).Where("username = ?", "admin").Count(&total).Error; err != nil {
@@ -94,7 +101,7 @@ func TestInitRepoInitializeRollbackOnUserCreateFailure(t *testing.T) {
 
 func TestInitRepoInitializeRejectsAlreadyInitialized(t *testing.T) {
 	db := newInitRepoTestDB(t)
-	if err := db.Model(&model.Setting{}).Where("key = ?", initSettingKey).Update("value", "true").Error; err != nil {
+	if err := db.Model(&model.Setting{}).Where("key = ?", consts.SystemInitializedSettingKey).Update("value", "true").Error; err != nil {
 		t.Fatalf("seed init flag failed: %v", err)
 	}
 
@@ -144,11 +151,11 @@ func newInitRepoTestDB(t *testing.T) *gorm.DB {
 
 func defaultInitSettings() []model.Setting {
 	return []model.Setting{
-		{Key: "site.name", Value: "EasyDrop", Category: "site", Public: true},
-		{Key: "site.url", Value: "http://localhost:8080", Category: "site", Public: true},
-		{Key: "site.announcement", Value: "", Category: "site", Public: true},
-		{Key: "site.allow_register", Value: "true", Category: "site", Public: true},
-		{Key: initSettingKey, Value: "false", Category: "system", Public: false},
+		{Key: consts.SiteNameSettingKey, Value: "EasyDrop", Category: "site", Public: true},
+		{Key: consts.SiteURLSettingKey, Value: "http://localhost:8080", Category: "site", Public: true},
+		{Key: consts.SiteAnnouncementSettingKey, Value: "", Category: "site", Public: true},
+		{Key: consts.SiteAllowRegisterSettingKey, Value: "true", Category: "site", Public: true},
+		{Key: consts.SystemInitializedSettingKey, Value: "false", Category: "system", Public: false},
 	}
 }
 

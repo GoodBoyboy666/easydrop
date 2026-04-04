@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"easydrop/internal/consts"
 	"easydrop/internal/dto"
 	"easydrop/internal/middleware"
 	"easydrop/internal/service"
@@ -263,7 +264,7 @@ func (h *AttachmentHandler) isUserUploadAllowed(c *gin.Context) (bool, error) {
 		return true, nil
 	}
 
-	value, found, err := h.settingService.GetValue(c.Request.Context(), "storage.upload")
+	value, found, err := h.settingService.GetValue(c.Request.Context(), consts.StorageUploadSettingKey)
 	if err != nil {
 		return false, err
 	}

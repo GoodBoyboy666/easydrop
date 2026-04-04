@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"easydrop/internal/config"
+	"easydrop/internal/consts"
 	"easydrop/internal/di"
 	"easydrop/internal/dto"
 	"easydrop/internal/handler"
@@ -20,7 +21,6 @@ import (
 	cookiepkg "easydrop/internal/pkg/cookie"
 	"easydrop/internal/pkg/ratelimit"
 	"easydrop/internal/pkg/storage"
-	"easydrop/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -394,7 +394,7 @@ func TestBuildEngineLimitsUploadRequestBodyUsingSetting(t *testing.T) {
 	app := newTestApp(allowAuthMiddleware{})
 	app.RequestBodyLimit = middleware.NewRequestBodyLimit(&routerMockSettingService{
 		getValueFn: func(ctx context.Context, key string) (string, bool, error) {
-			if key != service.UploadMaxRequestBodySettingKey {
+			if key != consts.UploadMaxRequestBodySettingKey {
 				return "", false, nil
 			}
 			return "1024", true, nil

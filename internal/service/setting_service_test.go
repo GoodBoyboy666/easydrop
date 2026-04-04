@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"easydrop/internal/consts"
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
 	"easydrop/internal/pkg/cache"
@@ -81,7 +82,7 @@ func TestSettingServiceGetPublicItems(t *testing.T) {
 	if err := db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "key"}},
 		DoUpdates: clause.AssignmentColumns([]string{"value", "category", "sensitive", "public"}),
-	}).Create(&model.Setting{Key: "site.name", Value: "EasyDrop", Category: "site", Sensitive: false, Public: true}).Error; err != nil {
+	}).Create(&model.Setting{Key: consts.SiteNameSettingKey, Value: "EasyDrop", Category: "site", Sensitive: false, Public: true}).Error; err != nil {
 		t.Fatalf("upsert site.name failed: %v", err)
 	}
 	if err := db.Clauses(clause.OnConflict{
@@ -93,7 +94,7 @@ func TestSettingServiceGetPublicItems(t *testing.T) {
 	if err := db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "key"}},
 		DoUpdates: clause.AssignmentColumns([]string{"value", "category", "public"}),
-	}).Create(&model.Setting{Key: "storage.quota", Value: "10737418240", Category: "storage", Public: true}).Error; err != nil {
+	}).Create(&model.Setting{Key: consts.StorageQuotaSettingKey, Value: "10737418240", Category: "storage", Public: true}).Error; err != nil {
 		t.Fatalf("upsert storage.quota failed: %v", err)
 	}
 
@@ -109,16 +110,16 @@ func TestSettingServiceGetPublicItems(t *testing.T) {
 	hasAttachmentExtensions := false
 	hasUploadMaxBody := false
 	for i := range result.Items {
-		if result.Items[i].Key == "storage.quota" {
+		if result.Items[i].Key == consts.StorageQuotaSettingKey {
 			hasQuota = true
 		}
 		if result.Items[i].Key == "site.secret" {
 			hasSecret = true
 		}
-		if result.Items[i].Key == attachmentAllowedExtensionsSettingKey {
+		if result.Items[i].Key == consts.AttachmentAllowedExtensionsSettingKey {
 			hasAttachmentExtensions = true
 		}
-		if result.Items[i].Key == UploadMaxRequestBodySettingKey {
+		if result.Items[i].Key == consts.UploadMaxRequestBodySettingKey {
 			hasUploadMaxBody = true
 		}
 	}
@@ -139,7 +140,7 @@ func TestSettingServiceGetPublicItems(t *testing.T) {
 func TestSettingServiceSeedsRequireEmailVerificationSetting(t *testing.T) {
 	svc, _ := newTestSettingService(t)
 
-	value, found, err := svc.GetValue(context.Background(), "auth.require_email_verification")
+	value, found, err := svc.GetValue(context.Background(), consts.AuthRequireEmailVerificationSettingKey)
 	if err != nil {
 		t.Fatalf("GetValue returned error: %v", err)
 	}
@@ -154,7 +155,7 @@ func TestSettingServiceSeedsRequireEmailVerificationSetting(t *testing.T) {
 func TestSettingServiceSeedsPublicSiteFaviconSetting(t *testing.T) {
 	svc, db := newTestSettingService(t)
 
-	value, found, err := svc.GetValue(context.Background(), "site.favicon")
+	value, found, err := svc.GetValue(context.Background(), consts.SiteFaviconSettingKey)
 	if err != nil {
 		t.Fatalf("GetValue returned error: %v", err)
 	}
@@ -166,7 +167,7 @@ func TestSettingServiceSeedsPublicSiteFaviconSetting(t *testing.T) {
 	}
 
 	var setting model.Setting
-	if err := db.Where("key = ?", "site.favicon").First(&setting).Error; err != nil {
+	if err := db.Where("key = ?", consts.SiteFaviconSettingKey).First(&setting).Error; err != nil {
 		t.Fatalf("load site.favicon failed: %v", err)
 	}
 	if setting.Category != "site" {
@@ -174,6 +175,52 @@ func TestSettingServiceSeedsPublicSiteFaviconSetting(t *testing.T) {
 	}
 	if !setting.Public {
 		t.Fatal("expected site.favicon to be public")
+	}
+}
+
+func TestSettingServiceSeedsAttachmentExtensionsFromPresetDefaults(t *testing.T) {
+	svc, _ := newTestSettingService(t)
+
+	value, found, err := svc.GetValue(context.Background(), consts.AttachmentAllowedExtensionsSettingKey)
+	if err != nil {
+		t.Fatalf("GetValue returned error: %v", err)
+	}
+	if !found {
+		t.Fatal("expected attachment extension setting to exist")
+	}
+	if value != consts.DefaultAttachmentAllowedExtensionsSettingValue {
+		t.Fatalf("expected preset attachment extensions %q, got %q", consts.DefaultAttachmentAllowedExtensionsSettingValue, value)
+	}
+}
+
+func TestNewSettingServiceSyncsBlankAttachmentExtensionsValueToPresetDefaults(t *testing.T) {
+	db := newSettingServiceTestDB(t)
+	if err := db.Create(&model.Setting{
+		Key:      consts.AttachmentAllowedExtensionsSettingKey,
+		Value:    "",
+		Desc:     "旧描述",
+		Category: "storage",
+		Public:   false,
+	}).Error; err != nil {
+		t.Fatalf("seed attachment extension setting failed: %v", err)
+	}
+
+	kvCache, err := cache.NewCache(nil)
+	if err != nil {
+		t.Fatalf("create cache failed: %v", err)
+	}
+
+	settingRepo := repo.NewSettingRepo(db)
+	if _, err := NewSettingService(db, settingRepo, kvCache); err != nil {
+		t.Fatalf("NewSettingService returned error: %v", err)
+	}
+
+	var setting model.Setting
+	if err := db.Where("key = ?", consts.AttachmentAllowedExtensionsSettingKey).First(&setting).Error; err != nil {
+		t.Fatalf("load attachment extension setting failed: %v", err)
+	}
+	if setting.Value != consts.DefaultAttachmentAllowedExtensionsSettingValue {
+		t.Fatalf("expected preset attachment extensions %q, got %q", consts.DefaultAttachmentAllowedExtensionsSettingValue, setting.Value)
 	}
 }
 
@@ -211,7 +258,7 @@ func TestNewSettingServiceDeletesGhostSettings(t *testing.T) {
 func TestNewSettingServiceSyncsDefaultSettingMetadataWithoutOverwritingValue(t *testing.T) {
 	db := newSettingServiceTestDB(t)
 	if err := db.Create(&model.Setting{
-		Key:       "site.name",
+		Key:       consts.SiteNameSettingKey,
 		Value:     "Custom Site Name",
 		Desc:      "旧描述",
 		Category:  "legacy",
@@ -232,7 +279,7 @@ func TestNewSettingServiceSyncsDefaultSettingMetadataWithoutOverwritingValue(t *
 	}
 
 	var setting model.Setting
-	if err := db.Where("key = ?", "site.name").First(&setting).Error; err != nil {
+	if err := db.Where("key = ?", consts.SiteNameSettingKey).First(&setting).Error; err != nil {
 		t.Fatalf("load site.name failed: %v", err)
 	}
 	if setting.Value != "Custom Site Name" {

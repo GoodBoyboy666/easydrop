@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"easydrop/internal/consts"
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
 	"easydrop/internal/pkg/captcha"
@@ -80,7 +81,7 @@ func TestAuthServiceRegisterSendsVerifyEmail(t *testing.T) {
 	tokens := &mockTokenManager{nextToken: "verify-token"}
 	emailSender := &mockEmailSender{}
 	emails := &mockEmailService{sender: emailSender}
-	settings := &mockAuthSettingService{valueByKey: map[string]string{"site.allow_register": "true"}}
+	settings := &mockAuthSettingService{valueByKey: map[string]string{consts.SiteAllowRegisterSettingKey: "true"}}
 	svc := NewAuthService(repo, settings, &mockJWTManager{token: "jwt-1"}, nil, tokens, emails)
 
 	result, err := svc.Register(context.Background(), dto.RegisterInput{
@@ -277,7 +278,7 @@ func TestAuthServiceLoginRequiresEmailVerificationWhenEnabled(t *testing.T) {
 			},
 		},
 	}
-	settings := &mockAuthSettingService{valueByKey: map[string]string{"auth.require_email_verification": "true"}}
+	settings := &mockAuthSettingService{valueByKey: map[string]string{consts.AuthRequireEmailVerificationSettingKey: "true"}}
 	svc := NewAuthService(repo, settings, &mockJWTManager{token: "jwt-login"}, nil, nil, nil)
 
 	result, err := svc.Login(context.Background(), dto.LoginInput{
@@ -310,7 +311,7 @@ func TestAuthServiceLoginAllowsUnverifiedWhenVerificationDisabled(t *testing.T) 
 			},
 		},
 	}
-	settings := &mockAuthSettingService{valueByKey: map[string]string{"auth.require_email_verification": "false"}}
+	settings := &mockAuthSettingService{valueByKey: map[string]string{consts.AuthRequireEmailVerificationSettingKey: "false"}}
 	svc := NewAuthService(repo, settings, &mockJWTManager{token: "jwt-login"}, nil, nil, nil)
 
 	result, err := svc.Login(context.Background(), dto.LoginInput{
@@ -343,7 +344,7 @@ func TestAuthServiceLoginRejectsInvalidRequireEmailSetting(t *testing.T) {
 			},
 		},
 	}
-	settings := &mockAuthSettingService{valueByKey: map[string]string{"auth.require_email_verification": "not-a-bool"}}
+	settings := &mockAuthSettingService{valueByKey: map[string]string{consts.AuthRequireEmailVerificationSettingKey: "not-a-bool"}}
 	svc := NewAuthService(repo, settings, &mockJWTManager{token: "jwt-login"}, nil, nil, nil)
 
 	result, err := svc.Login(context.Background(), dto.LoginInput{
