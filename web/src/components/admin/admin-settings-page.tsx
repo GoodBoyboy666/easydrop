@@ -24,7 +24,15 @@ import {
 import { Input } from '#/components/ui/input'
 import { Separator } from '#/components/ui/separator'
 import { Switch } from '#/components/ui/switch'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs'
 import { Textarea } from '#/components/ui/textarea'
+
+const SETTING_CATEGORY_LABELS: Record<string, string> = {
+  auth: '认证',
+  site: '站点',
+  storage: '存储',
+  system: '系统',
+}
 
 function isBooleanSettingValue(value: string | null | undefined) {
   const normalized = value?.trim().toLowerCase()
@@ -45,11 +53,20 @@ function shouldUseTextarea(setting: SettingItem, value: string) {
   )
 }
 
+function normalizeCategory(category: string | null | undefined) {
+  return category?.trim() || 'other'
+}
+
+function getCategoryLabel(category: string) {
+  return SETTING_CATEGORY_LABELS[category] ?? category
+}
+
 export function AdminSettingsPage() {
   const queryClient = useQueryClient()
   const { auth, handleUnauthorized } = useAdminSession('/admin/settings')
   const [draftValues, setDraftValues] = useState<Record<string, string>>({})
   const [isSavingAll, setIsSavingAll] = useState(false)
+  const [activeCategory, setActiveCategory] = useState('')
 
   const settingsQuery = useQuery({
     ...adminSettingsQueryOptions({
@@ -61,6 +78,27 @@ export function AdminSettingsPage() {
   })
 
   const settings = settingsQuery.data?.items ?? []
+  const groupedSettings = useMemo(() => {
+    const groups = new Map<string, SettingItem[]>()
+
+    for (const setting of settings) {
+      const category = normalizeCategory(setting.category)
+      const items = groups.get(category)
+
+      if (items) {
+        items.push(setting)
+        continue
+      }
+
+      groups.set(category, [setting])
+    }
+
+    return Array.from(groups.entries()).map(([category, items]) => ({
+      category,
+      items,
+      label: getCategoryLabel(category),
+    }))
+  }, [settings])
   const changedSettings = useMemo(
     () =>
       settings.filter(
@@ -68,6 +106,16 @@ export function AdminSettingsPage() {
       ),
     [draftValues, settings],
   )
+  const changedCountByCategory = useMemo(
+    () =>
+      changedSettings.reduce<Record<string, number>>((acc, setting) => {
+        const category = normalizeCategory(setting.category)
+        acc[category] = (acc[category] ?? 0) + 1
+        return acc
+      }, {}),
+    [changedSettings],
+  )
+  const currentCategory = activeCategory || groupedSettings[0]?.category || ''
 
   useEffect(() => {
     const nextDrafts = settings.reduce<Record<string, string>>(
@@ -80,6 +128,17 @@ export function AdminSettingsPage() {
 
     setDraftValues(nextDrafts)
   }, [settings])
+
+  useEffect(() => {
+    if (groupedSettings.length === 0) {
+      setActiveCategory('')
+      return
+    }
+
+    if (!groupedSettings.some((group) => group.category === activeCategory)) {
+      setActiveCategory(groupedSettings[0].category)
+    }
+  }, [activeCategory, groupedSettings])
 
   async function invalidateSettingQueries() {
     await invalidateAdminSettingQueries(queryClient)
@@ -184,80 +243,132 @@ export function AdminSettingsPage() {
         {!settingsQuery.isPending &&
         !settingsQuery.error &&
         settings.length > 0 ? (
-          <div className="overflow-hidden bg-transparent">
-            {settings.map((setting, index) => {
-              const currentValue = draftValues[setting.key] ?? ''
-              const isBooleanSetting = isBooleanSettingValue(setting.value)
-              const useTextarea = shouldUseTextarea(setting, currentValue)
+          <Tabs
+            className="gap-4"
+            onValueChange={setActiveCategory}
+            value={currentCategory}
+          >
+            <TabsList
+              className="h-auto w-full flex-wrap justify-start rounded-2xl bg-muted/50 p-1"
+              variant="default"
+            >
+              {groupedSettings.map((group) => {
+                const changedCount = changedCountByCategory[group.category] ?? 0
 
-              return (
-                <div key={setting.key}>
-                  <AdminMotionItem className="p-5" delay={index * 0.02}>
-                    <div className="min-w-0 space-y-4">
-                      <div className="min-w-0">
-                        <div className="font-medium">{setting.desc || setting.key}</div>
+                return (
+                  <TabsTrigger
+                    key={group.category}
+                    className="h-auto flex-none gap-2 rounded-xl px-3 py-2"
+                    value={group.category}
+                  >
+                    <span>{group.label}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {changedCount > 0 ? ` · ${changedCount} 已改` : ''}
+                    </span>
+                  </TabsTrigger>
+                )
+              })}
+            </TabsList>
+
+            {groupedSettings.map((group) => (
+              <TabsContent key={group.category} value={group.category}>
+                <div className="overflow-hidden rounded-2xl border border-border/70 bg-transparent">
+                  {group.items.map((setting, index) => {
+                    const currentValue = draftValues[setting.key] ?? ''
+                    const isBooleanSetting = isBooleanSettingValue(
+                      setting.value,
+                    )
+                    const useTextarea = shouldUseTextarea(setting, currentValue)
+
+                    return (
+                      <div key={setting.key}>
+                        <AdminMotionItem className="p-5" delay={index * 0.02}>
+                          <div className="min-w-0 space-y-4">
+                            <div className="min-w-0 space-y-1">
+                              <div className="font-medium">
+                                {setting.desc || setting.key}
+                              </div>
+                              {setting.desc ? (
+                                <div className="text-xs text-muted-foreground">
+                                  {setting.key}
+                                </div>
+                              ) : null}
+                            </div>
+
+                            {isBooleanSetting ? (
+                              <Field orientation="horizontal">
+                                <Switch
+                                  checked={asBooleanValue(currentValue)}
+                                  id={`setting-${setting.key}`}
+                                  onCheckedChange={(checked) =>
+                                    handleDraftChange(
+                                      setting.key,
+                                      checked ? 'true' : 'false',
+                                    )
+                                  }
+                                />
+                                <FieldContent>
+                                  <FieldLabel
+                                    htmlFor={`setting-${setting.key}`}
+                                  >
+                                    <FieldTitle>启用</FieldTitle>
+                                  </FieldLabel>
+                                </FieldContent>
+                              </Field>
+                            ) : useTextarea ? (
+                              <Field>
+                                <FieldLabel htmlFor={`setting-${setting.key}`}>
+                                  配置值
+                                </FieldLabel>
+                                <Textarea
+                                  id={`setting-${setting.key}`}
+                                  onChange={(event) =>
+                                    handleDraftChange(
+                                      setting.key,
+                                      event.target.value,
+                                    )
+                                  }
+                                  placeholder="请输入新的配置值"
+                                  rows={6}
+                                  value={currentValue}
+                                />
+                              </Field>
+                            ) : (
+                              <Field>
+                                <FieldLabel htmlFor={`setting-${setting.key}`}>
+                                  配置值
+                                </FieldLabel>
+                                <Input
+                                  id={`setting-${setting.key}`}
+                                  onChange={(event) =>
+                                    handleDraftChange(
+                                      setting.key,
+                                      event.target.value,
+                                    )
+                                  }
+                                  placeholder="请输入新的配置值"
+                                  type={setting.sensitive ? 'password' : 'text'}
+                                  value={currentValue}
+                                />
+                              </Field>
+                            )}
+                          </div>
+                        </AdminMotionItem>
+
+                        {index < group.items.length - 1 ? (
+                          <Separator className="bg-border/80 data-horizontal:h-0.5" />
+                        ) : null}
                       </div>
-
-                      {isBooleanSetting ? (
-                        <Field orientation="horizontal">
-                          <Switch
-                            checked={asBooleanValue(currentValue)}
-                            id={`setting-${setting.key}`}
-                            onCheckedChange={(checked) =>
-                              handleDraftChange(
-                                setting.key,
-                                checked ? 'true' : 'false',
-                              )
-                            }
-                          />
-                          <FieldContent>
-                            <FieldLabel htmlFor={`setting-${setting.key}`}>
-                              <FieldTitle>启用</FieldTitle>
-                            </FieldLabel>
-                          </FieldContent>
-                        </Field>
-                      ) : useTextarea ? (
-                        <Field>
-                          <FieldLabel htmlFor={`setting-${setting.key}`}>
-                            配置值
-                          </FieldLabel>
-                          <Textarea
-                            id={`setting-${setting.key}`}
-                            onChange={(event) =>
-                              handleDraftChange(setting.key, event.target.value)
-                            }
-                            placeholder="请输入新的配置值"
-                            rows={6}
-                            value={currentValue}
-                          />
-                        </Field>
-                      ) : (
-                        <Field>
-                          <FieldLabel htmlFor={`setting-${setting.key}`}>
-                            配置值
-                          </FieldLabel>
-                          <Input
-                            id={`setting-${setting.key}`}
-                            onChange={(event) =>
-                              handleDraftChange(setting.key, event.target.value)
-                            }
-                            placeholder="请输入新的配置值"
-                            type={setting.sensitive ? 'password' : 'text'}
-                            value={currentValue}
-                          />
-                        </Field>
-                      )}
-                    </div>
-                  </AdminMotionItem>
-
-                  {index < settings.length - 1 ? (
-                    <Separator className="bg-border/80 data-horizontal:h-0.5" />
-                  ) : null}
+                    )
+                  })}
                 </div>
-              )
-            })}
+              </TabsContent>
+            ))}
 
-            <AdminMotionItem className="p-5 pt-4" delay={settings.length * 0.02}>
+            <AdminMotionItem
+              className="border-t border-border/70 pt-4"
+              delay={settings.length * 0.02}
+            >
               <div className="flex flex-wrap items-center justify-end gap-3">
                 <span className="text-sm text-muted-foreground">
                   {changedSettings.length > 0
@@ -274,7 +385,7 @@ export function AdminSettingsPage() {
                 </Button>
               </div>
             </AdminMotionItem>
-          </div>
+          </Tabs>
         ) : null}
       </AdminSection>
     </div>

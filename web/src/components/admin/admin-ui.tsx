@@ -342,7 +342,7 @@ export function AdminPagination({
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
   return (
-    <div className="mt-4 flex flex-col gap-3 bg-transparent px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="border-t border-border/70 mt-4 flex flex-col gap-3 bg-transparent px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="text-sm text-muted-foreground">
         第 {page} / {totalPages} 页，共 {total} 条记录
       </div>
