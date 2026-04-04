@@ -11,7 +11,6 @@ import (
 	"easydrop/internal/repo"
 
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 // SettingService 提供站点动态配置读写能力。
@@ -46,7 +45,7 @@ func NewSettingService(db *gorm.DB, settingRepo repo.SettingRepo, kvCache cache.
 	if err := db.AutoMigrate(&model.Setting{}); err != nil {
 		return nil, err
 	}
-	if err := initDefaultSettings(db); err != nil {
+	if err := initDefaultSettings(settingRepo); err != nil {
 		return nil, err
 	}
 
@@ -176,7 +175,7 @@ func normalizeSettingListOrder(order string) string {
 	}
 }
 
-func initDefaultSettings(db *gorm.DB) error {
+func initDefaultSettings(settingRepo repo.SettingRepo) error {
 	defaults := []model.Setting{
 		{
 			Key:      "site.name",
@@ -278,10 +277,7 @@ func initDefaultSettings(db *gorm.DB) error {
 		},
 	}
 
-	return db.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "key"}},
-		DoNothing: true,
-	}).Create(&defaults).Error
+	return settingRepo.SyncDefaults(context.Background(), defaults)
 }
 
 var _ SettingService = (*settingService)(nil)

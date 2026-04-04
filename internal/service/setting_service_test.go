@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -148,6 +149,102 @@ func TestSettingServiceSeedsRequireEmailVerificationSetting(t *testing.T) {
 	if value != "false" {
 		t.Fatalf("expected default false, got %q", value)
 	}
+}
+
+func TestNewSettingServiceDeletesGhostSettings(t *testing.T) {
+	db := newSettingServiceTestDB(t)
+	if err := db.Create(&model.Setting{
+		Key:      "ghost.setting",
+		Value:    "ghost",
+		Desc:     "幽灵配置",
+		Category: "ghost",
+		Public:   true,
+	}).Error; err != nil {
+		t.Fatalf("seed ghost setting failed: %v", err)
+	}
+
+	kvCache, err := cache.NewCache(nil)
+	if err != nil {
+		t.Fatalf("create cache failed: %v", err)
+	}
+
+	settingRepo := repo.NewSettingRepo(db)
+	if _, err := NewSettingService(db, settingRepo, kvCache); err != nil {
+		t.Fatalf("NewSettingService returned error: %v", err)
+	}
+
+	var total int64
+	if err := db.Model(&model.Setting{}).Where("key = ?", "ghost.setting").Count(&total).Error; err != nil {
+		t.Fatalf("count ghost setting failed: %v", err)
+	}
+	if total != 0 {
+		t.Fatalf("expected ghost setting deleted, got %d", total)
+	}
+}
+
+func TestNewSettingServiceSyncsDefaultSettingMetadataWithoutOverwritingValue(t *testing.T) {
+	db := newSettingServiceTestDB(t)
+	if err := db.Create(&model.Setting{
+		Key:       "site.name",
+		Value:     "Custom Site Name",
+		Desc:      "旧描述",
+		Category:  "legacy",
+		Sensitive: true,
+		Public:    false,
+	}).Error; err != nil {
+		t.Fatalf("seed site.name failed: %v", err)
+	}
+
+	kvCache, err := cache.NewCache(nil)
+	if err != nil {
+		t.Fatalf("create cache failed: %v", err)
+	}
+
+	settingRepo := repo.NewSettingRepo(db)
+	if _, err := NewSettingService(db, settingRepo, kvCache); err != nil {
+		t.Fatalf("NewSettingService returned error: %v", err)
+	}
+
+	var setting model.Setting
+	if err := db.Where("key = ?", "site.name").First(&setting).Error; err != nil {
+		t.Fatalf("load site.name failed: %v", err)
+	}
+	if setting.Value != "Custom Site Name" {
+		t.Fatalf("expected custom value preserved, got %q", setting.Value)
+	}
+	if setting.Desc != "站点名称" {
+		t.Fatalf("expected desc synced, got %q", setting.Desc)
+	}
+	if setting.Category != "site" {
+		t.Fatalf("expected category synced, got %q", setting.Category)
+	}
+	if !setting.Public {
+		t.Fatal("expected public synced to true")
+	}
+	if !setting.Sensitive {
+		t.Fatal("expected sensitive flag preserved")
+	}
+}
+
+func newSettingServiceTestDB(t *testing.T) *gorm.DB {
+	t.Helper()
+
+	dbPath := filepath.Join(t.TempDir(), "settings.db")
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite failed: %v", err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("open sql db failed: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = sqlDB.Close()
+	})
+	if err := db.AutoMigrate(&model.Setting{}); err != nil {
+		t.Fatalf("auto migrate failed: %v", err)
+	}
+	return db
 }
 
 func newTestSettingService(t *testing.T) (SettingService, *gorm.DB) {

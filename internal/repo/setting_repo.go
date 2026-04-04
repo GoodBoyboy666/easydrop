@@ -14,6 +14,7 @@ import (
 type SettingRepo interface {
 	Create(ctx context.Context, setting *model.Setting) error
 	GetByKey(ctx context.Context, key string) (*model.Setting, error)
+	SyncDefaults(ctx context.Context, defaults []model.Setting) error
 	UpsertByKey(ctx context.Context, setting *model.Setting) error
 	Update(ctx context.Context, setting *model.Setting) error
 	DeleteByKey(ctx context.Context, key string) error
@@ -49,6 +50,37 @@ func (r *GormSettingRepo) GetByKey(ctx context.Context, key string) (*model.Sett
 		return nil, err
 	}
 	return &setting, nil
+}
+
+func (r *GormSettingRepo) SyncDefaults(ctx context.Context, defaults []model.Setting) error {
+	keys := make([]string, 0, len(defaults))
+	for i := range defaults {
+		keys = append(keys, defaults[i].Key)
+	}
+
+	return r.db.WithContext(withContext(ctx)).Transaction(func(tx *gorm.DB) error {
+		if len(keys) > 0 {
+			if err := tx.Where("key NOT IN ?", keys).Delete(&model.Setting{}).Error; err != nil {
+				return err
+			}
+		}
+
+		for i := range defaults {
+			if err := tx.Clauses(clause.OnConflict{
+				Columns: []clause.Column{{Name: "key"}},
+				DoUpdates: clause.AssignmentColumns([]string{
+					"desc",
+					"category",
+					"public",
+					"sensitive",
+				}),
+			}).Create(&defaults[i]).Error; err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
 }
 
 func (r *GormSettingRepo) UpsertByKey(ctx context.Context, setting *model.Setting) error {
