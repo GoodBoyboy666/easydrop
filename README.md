@@ -177,6 +177,9 @@ go test -tags embed_frontend ./...
 go build ./...
 go build -tags embed_frontend ./
 go generate ./internal/di
+docker build -t easydrop .
+docker compose pull
+docker compose up -d
 ```
 
 ### 前端
@@ -281,11 +284,88 @@ go test -tags embed_frontend ./...
   - `web/docs/docs.go`
   - `web/src/routeTree.gen.ts`
 
+## Docker 部署
+
+项目根目录已提供：
+
+- `Dockerfile`：多阶段构建前端与后端，并将 `web/dist` 通过 `embed_frontend` 打进后端二进制
+- `docker-compose.yml`：默认从 `ghcr.io/goodboyboy666/easydrop:latest` 拉取镜像并启动单个 `app` 服务
+
+### 1. 准备运行目录
+
+先准备配置文件：
+
+```bash
+mkdir -p data
+cp example/config.example.yaml data/config.yaml
+```
+
+Windows PowerShell:
+
+```powershell
+New-Item -ItemType Directory -Force data | Out-Null
+Copy-Item example\config.example.yaml data\config.yaml
+```
+
+容器默认读取 `/app/data/config.yaml`，因此宿主机的 `./data` 会作为运行时持久化目录：
+
+- `data/config.yaml`
+- `data/easydrop.db`
+- `data/jwt/private.pem`
+- `data/jwt/public.pem`
+- `data/uploads/...`
+
+### 2. 生成 JWT 密钥
+
+可以直接使用 compose 里的 `app` 服务生成：
+
+```bash
+docker compose pull
+docker compose run --rm app generate-jwt-token data/jwt --force
+```
+
+### 3. 启动服务
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+启动后默认监听：
+
+```text
+http://localhost:8080
+```
+
+因为镜像使用了 `embed_frontend` 构建标签，所以根路径 `/` 会直接提供前端页面，API 仍然位于 `/api/v1`。
+
+如果你希望自己在本地重新构建镜像，仍然可以单独执行：
+
+```bash
+docker build -t easydrop .
+```
+
+但 `docker-compose.yml` 的默认行为是拉取 GHCR 已发布镜像，而不是使用本地 `build`。
+
+### 4. 首次初始化
+
+首次部署后，访问：
+
+```text
+http://localhost:8080/init
+```
+
+如果通过 Docker 部署到其他域名，请记得同步调整 `data/config.yaml` 里的站点地址、Cookie 域名、可信代理等生产配置。
+
 ## 部署提示
 
 - 默认 `go build .` / `go run .` 产物为纯后端，不托管前端页面
 - 若希望单个后端二进制直接提供前端，请先执行 `cd web && pnpm build`，再使用 `go build -tags embed_frontend ./` 或 `go run -tags embed_frontend .`
 - `embed_frontend` 构建会把 `web/dist` 打进二进制，并在 `/` 提供前端站点；非 `/api` 的页面路由会回退到 `index.html`
+- Docker 镜像已默认执行前端构建并使用 `embed_frontend` 打包，无需手动先构建 `web/dist`
+- 仓库会在推送 `v*` tag 时自动发布 GHCR 镜像到 `ghcr.io/goodboyboy666/easydrop`
+- `docker compose` 默认拉取 `ghcr.io/goodboyboy666/easydrop:latest`，并挂载 `./data:/app/data`
+- 若你 fork 了仓库，需同步调整 `docker-compose.yml` 中的镜像地址到自己的 GHCR 路径
 - 生产环境建议显式配置 `server.trusted_proxies`
 - 生产环境应使用独立的 JWT 密钥文件，不要复用开发环境密钥
 - 若启用邮件找回密码或邮箱验证，需要先正确配置 `email`
