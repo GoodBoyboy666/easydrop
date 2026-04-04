@@ -60,6 +60,7 @@ func main() {
 	}
 
 	engine := router.BuildEngine(app)
+	registerFrontendRoutes(engine)
 
 	serverCfg := app.Config.Server
 	addr := serverCfg.Addr

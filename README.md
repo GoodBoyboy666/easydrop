@@ -170,9 +170,12 @@ pnpm dev
 ```bash
 go run .
 go run . --config-dir data
+go run -tags embed_frontend .
 go run . generate-jwt-token data/jwt --force
 go test ./...
+go test -tags embed_frontend ./...
 go build ./...
+go build -tags embed_frontend ./
 go generate ./internal/di
 ```
 
@@ -263,6 +266,12 @@ cd web
 pnpm test
 ```
 
+嵌入前端测试：
+
+```bash
+go test -tags embed_frontend ./...
+```
+
 ## 开发约定
 
 - Go 代码默认使用 `gofmt`
@@ -274,6 +283,9 @@ pnpm test
 
 ## 部署提示
 
+- 默认 `go build .` / `go run .` 产物为纯后端，不托管前端页面
+- 若希望单个后端二进制直接提供前端，请先执行 `cd web && pnpm build`，再使用 `go build -tags embed_frontend ./` 或 `go run -tags embed_frontend .`
+- `embed_frontend` 构建会把 `web/dist` 打进二进制，并在 `/` 提供前端站点；非 `/api` 的页面路由会回退到 `index.html`
 - 生产环境建议显式配置 `server.trusted_proxies`
 - 生产环境应使用独立的 JWT 密钥文件，不要复用开发环境密钥
 - 若启用邮件找回密码或邮箱验证，需要先正确配置 `email`
