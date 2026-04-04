@@ -739,7 +739,7 @@ export function AdminUsersPage() {
                             @{user.username} · {user.email}
                           </div>
                           <div className="mt-1 text-xs text-muted-foreground">
-                            用户 ID: {user.id} · 邮箱:{' '}
+                            用户ID: {user.id} · 邮箱:{' '}
                             {user.email_verified ? '已验证' : '未验证'} · 存储:{' '}
                             {formatBytes(user.storage_used)} /{' '}
                             {formatUserQuota(user.storage_quota)} · 注册时间:{' '}

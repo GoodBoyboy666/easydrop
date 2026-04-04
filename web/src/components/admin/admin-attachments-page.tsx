@@ -419,7 +419,7 @@ export function AdminAttachmentsPage() {
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                               <div className="font-medium">
-                                附件ID: {attachment.id}
+                                ID: {attachment.id}
                               </div>
                             </div>
                             <div className="text-sm text-muted-foreground"></div>

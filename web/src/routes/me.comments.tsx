@@ -57,6 +57,8 @@ const GPU_ACCELERATED_MOTION_PROPS = {
   style: { willChange: 'transform, opacity' },
   transformTemplate: gpuTransformTemplate,
 } as const
+const COMMENT_WATERFALL_CLASS = 'columns-1 gap-4 md:columns-2 xl:columns-3'
+const COMMENT_WATERFALL_ITEM_CLASS = 'mb-4 break-inside-avoid'
 
 function MyCommentsPage() {
   const { auth, handleUnauthorized } = useUnauthorizedHandler('/me/comments')
@@ -318,13 +320,14 @@ function MyCommentsPage() {
       {loading ? (
         <motion.div
           animate={motionReady ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
-          className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
+          className={COMMENT_WATERFALL_CLASS}
           initial={false}
           transition={getEntranceTransition(0.1)}
           {...GPU_ACCELERATED_MOTION_PROPS}
         >
-          {Array.from({ length: 3 }).map((_, index) => (
+          {Array.from({ length: 6 }).map((_, index) => (
             <motion.div
+              className={COMMENT_WATERFALL_ITEM_CLASS}
               key={index}
               animate={motionReady ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
               initial={false}
@@ -334,8 +337,10 @@ function MyCommentsPage() {
               <Card className="border border-border/70 bg-card/90">
                 <CardContent className="flex flex-col gap-3 pt-4">
                   <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-8/12" />
+                  <Skeleton
+                    className={index % 3 === 0 ? 'h-22 w-full' : 'h-14 w-full'}
+                  />
+                  <Skeleton className={index % 2 === 0 ? 'h-4 w-10/12' : 'h-4 w-7/12'} />
                 </CardContent>
               </Card>
             </motion.div>
@@ -379,10 +384,11 @@ function MyCommentsPage() {
       ) : null}
 
       {!loading && !loadError ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className={COMMENT_WATERFALL_CLASS}>
           <AnimatePresence initial={false}>
             {comments.map((comment, index) => (
               <motion.div
+                className={COMMENT_WATERFALL_ITEM_CLASS}
                 key={comment.id}
                 animate={
                   motionReady
@@ -395,7 +401,6 @@ function MyCommentsPage() {
                     : { opacity: 0, scale: 0.98, y: -8 }
                 }
                 initial={false}
-                layout
                 transition={getEntranceTransition(Math.min(index * 0.03, 0.18))}
                 {...GPU_ACCELERATED_MOTION_PROPS}
               >
