@@ -1,0 +1,56 @@
+name: 文档 / 改进建议
+description: 反馈文档问题、示例错误、协作流程优化或小型改进建议
+title: "[Docs/Improve] "
+labels:
+  - documentation
+body:
+  - type: textarea
+    id: target
+    attributes:
+      label: 涉及位置
+      description: 请说明是哪个文档、页面、命令、模板或流程。
+      placeholder: |
+        例如：
+        README 的快速开始章节
+        CONTRIBUTING.md
+        Swagger 文档
+        PR 模板
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 当前问题
+      description: 请说明哪里不清楚、不准确、不完整，或哪里可以做得更好。
+      placeholder: |
+        例如：
+        README 中缺少 Windows 下的某个命令说明。
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: 改进建议
+      description: 请尽量直接给出你认为更合适的写法或方向。
+      placeholder: |
+        例如：
+        在快速开始中补充 PowerShell 示例，并注明默认监听端口。
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: 补充信息
+      description: 可附截图、链接、参考资料或上下文说明。
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已搜索过现有 Issue，确认没有重复反馈
+          required: true
+

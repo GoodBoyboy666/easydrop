@@ -1,0 +1,19 @@
+# Default owner for the whole repository.
+* @GoodBoyboy666
+
+# Backend
+/main.go @GoodBoyboy666
+/internal/ @GoodBoyboy666
+/scripts/ @GoodBoyboy666
+
+# Frontend
+/web/ @GoodBoyboy666
+
+# Docs and examples
+/README.md @GoodBoyboy666
+/CONTRIBUTING.md @GoodBoyboy666
+/docs/ @GoodBoyboy666
+/example/ @GoodBoyboy666
+
+# GitHub workflows and templates
+/.github/ @GoodBoyboy666

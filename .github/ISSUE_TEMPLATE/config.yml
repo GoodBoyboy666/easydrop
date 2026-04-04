@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 提交 Pull Request
+    url: https://github.com/GoodBoyboy666/easydrop/compare
+    about: 如果你已经有明确修复方案或文档改动，直接发 PR 会更高效；仓库内已提供 PR 模板。
