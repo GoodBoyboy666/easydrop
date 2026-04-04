@@ -33,11 +33,10 @@ import { Input } from '#/components/ui/input'
 
 export const Route = createFileRoute('/login')({
   validateSearch: (search: Record<string, unknown>) => {
-    const nextSearch: { message?: string; redirect: string } = {
-      redirect:
-        typeof search.redirect === 'string'
-          ? safeRedirectPath(search.redirect)
-          : '/',
+    const nextSearch: { message?: string; redirect?: string } = {}
+
+    if (typeof search.redirect === 'string') {
+      nextSearch.redirect = safeRedirectPath(search.redirect)
     }
 
     if (search.message === 'verify_email') {
@@ -55,6 +54,7 @@ function LoginPage() {
   const prefersReducedMotion = useReducedMotion()
   const { allowRegister } = useSiteSettings()
   const { message, redirect } = Route.useSearch()
+  const redirectTarget = safeRedirectPath(redirect ?? '/')
   const [account, setAccount] = useState('')
   const [captcha, setCaptcha] = useState(createEmptyCaptchaInput)
   const [captchaResetSignal, setCaptchaResetSignal] = useState(0)
@@ -79,9 +79,9 @@ function LoginPage() {
 
   useEffect(() => {
     if (auth.status === 'authenticated') {
-      void navigate({ href: safeRedirectPath(redirect), replace: true })
+      void navigate({ href: redirectTarget, replace: true })
     }
-  }, [auth.status, navigate, redirect])
+  }, [auth.status, navigate, redirectTarget])
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -226,7 +226,10 @@ function LoginPage() {
                 </Button>
                 {allowRegister ? (
                   <Button asChild size="sm" variant="ghost">
-                    <Link to="/register" search={{ redirect }}>
+                    <Link
+                      to="/register"
+                      {...(redirect ? { search: { redirect } } : {})}
+                    >
                       没有账号？去注册
                       <ArrowRightIcon data-icon="inline-end" />
                     </Link>

@@ -227,7 +227,7 @@ function InitPage() {
                 </Link>
               </Button>
               <Button asChild>
-                <Link search={{ redirect: '/' }} to="/login">
+                <Link to="/login">
                   前往登录
                 </Link>
               </Button>

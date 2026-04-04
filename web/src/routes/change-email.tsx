@@ -17,9 +17,15 @@ import {
 } from '#/components/ui/card'
 
 export const Route = createFileRoute('/change-email')({
-  validateSearch: (search: Record<string, unknown>) => ({
-    token: typeof search.token === 'string' ? search.token : '',
-  }),
+  validateSearch: (search: Record<string, unknown>) => {
+    const nextSearch: { token?: string } = {}
+
+    if (typeof search.token === 'string') {
+      nextSearch.token = search.token
+    }
+
+    return nextSearch
+  },
   component: ChangeEmailPage,
 })
 

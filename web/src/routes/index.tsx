@@ -47,10 +47,13 @@ export const Route = createFileRoute('/')({
   validateSearch: (search: Record<string, unknown>) => {
     const content =
       typeof search.content === 'string' ? search.content.trim() : ''
+    const nextSearch: { content?: string } = {}
 
-    return {
-      content: content || undefined,
+    if (content) {
+      nextSearch.content = content
     }
+
+    return nextSearch
   },
   component: HomePage,
 })

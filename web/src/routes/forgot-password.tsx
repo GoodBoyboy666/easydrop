@@ -189,7 +189,7 @@ function ForgotPasswordPage() {
                     {requestMutation.isPending ? '发送中…' : '发送重置邮件'}
                   </Button>
                   <Button asChild className="sm:flex-1" variant="outline">
-                    <Link search={{ redirect: '/' }} to="/login">
+                    <Link to="/login">
                       返回登录
                     </Link>
                   </Button>

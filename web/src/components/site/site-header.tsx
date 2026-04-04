@@ -183,13 +183,13 @@ export function SiteHeader() {
           {auth.status !== 'authenticated' ? (
             <>
               <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex">
-                <Link search={{ redirect: '/' }} to="/login">
+                <Link to="/login">
                   登录
                 </Link>
               </Button>
               {allowRegister ? (
                 <Button asChild size="sm" className="hidden md:inline-flex">
-                  <Link search={{ redirect: '/' }} to="/register">
+                  <Link to="/register">
                     注册
                   </Link>
                 </Button>
@@ -318,7 +318,7 @@ export function SiteHeader() {
                 {auth.status !== 'authenticated' ? (
                   <div className="flex flex-col gap-2">
                     <Button asChild className="w-full justify-start">
-                      <Link search={{ redirect: '/' }} to="/login" onClick={closeMobileMenu}>
+                      <Link to="/login" onClick={closeMobileMenu}>
                         登录
                       </Link>
                     </Button>
@@ -329,7 +329,6 @@ export function SiteHeader() {
                         className="w-full justify-start"
                       >
                         <Link
-                          search={{ redirect: '/' }}
                           to="/register"
                           onClick={closeMobileMenu}
                         >

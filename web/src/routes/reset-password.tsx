@@ -23,9 +23,15 @@ import {
 import { Input } from '#/components/ui/input'
 
 export const Route = createFileRoute('/reset-password')({
-  validateSearch: (search: Record<string, unknown>) => ({
-    token: typeof search.token === 'string' ? search.token : '',
-  }),
+  validateSearch: (search: Record<string, unknown>) => {
+    const nextSearch: { token?: string } = {}
+
+    if (typeof search.token === 'string') {
+      nextSearch.token = search.token
+    }
+
+    return nextSearch
+  },
   component: ResetPasswordPage,
 })
 
@@ -187,7 +193,7 @@ function ResetPasswordPage() {
                     {confirmMutation.isPending ? '提交中…' : '保存新密码'}
                   </Button>
                   <Button asChild className="sm:flex-1" variant="outline">
-                    <Link search={{ redirect: '/' }} to="/login">
+                    <Link to="/login">
                       返回登录
                     </Link>
                   </Button>

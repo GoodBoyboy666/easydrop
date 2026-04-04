@@ -32,12 +32,15 @@ import {
 import { Input } from '#/components/ui/input'
 
 export const Route = createFileRoute('/register')({
-  validateSearch: (search: Record<string, unknown>) => ({
-    redirect:
-      typeof search.redirect === 'string'
-        ? safeRedirectPath(search.redirect)
-        : '/',
-  }),
+  validateSearch: (search: Record<string, unknown>) => {
+    const nextSearch: { redirect?: string } = {}
+
+    if (typeof search.redirect === 'string') {
+      nextSearch.redirect = safeRedirectPath(search.redirect)
+    }
+
+    return nextSearch
+  },
   component: RegisterPage,
 })
 
@@ -47,6 +50,7 @@ function RegisterPage() {
   const prefersReducedMotion = useReducedMotion()
   const { allowRegister, siteName } = useSiteSettings()
   const { redirect } = Route.useSearch()
+  const redirectTarget = safeRedirectPath(redirect ?? '/')
   const [form, setForm] = useState({
     email: '',
     nickname: '',
@@ -75,9 +79,9 @@ function RegisterPage() {
 
   useEffect(() => {
     if (auth.status === 'authenticated') {
-      void navigate({ href: safeRedirectPath(redirect) })
+      void navigate({ href: redirectTarget })
     }
-  }, [auth.status, navigate, redirect])
+  }, [auth.status, navigate, redirectTarget])
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -112,7 +116,10 @@ function RegisterPage() {
         username: form.username.trim(),
       })
       void navigate({
-        search: { message: 'verify_email', redirect },
+        search: {
+          message: 'verify_email',
+          ...(redirect ? { redirect } : {}),
+        },
         to: '/login',
       })
     } catch (submitError) {
@@ -280,7 +287,7 @@ function RegisterPage() {
                 {registerMutation.isPending ? '正在注册…' : '创建账号'}
               </Button>
               <Button asChild size="sm" variant="ghost">
-                <Link to="/login" search={{ redirect }}>
+                <Link to="/login" {...(redirect ? { search: { redirect } } : {})}>
                   已有账号？去登录
                   <ArrowRightIcon data-icon="inline-end" />
                 </Link>

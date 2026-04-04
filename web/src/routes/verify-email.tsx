@@ -17,9 +17,15 @@ import {
 } from '#/components/ui/card'
 
 export const Route = createFileRoute('/verify-email')({
-  validateSearch: (search: Record<string, unknown>) => ({
-    token: typeof search.token === 'string' ? search.token : '',
-  }),
+  validateSearch: (search: Record<string, unknown>) => {
+    const nextSearch: { token?: string } = {}
+
+    if (typeof search.token === 'string') {
+      nextSearch.token = search.token
+    }
+
+    return nextSearch
+  },
   component: VerifyEmailPage,
 })
 
@@ -170,7 +176,7 @@ function VerifyEmailPage() {
                 </Link>
               </Button>
               <Button asChild className="sm:flex-1" variant="outline">
-                <Link search={{ redirect: '/' }} to="/login">
+                <Link to="/login">
                   前往登录
                 </Link>
               </Button>
