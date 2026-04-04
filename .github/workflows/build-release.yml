@@ -1,4 +1,4 @@
-name: 构建并上传 Release 附件
+name: 构建并发布
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build-and-upload:
-    name: 构建并上传附件
+    name: 构建并发布
     runs-on: ubuntu-latest
 
     steps:
