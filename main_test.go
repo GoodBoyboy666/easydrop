@@ -35,6 +35,8 @@ func TestPrintBuildInfoBanner(t *testing.T) {
 		"Build Time : 2026-04-04T12:34:56Z",
 		"Commit     : abcdef1234567890",
 		"EasyDrop Runtime",
+		"███████",
+		"██████",
 	}
 
 	for _, item := range expected {

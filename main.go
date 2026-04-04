@@ -20,6 +20,7 @@ import (
 	"syscall"
 
 	"github.com/pterm/pterm"
+	"github.com/pterm/pterm/putils"
 	"github.com/spf13/cobra"
 )
 
@@ -172,13 +173,23 @@ func printBuildInfoBanner(w io.Writer) {
 		return
 	}
 
+	title, err := pterm.DefaultBigText.
+		WithWriter(w).
+		WithLetters(
+			putils.LettersFromStringWithStyle(buildValueOrDefault(appDisplayName, "EasyDrop"), pterm.NewStyle(pterm.FgLightCyan)),
+		).
+		Srender()
+	if err == nil {
+		fmt.Fprintln(w, title)
+	}
+
 	content := strings.Join([]string{
 		fmt.Sprintf("Program    : %s", buildValueOrDefault(appDisplayName, "EasyDrop")),
 		fmt.Sprintf("Version    : %s", buildValueOrDefault(appVersion, "dev")),
 		fmt.Sprintf("Build Time : %s", buildValueOrDefault(buildTime, "unknown")),
 		fmt.Sprintf("Commit     : %s", buildValueOrDefault(gitCommit, "unknown")),
 	}, "\n")
-	
+
 	pterm.DefaultBox.
 		WithWriter(w).
 		WithTitle(" EasyDrop Runtime ").
