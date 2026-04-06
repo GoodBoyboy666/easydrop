@@ -16,7 +16,7 @@ type memoryStore struct {
 }
 
 func newMemoryStore() *memoryStore {
-	return &memoryStore{
+	store := &memoryStore{
 		byToken: ttlcache.New(
 			ttlcache.WithDisableTouchOnHit[string, *Record](),
 		),
@@ -24,11 +24,19 @@ func newMemoryStore() *memoryStore {
 			ttlcache.WithDisableTouchOnHit[string, string](),
 		),
 	}
+	go store.byToken.Start()
+	go store.byUserKey.Start()
+	return store
 }
 
 func (s *memoryStore) Save(_ context.Context, record *Record) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	ttl := record.ExpiresAt.Sub(record.CreatedAt)
+	if ttl <= 0 {
+		return ErrInvalidTTL
+	}
 
 	userKey := memoryUserKindKey(record.UserID, record.Kind)
 	if oldTokenItem := s.byUserKey.Get(userKey); oldTokenItem != nil {
@@ -43,8 +51,8 @@ func (s *memoryStore) Save(_ context.Context, record *Record) error {
 		return fmt.Errorf("复制 token 记录失败: %w", err)
 	}
 
-	s.byToken.Set(record.Token, cloned, ttlcache.NoTTL)
-	s.byUserKey.Set(userKey, record.Token, ttlcache.NoTTL)
+	s.byToken.Set(record.Token, cloned, ttl)
+	s.byUserKey.Set(userKey, record.Token, ttl)
 	return nil
 }
 
@@ -82,4 +90,12 @@ func (s *memoryStore) deleteLocked(record *Record) {
 
 func memoryUserKindKey(userID uint, kind string) string {
 	return fmt.Sprintf("%d:%s", userID, kind)
+}
+
+func (s *memoryStore) stop() {
+	if s == nil {
+		return
+	}
+	s.byToken.Stop()
+	s.byUserKey.Stop()
 }
