@@ -263,11 +263,13 @@ function InitPage() {
                   <Field>
                     <FieldLabel htmlFor="init-secret">Init Secret</FieldLabel>
                     <Input
+                      autoComplete="off"
                       id="init-secret"
                       onChange={(event) =>
                         updateField('secret', event.target.value)
                       }
                       placeholder="从后端启动控制台复制 init secret"
+                      type="password"
                       value={form.secret}
                     />
                     <FieldDescription>
