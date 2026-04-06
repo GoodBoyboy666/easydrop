@@ -29,6 +29,7 @@ var (
 	ErrEmptyAccount         = errors.New("账号不能为空")
 	ErrUserNotFound         = errors.New("用户不存在")
 	ErrInvalidPassword      = errors.New("密码错误")
+	ErrInvalidCredentials   = errors.New("账号或密码错误")
 	ErrUserDisabled         = errors.New("用户状态异常")
 	ErrCaptchaRequired      = errors.New("请完成验证码")
 	ErrInvalidSiteSetting   = errors.New("站点配置异常")
@@ -297,7 +298,7 @@ func (s *authService) Login(ctx context.Context, input dto.LoginInput) (*dto.Aut
 	user, err := s.userRepo.GetByUsernameOrEmail(ctx, account)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrUserNotFound
+			return nil, ErrInvalidCredentials
 		}
 		log.Printf("获取用户失败: %v", err)
 		return nil, ErrInternal
@@ -308,7 +309,7 @@ func (s *authService) Login(ctx context.Context, input dto.LoginInput) (*dto.Aut
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password)); err != nil {
-		return nil, ErrInvalidPassword
+		return nil, ErrInvalidCredentials
 	}
 
 	if err := s.ensureLoginEmailVerified(ctx, user); err != nil {
