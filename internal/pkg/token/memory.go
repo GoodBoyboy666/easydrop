@@ -33,7 +33,7 @@ func (s *memoryStore) Save(_ context.Context, record *Record) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	ttl := record.ExpiresAt.Sub(record.CreatedAt)
+	ttl := time.Until(record.ExpiresAt)
 	if ttl <= 0 {
 		return ErrInvalidTTL
 	}
