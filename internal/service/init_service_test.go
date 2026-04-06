@@ -44,22 +44,22 @@ type mockInitRepo struct {
 }
 
 type mockInitSecretGuard struct {
-	ensureFn   func() (string, error)
-	validateFn func(secret string) error
+	ensureFn   func(ctx context.Context) (string, error)
+	validateFn func(ctx context.Context, secret string) error
 }
 
-func (m *mockInitSecretGuard) EnsureSecret() (string, error) {
+func (m *mockInitSecretGuard) EnsureSecret(ctx context.Context) (string, error) {
 	if m.ensureFn == nil {
 		return "init-secret", nil
 	}
-	return m.ensureFn()
+	return m.ensureFn(ctx)
 }
 
-func (m *mockInitSecretGuard) Validate(secret string) error {
+func (m *mockInitSecretGuard) Validate(ctx context.Context, secret string) error {
 	if m.validateFn == nil {
 		return nil
 	}
-	return m.validateFn(secret)
+	return m.validateFn(ctx, secret)
 }
 
 func (m *mockInitRepo) Initialize(_ context.Context, input repo.SystemInitInput) error {
@@ -170,7 +170,7 @@ func TestInitServiceInitializeSuccess(t *testing.T) {
 	cache := &mockInitCache{}
 	settingSvc := &mockInitSettingService{values: map[string]string{}}
 	svc := NewInitService(&mockInitUserRepo{}, initRepo, settingSvc, cache, &mockInitSecretGuard{
-		validateFn: func(secret string) error {
+		validateFn: func(_ context.Context, secret string) error {
 			if secret != "secret-123" {
 				t.Fatalf("unexpected secret: %q", secret)
 			}
@@ -281,7 +281,7 @@ func TestInitServiceInitializeRequiresSecret(t *testing.T) {
 	t.Parallel()
 
 	svc := NewInitService(&mockInitUserRepo{}, &mockInitRepo{}, &mockInitSettingService{values: map[string]string{}}, &mockInitCache{}, &mockInitSecretGuard{
-		validateFn: func(secret string) error {
+		validateFn: func(_ context.Context, secret string) error {
 			if secret != "" {
 				t.Fatalf("expected empty secret, got %q", secret)
 			}
@@ -304,7 +304,7 @@ func TestInitServiceInitializeRejectsInvalidSecret(t *testing.T) {
 
 	initRepo := &mockInitRepo{}
 	svc := NewInitService(&mockInitUserRepo{}, initRepo, &mockInitSettingService{values: map[string]string{}}, &mockInitCache{}, &mockInitSecretGuard{
-		validateFn: func(secret string) error {
+		validateFn: func(_ context.Context, secret string) error {
 			if secret != "wrong-secret" {
 				t.Fatalf("unexpected secret: %q", secret)
 			}

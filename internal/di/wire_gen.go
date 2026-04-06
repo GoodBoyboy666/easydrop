@@ -54,7 +54,7 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	guard := initsecret.NewGuard()
+	guard := initsecret.NewGuard(client)
 	initService := service.NewInitService(userRepo, initRepo, settingService, cacheCache, guard)
 	jwtConfig := config.ProvideJWTConfig(staticConfig)
 	manager, err := jwt.NewManager(jwtConfig)

@@ -190,7 +190,7 @@ func prepareInitSecret(ctx context.Context, app *di.App, logger *log.Logger) err
 		return nil
 	}
 
-	secret, err := app.InitSecretGuard.EnsureSecret()
+	secret, err := app.InitSecretGuard.EnsureSecret(ctx)
 	if err != nil {
 		return fmt.Errorf("生成 init secret 失败: %w", err)
 	}

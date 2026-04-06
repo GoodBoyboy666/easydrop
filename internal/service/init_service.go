@@ -69,7 +69,7 @@ func (s *initService) Initialize(ctx context.Context, input dto.InitInput) error
 	if initialized {
 		return ErrAlreadyInitialized
 	}
-	if err := s.initSecret.Validate(input.Secret); err != nil {
+	if err := s.initSecret.Validate(ctx, input.Secret); err != nil {
 		if errors.Is(err, initsecret.ErrNotReady) {
 			return ErrInternal
 		}

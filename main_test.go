@@ -74,17 +74,17 @@ func (m *mainTestInitService) Initialize(context.Context, dto.InitInput) error {
 }
 
 type mainTestInitSecretGuard struct {
-	ensureFn func() (string, error)
+	ensureFn func(ctx context.Context) (string, error)
 }
 
-func (m *mainTestInitSecretGuard) EnsureSecret() (string, error) {
+func (m *mainTestInitSecretGuard) EnsureSecret(ctx context.Context) (string, error) {
 	if m.ensureFn == nil {
 		return "secret-123", nil
 	}
-	return m.ensureFn()
+	return m.ensureFn(ctx)
 }
 
-func (m *mainTestInitSecretGuard) Validate(string) error {
+func (m *mainTestInitSecretGuard) Validate(context.Context, string) error {
 	return nil
 }
 
@@ -99,7 +99,7 @@ func TestPrepareInitSecretPrintsSecretWhenUninitialized(t *testing.T) {
 			},
 		},
 		InitSecretGuard: &mainTestInitSecretGuard{
-			ensureFn: func() (string, error) {
+			ensureFn: func(context.Context) (string, error) {
 				return "secret-123", nil
 			},
 		},
@@ -124,7 +124,7 @@ func TestPrepareInitSecretSkipsSecretWhenInitialized(t *testing.T) {
 			},
 		},
 		InitSecretGuard: &mainTestInitSecretGuard{
-			ensureFn: func() (string, error) {
+			ensureFn: func(context.Context) (string, error) {
 				t.Fatal("expected EnsureSecret not to be called")
 				return "", nil
 			},

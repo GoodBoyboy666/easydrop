@@ -1,13 +1,18 @@
 package initsecret
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/hex"
 	"errors"
 	"strings"
-	"sync"
+	"time"
+
+	red "github.com/redis/go-redis/v9"
 )
+
+const storageKey = "easydrop:init:secret"
 
 var (
 	ErrRequired = errors.New("init secret 不能为空")
@@ -15,55 +20,84 @@ var (
 	ErrNotReady = errors.New("init secret 未就绪")
 )
 
-// Guard 管理首次初始化阶段使用的进程内 secret。
+// NewGuard 创建初始化 secret 守卫。Redis 客户端为空时回退到进程内存存储。
+func NewGuard(client *red.Client) Guard {
+	if client == nil {
+		return newGuardWithStore(newMemoryStore())
+	}
+	return newGuardWithStore(&redisStore{client: client})
+}
+
+// Guard 管理首次初始化阶段使用的 secret。
 type Guard interface {
-	EnsureSecret() (string, error)
-	Validate(secret string) error
+	EnsureSecret(ctx context.Context) (string, error)
+	Validate(ctx context.Context, secret string) error
+}
+
+type store interface {
+	Get(ctx context.Context, key string) (string, bool, error)
+	SetNX(ctx context.Context, key, value string, ttl time.Duration) (bool, error)
 }
 
 type guard struct {
-	mu     sync.RWMutex
-	secret string
+	store store
 }
 
-// NewGuard 创建初始化 secret 守卫。
-func NewGuard() Guard {
-	return &guard{}
+func newGuardWithStore(store store) Guard {
+	return &guard{store: store}
 }
 
-func (g *guard) EnsureSecret() (string, error) {
-	g.mu.RLock()
-	if g.secret != "" {
-		secret := g.secret
-		g.mu.RUnlock()
-		return secret, nil
+func (g *guard) EnsureSecret(ctx context.Context) (string, error) {
+	if g == nil || g.store == nil {
+		return "", ErrNotReady
 	}
-	g.mu.RUnlock()
+
+	currentSecret, ok, err := g.store.Get(ctx, storageKey)
+	if err != nil {
+		return "", err
+	}
+	if ok && currentSecret != "" {
+		return currentSecret, nil
+	}
 
 	buf := make([]byte, 32)
 	if _, err := rand.Read(buf); err != nil {
 		return "", err
 	}
-	secret := hex.EncodeToString(buf)
+	generated := hex.EncodeToString(buf)
 
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	if g.secret == "" {
-		g.secret = secret
+	stored, err := g.store.SetNX(ctx, storageKey, generated, 0)
+	if err != nil {
+		return "", err
 	}
-	return g.secret, nil
+	if stored {
+		return generated, nil
+	}
+
+	currentSecret, ok, err = g.store.Get(ctx, storageKey)
+	if err != nil {
+		return "", err
+	}
+	if !ok || currentSecret == "" {
+		return "", ErrNotReady
+	}
+	return currentSecret, nil
 }
 
-func (g *guard) Validate(secret string) error {
+func (g *guard) Validate(ctx context.Context, secret string) error {
 	cleanSecret := strings.TrimSpace(secret)
 	if cleanSecret == "" {
 		return ErrRequired
 	}
+	if g == nil || g.store == nil {
+		return ErrNotReady
+	}
 
-	g.mu.RLock()
-	currentSecret := g.secret
-	g.mu.RUnlock()
-	if currentSecret == "" {
+	currentSecret, ok, err := g.store.Get(ctx, storageKey)
+	if err != nil {
+		return err
+	}
+	if !ok || currentSecret == "" {
 		return ErrNotReady
 	}
 
