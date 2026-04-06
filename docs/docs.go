@@ -1071,7 +1071,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "分页查询用户列表，支持按用户名、邮箱、状态过滤",
+                "description": "分页查询用户列表，支持按用户 ID、用户名、邮箱、状态过滤",
                 "produces": [
                     "application/json"
                 ],
@@ -1080,6 +1080,12 @@ const docTemplate = `{
                 ],
                 "summary": "管理端查询用户列表",
                 "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "用户 ID（精确匹配）",
+                        "name": "user_id",
+                        "in": "query"
+                    },
                     {
                         "type": "string",
                         "description": "用户名（模糊匹配）",
@@ -2186,6 +2192,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "参数校验失败",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "init secret 无效",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -3420,6 +3432,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "password": {
+                    "type": "string"
+                },
+                "secret": {
                     "type": "string"
                 },
                 "site_announcement": {

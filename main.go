@@ -122,6 +122,9 @@ func runServer(configDir string) error {
 	if app == nil || app.Config == nil {
 		return errors.New("初始化应用失败: 应用配置为空")
 	}
+	if err := prepareInitSecret(context.Background(), app, log.Default()); err != nil {
+		return err
+	}
 
 	engine := router.BuildEngine(app)
 	registerFrontendRoutes(engine)
@@ -165,6 +168,34 @@ func runServer(configDir string) error {
 	}
 
 	log.Println("HTTP 服务已关闭")
+	return nil
+}
+
+func prepareInitSecret(ctx context.Context, app *di.App, logger *log.Logger) error {
+	if app == nil {
+		return errors.New("初始化保护失败: 应用为空")
+	}
+	if app.InitService == nil || app.InitSecretGuard == nil {
+		return errors.New("初始化保护失败: 依赖未正确初始化")
+	}
+	if logger == nil {
+		logger = log.Default()
+	}
+
+	status, err := app.InitService.GetStatus(ctx)
+	if err != nil {
+		return fmt.Errorf("读取系统初始化状态失败: %w", err)
+	}
+	if status == nil || status.Initialized {
+		return nil
+	}
+
+	secret, err := app.InitSecretGuard.EnsureSecret()
+	if err != nil {
+		return fmt.Errorf("生成 init secret 失败: %w", err)
+	}
+
+	logger.Printf("系统未初始化，请在初始化请求中提交 init secret: %s", secret)
 	return nil
 }
 

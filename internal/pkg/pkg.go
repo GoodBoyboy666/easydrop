@@ -6,6 +6,7 @@ import (
 	"easydrop/internal/pkg/cookie"
 	"easydrop/internal/pkg/database"
 	"easydrop/internal/pkg/email"
+	"easydrop/internal/pkg/initsecret"
 	"easydrop/internal/pkg/jwt"
 	"easydrop/internal/pkg/ratelimit"
 	"easydrop/internal/pkg/redis"
@@ -24,6 +25,7 @@ var Pkgset = wire.NewSet(
 	jwt.NewManager,
 	storage.NewManager,
 	token.NewManager,
+	initsecret.NewGuard,
 	captcha.CaptchaSet,
 	cookie.NewAuthCookie,
 )

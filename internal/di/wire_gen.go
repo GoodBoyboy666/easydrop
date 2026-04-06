@@ -15,6 +15,7 @@ import (
 	"easydrop/internal/pkg/cookie"
 	"easydrop/internal/pkg/database"
 	"easydrop/internal/pkg/email"
+	"easydrop/internal/pkg/initsecret"
 	"easydrop/internal/pkg/jwt"
 	"easydrop/internal/pkg/ratelimit"
 	"easydrop/internal/pkg/redis"
@@ -32,34 +33,19 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	jwtConfig := config.ProvideJWTConfig(staticConfig)
-	manager, err := jwt.NewManager(jwtConfig)
-	if err != nil {
-		return nil, err
-	}
 	databaseConfig := config.ProvideDBConfig(staticConfig)
 	db, err := database.NewDB(databaseConfig)
 	if err != nil {
 		return nil, err
 	}
 	userRepo := repo.NewUserRepo(db)
-	cookieConfig := config.ProvideAuthCookieConfig(staticConfig)
-	authCookie := cookie.NewAuthCookie(cookieConfig)
-	auth := middleware.NewAuth(manager, userRepo, authCookie)
-	allCaptchaConfig := config.ProvideCaptchaConfig(staticConfig)
-	securityHeaders := middleware.NewSecurityHeaders(allCaptchaConfig)
-	ratelimitConfig := config.ProvideRateLimitConfig(staticConfig)
+	initRepo := repo.NewInitRepo(db)
+	settingRepo := repo.NewSettingRepo(db)
 	redisConfig := config.ProvideRedisConfig(staticConfig)
 	client, err := redis.NewOptionalClient(redisConfig)
 	if err != nil {
 		return nil, err
 	}
-	limiter, err := ratelimit.NewLimiter(ratelimitConfig, client)
-	if err != nil {
-		return nil, err
-	}
-	rateLimit := middleware.NewRateLimit(ratelimitConfig, limiter)
-	settingRepo := repo.NewSettingRepo(db)
 	cacheCache, err := cache.NewCache(client)
 	if err != nil {
 		return nil, err
@@ -68,6 +54,24 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	guard := initsecret.NewGuard()
+	initService := service.NewInitService(userRepo, initRepo, settingService, cacheCache, guard)
+	jwtConfig := config.ProvideJWTConfig(staticConfig)
+	manager, err := jwt.NewManager(jwtConfig)
+	if err != nil {
+		return nil, err
+	}
+	cookieConfig := config.ProvideAuthCookieConfig(staticConfig)
+	authCookie := cookie.NewAuthCookie(cookieConfig)
+	auth := middleware.NewAuth(manager, userRepo, authCookie)
+	allCaptchaConfig := config.ProvideCaptchaConfig(staticConfig)
+	securityHeaders := middleware.NewSecurityHeaders(allCaptchaConfig)
+	ratelimitConfig := config.ProvideRateLimitConfig(staticConfig)
+	limiter, err := ratelimit.NewLimiter(ratelimitConfig, client)
+	if err != nil {
+		return nil, err
+	}
+	rateLimit := middleware.NewRateLimit(ratelimitConfig, limiter)
 	requestBodyLimit := middleware.NewRequestBodyLimit(settingService)
 	httpClient := captcha.NewHttpClient()
 	verifier, err := captcha.NewVerifier(allCaptchaConfig, httpClient)
@@ -95,8 +99,6 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	authHandler := handler.NewAuthHandler(authService, userService, authCookie)
 	captchaConfigService := service.NewCaptchaConfigService(allCaptchaConfig)
 	captchaHandler := handler.NewCaptchaHandler(captchaConfigService)
-	initRepo := repo.NewInitRepo(db)
-	initService := service.NewInitService(userRepo, initRepo, settingService, cacheCache)
 	initHandler := handler.NewInitHandler(initService)
 	userHandler := handler.NewUserHandler(userService)
 	userAdminHandler := handler.NewUserAdminHandler(userService)
@@ -120,6 +122,6 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	settingAdminHandler := handler.NewSettingAdminHandler(settingService)
 	tagService := service.NewTagService(tagRepo)
 	tagHandler := handler.NewTagHandler(tagService)
-	app := NewApp(staticConfig, auth, securityHeaders, rateLimit, requestBodyLimit, authHandler, captchaHandler, initHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, overviewAdminHandler, postAdminHandler, postHandler, settingAdminHandler, tagHandler)
+	app := NewApp(staticConfig, initService, guard, auth, securityHeaders, rateLimit, requestBodyLimit, authHandler, captchaHandler, initHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, overviewAdminHandler, postAdminHandler, postHandler, settingAdminHandler, tagHandler)
 	return app, nil
 }

@@ -11,6 +11,7 @@ import (
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
 	"easydrop/internal/pkg/cache"
+	"easydrop/internal/pkg/initsecret"
 	"easydrop/internal/pkg/validator"
 	"easydrop/internal/repo"
 
@@ -33,15 +34,17 @@ type initService struct {
 	initRepo       repo.InitRepo
 	settingService SettingService
 	cache          cache.Cache
+	initSecret     initsecret.Guard
 }
 
 // NewInitService 创建系统初始化服务。
-func NewInitService(userRepo repo.UserRepo, initRepo repo.InitRepo, settingService SettingService, kvCache cache.Cache) InitService {
+func NewInitService(userRepo repo.UserRepo, initRepo repo.InitRepo, settingService SettingService, kvCache cache.Cache, initSecret initsecret.Guard) InitService {
 	return &initService{
 		userRepo:       userRepo,
 		initRepo:       initRepo,
 		settingService: settingService,
 		cache:          kvCache,
+		initSecret:     initSecret,
 	}
 }
 
@@ -55,7 +58,7 @@ func (s *initService) GetStatus(ctx context.Context) (*dto.InitStatusResult, err
 }
 
 func (s *initService) Initialize(ctx context.Context, input dto.InitInput) error {
-	if s.userRepo == nil || s.initRepo == nil || s.settingService == nil || s.cache == nil {
+	if s.userRepo == nil || s.initRepo == nil || s.settingService == nil || s.cache == nil || s.initSecret == nil {
 		return ErrInternal
 	}
 
@@ -65,6 +68,12 @@ func (s *initService) Initialize(ctx context.Context, input dto.InitInput) error
 	}
 	if initialized {
 		return ErrAlreadyInitialized
+	}
+	if err := s.initSecret.Validate(input.Secret); err != nil {
+		if errors.Is(err, initsecret.ErrNotReady) {
+			return ErrInternal
+		}
+		return err
 	}
 
 	allowRegister := true
