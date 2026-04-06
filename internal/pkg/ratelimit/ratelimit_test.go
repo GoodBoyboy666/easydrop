@@ -132,6 +132,7 @@ func TestNewLimiterUsesRedisWhenProbeSucceeds(t *testing.T) {
 func TestMemoryLimiterCooldown(t *testing.T) {
 	now := time.Unix(10, 0).UTC()
 	limiter := newMemoryLimiter(&Config{KeyPrefix: "test"})
+	t.Cleanup(limiter.stop)
 	limiter.now = func() time.Time { return now }
 
 	rule := Rule{Name: "cooldown", Mode: ModeCooldown, Interval: time.Second}
@@ -165,6 +166,7 @@ func TestMemoryLimiterCooldown(t *testing.T) {
 func TestMemoryLimiterWindow(t *testing.T) {
 	now := time.Unix(20, 0).UTC()
 	limiter := newMemoryLimiter(&Config{KeyPrefix: "test"})
+	t.Cleanup(limiter.stop)
 	limiter.now = func() time.Time { return now }
 
 	rule := Rule{Name: "window", Mode: ModeWindow, Interval: time.Minute, Limit: 2}
@@ -201,6 +203,26 @@ func TestMemoryLimiterWindow(t *testing.T) {
 	if !fourth.Allowed {
 		t.Fatalf("expected request allowed after window reset")
 	}
+}
+
+func TestMemoryLimiterAutoDeletesExpiredItems(t *testing.T) {
+	limiter := newMemoryLimiter(&Config{KeyPrefix: "test"})
+	t.Cleanup(limiter.stop)
+
+	rule := Rule{Name: "cooldown", Mode: ModeCooldown, Interval: 30 * time.Millisecond}
+	storageKey := limiter.storageKey(rule.Name, "user:cleanup")
+
+	decision, err := limiter.Allow(context.Background(), "user:cleanup", rule)
+	if err != nil {
+		t.Fatalf("allow returned error: %v", err)
+	}
+	if !decision.Allowed {
+		t.Fatal("expected first request allowed")
+	}
+
+	waitForLimiterCondition(t, time.Second, func() bool {
+		return limiter.items.Get(storageKey) == nil
+	})
 }
 
 func TestRedisLimiterWindow(t *testing.T) {
@@ -288,4 +310,18 @@ func TestLimiterWindowConcurrentRequests(t *testing.T) {
 	if blocked != 10 {
 		t.Fatalf("expected 10 blocked requests, got %d", blocked)
 	}
+}
+
+func waitForLimiterCondition(t *testing.T, timeout time.Duration, condition func() bool) {
+	t.Helper()
+
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if condition() {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	t.Fatal("condition not met before timeout")
 }

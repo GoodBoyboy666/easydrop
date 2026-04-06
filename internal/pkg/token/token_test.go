@@ -97,6 +97,27 @@ func TestManagerIssueAndConsume_Memory(t *testing.T) {
 	}
 }
 
+func TestMemoryStoreAutoDeletesExpiredItems(t *testing.T) {
+	t.Parallel()
+
+	manager := mustNewConcreteManager(t, nil, nil)
+	store, ok := manager.store.(*memoryStore)
+	if !ok {
+		t.Fatal("expected memory store")
+	}
+	t.Cleanup(store.stop)
+
+	tokenValue, err := manager.Issue(context.Background(), 77, KindVerifyEmail, 30*time.Millisecond, "payload")
+	if err != nil {
+		t.Fatalf("签发 token 失败: %v", err)
+	}
+
+	userKey := memoryUserKindKey(77, KindVerifyEmail)
+	waitForCondition(t, time.Second, func() bool {
+		return store.byToken.Get(tokenValue) == nil && store.byUserKey.Get(userKey) == nil
+	})
+}
+
 func TestManagerIssue_ReplacesExistingTokenOfSameKind(t *testing.T) {
 	t.Parallel()
 
@@ -245,6 +266,20 @@ func TestRedisStoreSaveAndConsume(t *testing.T) {
 	if _, ok := client.values[recordKey]; ok {
 		t.Fatalf("消费后 record key 未删除: %s", recordKey)
 	}
+}
+
+func waitForCondition(t *testing.T, timeout time.Duration, condition func() bool) {
+	t.Helper()
+
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if condition() {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	t.Fatal("condition not met before timeout")
 }
 
 func TestRedisStoreSave_ReplacesExistingRecord(t *testing.T) {
