@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"easydrop/internal/dto"
+	"easydrop/internal/pkg/initsecret"
 	"easydrop/internal/pkg/validator"
 	"easydrop/internal/service"
 
@@ -52,6 +53,7 @@ func (h *InitHandler) Status(c *gin.Context) {
 // @Param input body dto.InitInput true "初始化参数"
 // @Success 201 {object} dto.ErrorResponse
 // @Failure 400 {object} dto.ErrorResponse "参数校验失败"
+// @Failure 403 {object} dto.ErrorResponse "init secret 无效"
 // @Failure 409 {object} dto.ErrorResponse "系统已初始化"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /init [post]
@@ -87,8 +89,11 @@ func mapInitErrorStatus(err error) int {
 		errors.Is(err, validator.ErrPasswordContainsSpace),
 		errors.Is(err, validator.ErrPasswordMissingLetter),
 		errors.Is(err, validator.ErrPasswordMissingNumber),
+		errors.Is(err, initsecret.ErrRequired),
 		errors.Is(err, service.ErrInvalidSiteSetting):
 		return http.StatusBadRequest
+	case errors.Is(err, initsecret.ErrInvalid):
+		return http.StatusForbidden
 	case errors.Is(err, service.ErrAlreadyInitialized),
 		errors.Is(err, service.ErrUsernameExists),
 		errors.Is(err, service.ErrEmailExists):

@@ -7,6 +7,7 @@ type InitStatusResult struct {
 
 // InitInput 表示系统初始化请求。
 type InitInput struct {
+	Secret           string `json:"secret"`
 	Username         string `json:"username"`
 	Nickname         string `json:"nickname"`
 	Email            string `json:"email"`

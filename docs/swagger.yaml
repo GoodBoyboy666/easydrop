@@ -186,6 +186,8 @@ definitions:
         type: string
       password:
         type: string
+      secret:
+        type: string
       site_announcement:
         type: string
       site_name:
@@ -1169,8 +1171,12 @@ paths:
       - setting-admin
   /admin/users:
     get:
-      description: 分页查询用户列表，支持按用户名、邮箱、状态过滤
+      description: 分页查询用户列表，支持按用户 ID、用户名、邮箱、状态过滤
       parameters:
+      - description: 用户 ID（精确匹配）
+        in: query
+        name: user_id
+        type: integer
       - description: 用户名（模糊匹配）
         in: query
         name: username
@@ -1893,6 +1899,10 @@ paths:
             $ref: '#/definitions/dto.ErrorResponse'
         "400":
           description: 参数校验失败
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: init secret 无效
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
         "409":
