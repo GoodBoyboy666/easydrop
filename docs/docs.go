@@ -1830,7 +1830,7 @@ const docTemplate = `{
                         }
                     },
                     "401": {
-                        "description": "账号不存在或密码错误",
+                        "description": "账号或密码错误",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }

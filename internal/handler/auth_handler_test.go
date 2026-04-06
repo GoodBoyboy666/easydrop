@@ -183,6 +183,37 @@ func TestAuthHandlerLoginEmailNotVerifiedReturnsForbidden(t *testing.T) {
 	}
 }
 
+func TestAuthHandlerLoginReturnsUnifiedInvalidCredentialsMessage(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	handler := NewAuthHandler(&mockAuthService{
+		loginFn: func(context.Context, dto.LoginInput) (*dto.AuthResult, error) {
+			return nil, service.ErrInvalidCredentials
+		},
+	}, nil, nil)
+
+	router := gin.New()
+	router.POST("/login", handler.Login)
+
+	req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(`{"account":"alice","password":"wrong"}`))
+	req.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", recorder.Code)
+	}
+
+	var payload dto.ErrorResponse
+	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal response failed: %v", err)
+	}
+	if payload.Message != "账号或密码错误" {
+		t.Fatalf("expected unified login error message, got %q", payload.Message)
+	}
+}
+
 func TestAuthHandlerLoginSetsSecureCookieInProduction(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
