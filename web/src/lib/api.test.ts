@@ -408,3 +408,61 @@ describe('api.register', () => {
     )
   })
 })
+
+describe('api.initializeSystem', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('sends init secret together with the initialization payload', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          message: 'ok',
+        }),
+        {
+          headers: {
+            'content-type': 'application/json',
+          },
+          status: 201,
+        },
+      ),
+    )
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    await api.initializeSystem({
+      allow_register: true,
+      email: 'admin@example.com',
+      nickname: 'Admin',
+      password: 'Pass1234',
+      secret: 'secret-123',
+      site_announcement: 'hello',
+      site_name: 'EasyDrop',
+      site_url: 'http://localhost:3000',
+      username: 'admin',
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/init',
+      expect.objectContaining({
+        body: JSON.stringify({
+          allow_register: true,
+          email: 'admin@example.com',
+          nickname: 'Admin',
+          password: 'Pass1234',
+          secret: 'secret-123',
+          site_announcement: 'hello',
+          site_name: 'EasyDrop',
+          site_url: 'http://localhost:3000',
+          username: 'admin',
+        }),
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+        }),
+        method: 'POST',
+      }),
+    )
+  })
+})

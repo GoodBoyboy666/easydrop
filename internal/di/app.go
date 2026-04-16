@@ -4,11 +4,15 @@ import (
 	"easydrop/internal/config"
 	"easydrop/internal/handler"
 	"easydrop/internal/middleware"
+	"easydrop/internal/pkg/initsecret"
+	"easydrop/internal/service"
 )
 
 // App 聚合应用运行所需的依赖。
 type App struct {
 	Config                 *config.StaticConfig
+	InitService            service.InitService
+	InitSecretGuard        initsecret.Guard
 	Middleware             middleware.Auth
 	SecurityHeaders        middleware.SecurityHeaders
 	RateLimit              middleware.RateLimit
@@ -32,6 +36,8 @@ type App struct {
 // NewApp 构造 App 聚合对象。
 func NewApp(
 	cfg *config.StaticConfig,
+	initService service.InitService,
+	initSecretGuard initsecret.Guard,
 	authMiddleware middleware.Auth,
 	securityHeaders middleware.SecurityHeaders,
 	rateLimit middleware.RateLimit,
@@ -54,6 +60,8 @@ func NewApp(
 ) *App {
 	return &App{
 		Config:                 cfg,
+		InitService:            initService,
+		InitSecretGuard:        initSecretGuard,
 		Middleware:             authMiddleware,
 		SecurityHeaders:        securityHeaders,
 		RateLimit:              rateLimit,

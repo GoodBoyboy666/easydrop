@@ -74,7 +74,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 // @Param input body dto.LoginInput true "登录信息"
 // @Success 200 {object} dto.AuthResult
 // @Failure 400 {object} dto.ErrorResponse "参数校验失败或验证码缺失"
-// @Failure 401 {object} dto.ErrorResponse "账号不存在或密码错误"
+// @Failure 401 {object} dto.ErrorResponse "账号或密码错误"
 // @Failure 403 {object} dto.ErrorResponse "用户状态异常"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /auth/login [post]
@@ -267,7 +267,8 @@ func mapAuthErrorStatus(err error) int {
 		errors.Is(err, service.ErrInvalidSiteSetting):
 		return http.StatusBadRequest
 	case errors.Is(err, service.ErrUserNotFound),
-		errors.Is(err, service.ErrInvalidPassword):
+		errors.Is(err, service.ErrInvalidPassword),
+		errors.Is(err, service.ErrInvalidCredentials):
 		return http.StatusUnauthorized
 	case errors.Is(err, service.ErrRegisterClosed),
 		errors.Is(err, service.ErrUserDisabled),

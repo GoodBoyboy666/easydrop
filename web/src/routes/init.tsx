@@ -53,6 +53,7 @@ function createInitialFormState(): InitInput {
     email: '',
     nickname: '',
     password: '',
+    secret: '',
     site_announcement: '',
     site_name: DEFAULT_SITE_NAME,
     site_url: getDefaultSiteUrl(),
@@ -106,6 +107,7 @@ function InitPage() {
     event.preventDefault()
 
     if (
+      !form.secret.trim() ||
       !form.username.trim() ||
       !form.nickname.trim() ||
       !form.email.trim() ||
@@ -123,6 +125,7 @@ function InitPage() {
         email: form.email.trim(),
         nickname: form.nickname.trim(),
         password: form.password,
+        secret: form.secret.trim(),
         site_announcement: form.site_announcement.trim(),
         site_name: form.site_name.trim(),
         site_url: form.site_url.trim(),
@@ -227,9 +230,7 @@ function InitPage() {
                 </Link>
               </Button>
               <Button asChild>
-                <Link to="/login">
-                  前往登录
-                </Link>
+                <Link to="/login">前往登录</Link>
               </Button>
             </div>
           </CardContent>
@@ -258,6 +259,24 @@ function InitPage() {
                   <div className="text-sm font-medium text-foreground">
                     管理员信息
                   </div>
+
+                  <Field>
+                    <FieldLabel htmlFor="init-secret">Init Secret</FieldLabel>
+                    <Input
+                      autoComplete="off"
+                      id="init-secret"
+                      onChange={(event) =>
+                        updateField('secret', event.target.value)
+                      }
+                      placeholder="从后端启动控制台复制 init secret"
+                      type="password"
+                      value={form.secret}
+                    />
+                    <FieldDescription>
+                      初始化 secret
+                      仅在系统未初始化且当前服务进程启动时打印在后端控制台。
+                    </FieldDescription>
+                  </Field>
 
                   <Field>
                     <FieldLabel htmlFor="init-username">用户名</FieldLabel>
@@ -400,6 +419,9 @@ function InitPage() {
             </CardHeader>
             <CardContent className="flex flex-col gap-3 text-sm leading-7 text-muted-foreground">
               <p>这个页面只在系统首次部署时使用，用于创建第一个管理员账号。</p>
+              <p>
+                提交前请先查看后端启动控制台，复制本次启动打印的 init secret。
+              </p>
               <p>若需要修改站点配置，请在初始化完成后进入后台设置页面处理。</p>
               <p>成功后页面会跳转到登录页，请使用刚创建的管理员账号登录。</p>
             </CardContent>

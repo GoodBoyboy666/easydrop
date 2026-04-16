@@ -9,6 +9,7 @@ import (
 	"easydrop/internal/consts"
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
+	"easydrop/internal/pkg/initsecret"
 	"easydrop/internal/repo"
 
 	"golang.org/x/crypto/bcrypt"
@@ -40,6 +41,25 @@ type mockInitRepo struct {
 	lastInput repo.SystemInitInput
 	err       error
 	called    bool
+}
+
+type mockInitSecretGuard struct {
+	ensureFn   func(ctx context.Context) (string, error)
+	validateFn func(ctx context.Context, secret string) error
+}
+
+func (m *mockInitSecretGuard) EnsureSecret(ctx context.Context) (string, error) {
+	if m.ensureFn == nil {
+		return "init-secret", nil
+	}
+	return m.ensureFn(ctx)
+}
+
+func (m *mockInitSecretGuard) Validate(ctx context.Context, secret string) error {
+	if m.validateFn == nil {
+		return nil
+	}
+	return m.validateFn(ctx, secret)
 }
 
 func (m *mockInitRepo) Initialize(_ context.Context, input repo.SystemInitInput) error {
@@ -132,7 +152,7 @@ func TestInitServiceGetStatusNotInitialized(t *testing.T) {
 	t.Parallel()
 
 	settingSvc := &mockInitSettingService{values: map[string]string{}}
-	svc := NewInitService(&mockInitUserRepo{}, &mockInitRepo{}, settingSvc, &mockInitCache{})
+	svc := NewInitService(&mockInitUserRepo{}, &mockInitRepo{}, settingSvc, &mockInitCache{}, &mockInitSecretGuard{})
 
 	res, err := svc.GetStatus(context.Background())
 	if err != nil {
@@ -149,10 +169,18 @@ func TestInitServiceInitializeSuccess(t *testing.T) {
 	initRepo := &mockInitRepo{}
 	cache := &mockInitCache{}
 	settingSvc := &mockInitSettingService{values: map[string]string{}}
-	svc := NewInitService(&mockInitUserRepo{}, initRepo, settingSvc, cache)
+	svc := NewInitService(&mockInitUserRepo{}, initRepo, settingSvc, cache, &mockInitSecretGuard{
+		validateFn: func(_ context.Context, secret string) error {
+			if secret != "secret-123" {
+				t.Fatalf("unexpected secret: %q", secret)
+			}
+			return nil
+		},
+	})
 
 	allowRegister := false
 	err := svc.Initialize(context.Background(), dto.InitInput{
+		Secret:           "secret-123",
 		Username:         "admin",
 		Nickname:         "管理员",
 		Email:            "admin@example.com",
@@ -200,7 +228,7 @@ func TestInitServiceInitializeAlreadyInitialized(t *testing.T) {
 
 	initRepo := &mockInitRepo{}
 	settingSvc := &mockInitSettingService{values: map[string]string{consts.SystemInitializedSettingKey: "true"}}
-	svc := NewInitService(&mockInitUserRepo{}, initRepo, settingSvc, &mockInitCache{})
+	svc := NewInitService(&mockInitUserRepo{}, initRepo, settingSvc, &mockInitCache{}, &mockInitSecretGuard{})
 
 	err := svc.Initialize(context.Background(), dto.InitInput{})
 	if !errors.Is(err, ErrAlreadyInitialized) {
@@ -219,9 +247,10 @@ func TestInitServiceInitializeUsernameExists(t *testing.T) {
 			"admin": {ID: 1, Username: "admin"},
 		},
 	}
-	svc := NewInitService(userRepo, &mockInitRepo{}, &mockInitSettingService{values: map[string]string{}}, &mockInitCache{})
+	svc := NewInitService(userRepo, &mockInitRepo{}, &mockInitSettingService{values: map[string]string{}}, &mockInitCache{}, &mockInitSecretGuard{})
 
 	err := svc.Initialize(context.Background(), dto.InitInput{
+		Secret:   "secret-123",
 		Username: "admin",
 		Email:    "admin@example.com",
 		Password: "Pass1234",
@@ -235,15 +264,65 @@ func TestInitServiceInitializeInitRepoAlreadyInitialized(t *testing.T) {
 	t.Parallel()
 
 	initRepo := &mockInitRepo{err: repo.ErrInitAlreadyInitialized}
-	svc := NewInitService(&mockInitUserRepo{}, initRepo, &mockInitSettingService{values: map[string]string{}}, &mockInitCache{})
+	svc := NewInitService(&mockInitUserRepo{}, initRepo, &mockInitSettingService{values: map[string]string{}}, &mockInitCache{}, &mockInitSecretGuard{})
 
 	err := svc.Initialize(context.Background(), dto.InitInput{
+		Secret:   "secret-123",
 		Username: "admin",
 		Email:    "admin@example.com",
 		Password: "Pass1234",
 	})
 	if !errors.Is(err, ErrAlreadyInitialized) {
 		t.Fatalf("expected ErrAlreadyInitialized, got %v", err)
+	}
+}
+
+func TestInitServiceInitializeRequiresSecret(t *testing.T) {
+	t.Parallel()
+
+	svc := NewInitService(&mockInitUserRepo{}, &mockInitRepo{}, &mockInitSettingService{values: map[string]string{}}, &mockInitCache{}, &mockInitSecretGuard{
+		validateFn: func(_ context.Context, secret string) error {
+			if secret != "" {
+				t.Fatalf("expected empty secret, got %q", secret)
+			}
+			return initsecret.ErrRequired
+		},
+	})
+
+	err := svc.Initialize(context.Background(), dto.InitInput{
+		Username: "admin",
+		Email:    "admin@example.com",
+		Password: "Pass1234",
+	})
+	if !errors.Is(err, initsecret.ErrRequired) {
+		t.Fatalf("expected ErrRequired, got %v", err)
+	}
+}
+
+func TestInitServiceInitializeRejectsInvalidSecret(t *testing.T) {
+	t.Parallel()
+
+	initRepo := &mockInitRepo{}
+	svc := NewInitService(&mockInitUserRepo{}, initRepo, &mockInitSettingService{values: map[string]string{}}, &mockInitCache{}, &mockInitSecretGuard{
+		validateFn: func(_ context.Context, secret string) error {
+			if secret != "wrong-secret" {
+				t.Fatalf("unexpected secret: %q", secret)
+			}
+			return initsecret.ErrInvalid
+		},
+	})
+
+	err := svc.Initialize(context.Background(), dto.InitInput{
+		Secret:   "wrong-secret",
+		Username: "admin",
+		Email:    "admin@example.com",
+		Password: "Pass1234",
+	})
+	if !errors.Is(err, initsecret.ErrInvalid) {
+		t.Fatalf("expected ErrInvalid, got %v", err)
+	}
+	if initRepo.called {
+		t.Fatal("expected init repo not to be called")
 	}
 }
 

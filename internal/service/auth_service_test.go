@@ -358,3 +358,50 @@ func TestAuthServiceLoginRejectsInvalidRequireEmailSetting(t *testing.T) {
 		t.Fatalf("expected nil result, got %#v", result)
 	}
 }
+
+func TestAuthServiceLoginReturnsUnifiedErrorWhenUserNotFound(t *testing.T) {
+	svc := NewAuthService(&mockUserRepo{users: map[uint]*model.User{}}, nil, &mockJWTManager{token: "jwt-login"}, nil, nil, nil)
+
+	result, err := svc.Login(context.Background(), dto.LoginInput{
+		Account:  "missing",
+		Password: "Pass1234",
+	})
+	if !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("expected ErrInvalidCredentials, got %v", err)
+	}
+	if result != nil {
+		t.Fatalf("expected nil result, got %#v", result)
+	}
+}
+
+func TestAuthServiceLoginReturnsUnifiedErrorWhenPasswordInvalid(t *testing.T) {
+	hash, err := bcrypt.GenerateFromPassword([]byte("Pass1234"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("seed hash failed: %v", err)
+	}
+
+	repo := &mockUserRepo{
+		users: map[uint]*model.User{
+			13: {
+				ID:            13,
+				Username:      "delta",
+				Email:         "delta@example.com",
+				Password:      string(hash),
+				EmailVerified: true,
+				Status:        1,
+			},
+		},
+	}
+	svc := NewAuthService(repo, nil, &mockJWTManager{token: "jwt-login"}, nil, nil, nil)
+
+	result, err := svc.Login(context.Background(), dto.LoginInput{
+		Account:  "delta",
+		Password: "Wrong1234",
+	})
+	if !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("expected ErrInvalidCredentials, got %v", err)
+	}
+	if result != nil {
+		t.Fatalf("expected nil result, got %#v", result)
+	}
+}

@@ -177,6 +177,7 @@ export interface InitInput {
   email: string
   nickname: string
   password: string
+  secret: string
   site_announcement: string
   site_name: string
   site_url: string

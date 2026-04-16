@@ -21,13 +21,15 @@ type memoryLimiter struct {
 }
 
 func newMemoryLimiter(cfg *Config) *memoryLimiter {
-	return &memoryLimiter{
+	limiter := &memoryLimiter{
 		keyPrefix: normalizeLimiterKeyPrefix(cfg),
 		now:       time.Now,
 		items: ttlcache.New(
 			ttlcache.WithDisableTouchOnHit[string, memoryEntry](),
 		),
 	}
+	go limiter.items.Start()
+	return limiter
 }
 
 func (l *memoryLimiter) Backend() string {
@@ -66,7 +68,7 @@ func (l *memoryLimiter) allowCooldown(storageKey string, interval time.Duration,
 	}
 
 	resetAt := now.Add(interval)
-	l.items.Set(storageKey, memoryEntry{count: 1, expiresAt: resetAt}, ttlcache.NoTTL)
+	l.items.Set(storageKey, memoryEntry{count: 1, expiresAt: resetAt}, interval)
 	return &Decision{
 		Allowed:   true,
 		Remaining: 0,
@@ -78,7 +80,7 @@ func (l *memoryLimiter) allowWindow(storageKey string, rule Rule, now time.Time)
 	entry, found := l.getEntry(storageKey)
 	if !found || !entry.expiresAt.After(now) {
 		resetAt := now.Add(rule.Interval)
-		l.items.Set(storageKey, memoryEntry{count: 1, expiresAt: resetAt}, ttlcache.NoTTL)
+		l.items.Set(storageKey, memoryEntry{count: 1, expiresAt: resetAt}, rule.Interval)
 		return &Decision{
 			Allowed:   true,
 			Remaining: maxInt(rule.Limit-1, 0),
@@ -96,7 +98,7 @@ func (l *memoryLimiter) allowWindow(storageKey string, rule Rule, now time.Time)
 	}
 
 	entry.count++
-	l.items.Set(storageKey, entry, ttlcache.NoTTL)
+	l.items.Set(storageKey, entry, entry.expiresAt.Sub(now))
 	return &Decision{
 		Allowed:   true,
 		Remaining: maxInt(rule.Limit-entry.count, 0),
@@ -148,6 +150,13 @@ func maxInt(value int, fallback int) int {
 		return value
 	}
 	return fallback
+}
+
+func (l *memoryLimiter) stop() {
+	if l == nil {
+		return
+	}
+	l.items.Stop()
 }
 
 var _ Limiter = (*memoryLimiter)(nil)

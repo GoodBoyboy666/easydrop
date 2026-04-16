@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"easydrop/internal/dto"
+	"easydrop/internal/pkg/initsecret"
 	"easydrop/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -54,14 +55,14 @@ func TestInitHandlerInitializeSuccess(t *testing.T) {
 	h := NewInitHandler(&mockInitHandlerService{
 		initFn: func(_ context.Context, input dto.InitInput) error {
 			called = true
-			if input.Username != "admin" || input.SiteName != "EasyDrop" {
+			if input.Username != "admin" || input.SiteName != "EasyDrop" || input.Secret != "secret-123" {
 				t.Fatalf("unexpected input: %+v", input)
 			}
 			return nil
 		},
 	})
 
-	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/init", `{"username":"admin","email":"admin@example.com","password":"Pass1234","site_name":"EasyDrop","site_url":"http://localhost:8080"}`)
+	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/init", `{"secret":"secret-123","username":"admin","email":"admin@example.com","password":"Pass1234","site_name":"EasyDrop","site_url":"http://localhost:8080"}`)
 	h.Initialize(c)
 
 	if w.Code != http.StatusCreated {
@@ -86,6 +87,40 @@ func TestInitHandlerInitializeAlreadyInitialized(t *testing.T) {
 
 	if w.Code != http.StatusConflict {
 		t.Fatalf("expected status 409, got %d", w.Code)
+	}
+}
+
+func TestInitHandlerInitializeSecretRequired(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	h := NewInitHandler(&mockInitHandlerService{
+		initFn: func(context.Context, dto.InitInput) error {
+			return initsecret.ErrRequired
+		},
+	})
+
+	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/init", `{"username":"admin"}`)
+	h.Initialize(c)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestInitHandlerInitializeInvalidSecret(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	h := NewInitHandler(&mockInitHandlerService{
+		initFn: func(context.Context, dto.InitInput) error {
+			return initsecret.ErrInvalid
+		},
+	})
+
+	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/init", `{"secret":"wrong-secret","username":"admin"}`)
+	h.Initialize(c)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected status 403, got %d", w.Code)
 	}
 }
 
