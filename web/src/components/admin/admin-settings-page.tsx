@@ -248,19 +248,12 @@ export function AdminSettingsPage() {
             onValueChange={setActiveCategory}
             value={currentCategory}
           >
-            <TabsList
-              className="h-auto w-full flex-wrap justify-start rounded-2xl bg-muted/50 p-1"
-              variant="default"
-            >
+            <TabsList className="gap-3">
               {groupedSettings.map((group) => {
                 const changedCount = changedCountByCategory[group.category] ?? 0
 
                 return (
-                  <TabsTrigger
-                    key={group.category}
-                    className="h-auto flex-none gap-2 rounded-xl px-3 py-2"
-                    value={group.category}
-                  >
+                  <TabsTrigger key={group.category} value={group.category}>
                     <span>{group.label}</span>
                     <span className="text-xs text-muted-foreground">
                       {changedCount > 0 ? ` · ${changedCount} 已改` : ''}
