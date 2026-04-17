@@ -7,9 +7,11 @@ import {
 } from '#/lib/auth-guards'
 
 const mockRedirect = vi.fn((input: unknown) => input)
-const mockFetchQuery = vi.fn()
+const mockEnsureQueryData = vi.fn()
+const mockGetQueryData = vi.fn()
 const mockGetQueryClient = vi.fn(() => ({
-  fetchQuery: mockFetchQuery,
+  ensureQueryData: mockEnsureQueryData,
+  getQueryData: mockGetQueryData,
 }))
 const mockCurrentUserQueryOptions = vi.fn(() => ({
   queryKey: ['current-user'] as const,
@@ -37,31 +39,51 @@ vi.mock('#/lib/query-client', () => ({
 
 vi.mock('#/lib/query-options', () => ({
   currentUserQueryOptions: () => mockCurrentUserQueryOptions(),
+  queryKeys: {
+    currentUser: () => ['current-user'] as const,
+  },
 }))
 
 describe('requireAuthenticatedRoute', () => {
   beforeEach(() => {
     window.history.replaceState({}, '', '/')
+    mockGetQueryData.mockReturnValue(undefined)
   })
 
   afterEach(() => {
     vi.clearAllMocks()
   })
 
-  it('returns current user when query succeeds', async () => {
+  it('returns cached user without network query', async () => {
     const user = {
       admin: false,
       id: 12,
       nickname: 'tester',
     }
 
-    mockFetchQuery.mockResolvedValue(user)
+    mockGetQueryData.mockReturnValue(user)
 
-    await expect(requireAuthenticatedRoute()).resolves.toBe(user)
+    await expect(Promise.resolve(requireAuthenticatedRoute())).resolves.toBe(user)
+    expect(mockCurrentUserQueryOptions).not.toHaveBeenCalled()
+    expect(mockEnsureQueryData).not.toHaveBeenCalled()
+    expect(mockRedirect).not.toHaveBeenCalled()
+  })
+
+  it('returns current user when cache miss query succeeds', async () => {
+    const user = {
+      admin: false,
+      id: 13,
+      nickname: 'cache-miss',
+    }
+
+    mockEnsureQueryData.mockResolvedValue(user)
+
+    await expect(Promise.resolve(requireAuthenticatedRoute())).resolves.toBe(user)
     expect(mockCurrentUserQueryOptions).toHaveBeenCalledTimes(1)
-    expect(mockFetchQuery).toHaveBeenCalledWith(
+    expect(mockEnsureQueryData).toHaveBeenCalledWith(
       expect.objectContaining({
         queryKey: ['current-user'],
+        revalidateIfStale: true,
       }),
     )
     expect(mockRedirect).not.toHaveBeenCalled()
@@ -70,10 +92,10 @@ describe('requireAuthenticatedRoute', () => {
   it('redirects to login with redirect path on unauthorized error', async () => {
     const unauthorizedError = new Error('unauthorized')
     window.history.replaceState({}, '', '/me?tab=profile#security')
-    mockFetchQuery.mockRejectedValue(unauthorizedError)
+    mockEnsureQueryData.mockRejectedValue(unauthorizedError)
     mockIsUnauthorizedApiError.mockReturnValue(true)
 
-    await expect(requireAuthenticatedRoute()).rejects.toEqual(
+    await expect(Promise.resolve(requireAuthenticatedRoute())).rejects.toEqual(
       expect.objectContaining({
         search: {
           redirect: '/me?tab=profile#security',
@@ -87,41 +109,62 @@ describe('requireAuthenticatedRoute', () => {
 
   it('rethrows non-unauthorized errors', async () => {
     const networkError = new Error('network failure')
-    mockFetchQuery.mockRejectedValue(networkError)
+    mockEnsureQueryData.mockRejectedValue(networkError)
     mockIsUnauthorizedApiError.mockReturnValue(false)
 
-    await expect(requireAuthenticatedRoute()).rejects.toBe(networkError)
+    await expect(Promise.resolve(requireAuthenticatedRoute())).rejects.toBe(networkError)
     expect(mockRedirect).not.toHaveBeenCalled()
   })
 })
 
 describe('requireAdminRoute', () => {
+  beforeEach(() => {
+    mockGetQueryData.mockReturnValue(undefined)
+  })
+
   afterEach(() => {
     vi.clearAllMocks()
   })
 
-  it('returns user when user is admin', async () => {
+  it('returns cached user when cached user is admin', async () => {
     const adminUser = {
       admin: true,
       id: 99,
     }
 
-    mockFetchQuery.mockResolvedValue(adminUser)
+    mockGetQueryData.mockReturnValue(adminUser)
 
-    await expect(requireAdminRoute()).resolves.toBe(adminUser)
+    await expect(Promise.resolve(requireAdminRoute())).resolves.toBe(adminUser)
+    expect(mockEnsureQueryData).not.toHaveBeenCalled()
   })
 
-  it('redirects to home when user is not admin', async () => {
-    mockFetchQuery.mockResolvedValue({
+  it('redirects to home when cached user is not admin', () => {
+    mockGetQueryData.mockReturnValue({
       admin: false,
       id: 100,
     })
 
-    await expect(requireAdminRoute()).rejects.toEqual(
-      expect.objectContaining({
-        replace: true,
-        to: '/',
-      }),
-    )
+    try {
+      requireAdminRoute()
+      throw new Error('expected redirect to be thrown')
+    } catch (error) {
+      expect(error).toEqual(
+        expect.objectContaining({
+          replace: true,
+          to: '/',
+        }),
+      )
+    }
+  })
+
+  it('returns user when cache miss and query user is admin', async () => {
+    const adminUser = {
+      admin: true,
+      id: 101,
+    }
+    mockEnsureQueryData.mockResolvedValue(adminUser)
+
+    await expect(Promise.resolve(requireAdminRoute())).resolves.toBe(adminUser)
+    expect(mockEnsureQueryData).toHaveBeenCalledTimes(1)
   })
 })
