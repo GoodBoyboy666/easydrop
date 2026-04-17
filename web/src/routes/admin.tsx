@@ -3,6 +3,12 @@ import { AdminRoutePage } from '#/components/admin/admin-route-page'
 import { requireAdminRoute } from '#/lib/auth-guards'
 
 export const Route = createFileRoute('/admin')({
-  beforeLoad: () => requireAdminRoute(),
+  beforeLoad: () => {
+    const ensured = requireAdminRoute()
+
+    if (ensured instanceof Promise) {
+      return ensured.then(() => undefined)
+    }
+  },
   component: AdminRoutePage,
 })
