@@ -3,7 +3,7 @@ import { isUnauthorizedApiError } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
 import { safeRedirectPath } from '#/lib/format'
 import { getQueryClient } from '#/lib/query-client'
-import { currentUserQueryOptions } from '#/lib/query-options'
+import { currentUserQueryOptions, queryKeys } from '#/lib/query-options'
 import type { UserDTO } from '#/lib/types'
 
 function resolveCurrentRedirectPath() {
@@ -21,28 +21,34 @@ export function buildLoginRedirectHref(redirectPath: string) {
   return `/login?redirect=${encodeURIComponent(safePath)}`
 }
 
-export async function requireAuthenticatedRoute(): Promise<UserDTO> {
+export function requireAuthenticatedRoute(): Promise<UserDTO> | UserDTO {
   const queryClient = getQueryClient()
+  const cachedUser = queryClient.getQueryData<UserDTO>(queryKeys.currentUser())
 
-  try {
-    return await queryClient.fetchQuery(currentUserQueryOptions())
-  } catch (error) {
-    if (isUnauthorizedApiError(error)) {
-      throw redirect({
-        to: '/login',
-        search: {
-          redirect: resolveCurrentRedirectPath(),
-        },
-      })
-    }
-
-    throw error
+  if (cachedUser) {
+    return cachedUser
   }
+
+  return queryClient
+    .ensureQueryData({
+      ...currentUserQueryOptions(),
+      revalidateIfStale: true,
+    })
+    .catch((error) => {
+      if (isUnauthorizedApiError(error)) {
+        throw redirect({
+          to: '/login',
+          search: {
+            redirect: resolveCurrentRedirectPath(),
+          },
+        })
+      }
+
+      throw error
+    })
 }
 
-export async function requireAdminRoute(): Promise<UserDTO> {
-  const user = await requireAuthenticatedRoute()
-
+function assertAdmin(user: UserDTO): UserDTO {
   if (!user.admin) {
     throw redirect({
       replace: true,
@@ -56,12 +62,27 @@ export async function requireAdminRoute(): Promise<UserDTO> {
   return user
 }
 
+export function requireAdminRoute(): Promise<UserDTO> | UserDTO {
+  const userOrPromise = requireAuthenticatedRoute()
+
+  if (userOrPromise instanceof Promise) {
+    return userOrPromise.then(assertAdmin)
+  }
+
+  return assertAdmin(userOrPromise)
+}
+
 export function useUnauthorizedHandler(redirectPath: string) {
   const auth = useAuth()
   const navigate = useNavigate()
 
   function redirectToLogin() {
-    void navigate({ href: buildLoginRedirectHref(redirectPath) })
+    void navigate({
+      search: {
+        redirect: safeRedirectPath(redirectPath),
+      },
+      to: '/login',
+    })
   }
 
   function handleUnauthorized(error: unknown) {

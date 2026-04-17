@@ -265,7 +265,7 @@ export function AdminSettingsPage() {
 
             {groupedSettings.map((group) => (
               <TabsContent key={group.category} value={group.category}>
-                <div className="overflow-hidden rounded-2xl border border-border/70 bg-transparent">
+                <div className="overflow-hidden rounded-2xl bg-transparent">
                   {group.items.map((setting, index) => {
                     const currentValue = draftValues[setting.key] ?? ''
                     const isBooleanSetting = isBooleanSettingValue(
@@ -275,7 +275,7 @@ export function AdminSettingsPage() {
 
                     return (
                       <div key={setting.key}>
-                        <AdminMotionItem className="p-5" delay={index * 0.02}>
+                        <AdminMotionItem className="px-2 py-5" delay={index * 0.02}>
                           <div className="min-w-0 space-y-4">
                             <div className="min-w-0 space-y-1">
                               <div className="font-medium">
