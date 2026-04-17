@@ -79,7 +79,7 @@ func buildGravatarURL(email string, gravatarBaseURL string) *string {
 	}
 
 	hash := md5.Sum([]byte(normalized))
-	url := normalizeGravatarBaseURL(gravatarBaseURL) + hex.EncodeToString(hash[:])
+	url := gravatarBaseURL + hex.EncodeToString(hash[:])
 	return &url
 }
 
