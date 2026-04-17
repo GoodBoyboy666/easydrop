@@ -244,7 +244,6 @@ export function AdminSettingsPage() {
         !settingsQuery.error &&
         settings.length > 0 ? (
           <Tabs
-            className="gap-4"
             onValueChange={setActiveCategory}
             value={currentCategory}
           >
