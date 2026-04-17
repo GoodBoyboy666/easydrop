@@ -10,6 +10,7 @@ import (
 
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
+	avatarcfg "easydrop/internal/pkg/avatar"
 	"easydrop/internal/pkg/storage"
 	"easydrop/internal/repo"
 
@@ -39,19 +40,26 @@ type PostService interface {
 }
 
 type postService struct {
-	postRepo       repo.PostRepo
-	commentRepo    repo.CommentRepo
-	tagRepo        repo.TagRepo
-	storageManager storage.Manager
+	postRepo        repo.PostRepo
+	commentRepo     repo.CommentRepo
+	tagRepo         repo.TagRepo
+	storageManager  storage.Manager
+	gravatarBaseURL string
 }
 
 // NewPostService 创建说说服务实例。
-func NewPostService(postRepo repo.PostRepo, commentRepo repo.CommentRepo, tagRepo repo.TagRepo, storageManager storage.Manager) PostService {
+func NewPostService(postRepo repo.PostRepo, commentRepo repo.CommentRepo, tagRepo repo.TagRepo, storageManager storage.Manager, avatarConfig *avatarcfg.Config) PostService {
+	gravatarBaseURL := ""
+	if avatarConfig != nil {
+		gravatarBaseURL = avatarConfig.GravatarBaseURL
+	}
+
 	return &postService{
-		postRepo:       postRepo,
-		commentRepo:    commentRepo,
-		tagRepo:        tagRepo,
-		storageManager: storageManager,
+		postRepo:        postRepo,
+		commentRepo:     commentRepo,
+		tagRepo:         tagRepo,
+		storageManager:  storageManager,
+		gravatarBaseURL: normalizeGravatarBaseURL(gravatarBaseURL),
 	}
 }
 
@@ -88,7 +96,7 @@ func (s *postService) Create(ctx context.Context, input dto.PostCreateInput) (*d
 		log.Printf("查询已创建说说失败: %v", err)
 		return nil, ErrInternal
 	}
-	postDTO, err := toPostDTO(ctx, createdPost, s.storageManager)
+	postDTO, err := toPostDTO(ctx, createdPost, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("解析说说头像失败: %v", err)
 		return nil, ErrInternal
@@ -109,7 +117,7 @@ func (s *postService) Get(ctx context.Context, id uint) (*dto.PostDTO, error) {
 		log.Printf("获取说说失败: %v", err)
 		return nil, ErrInternal
 	}
-	postDTO, err := toPostDTO(ctx, post, s.storageManager)
+	postDTO, err := toPostDTO(ctx, post, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("解析说说头像失败: %v", err)
 		return nil, ErrInternal
@@ -164,7 +172,7 @@ func (s *postService) Update(ctx context.Context, input dto.PostUpdateInput) (*d
 	if len(oldTagIDs) > 0 {
 		s.asyncCleanupOrphanTags(oldTagIDs)
 	}
-	postDTO, err := toPostDTO(ctx, post, s.storageManager)
+	postDTO, err := toPostDTO(ctx, post, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("解析说说头像失败: %v", err)
 		return nil, ErrInternal
@@ -219,7 +227,7 @@ func (s *postService) List(ctx context.Context, input dto.PostListInput) (*dto.P
 		return nil, ErrInternal
 	}
 
-	items, err := toPostDTOs(ctx, posts, s.storageManager)
+	items, err := toPostDTOs(ctx, posts, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("解析说说列表头像失败: %v", err)
 		return nil, ErrInternal
@@ -335,12 +343,12 @@ func collectTagIDs(tags []model.Tag) []uint {
 }
 
 // toPostDTO 将说说模型转换为单个 DTO。
-func toPostDTO(ctx context.Context, post *model.Post, storageManager storage.Manager) (*dto.PostDTO, error) {
+func toPostDTO(ctx context.Context, post *model.Post, storageManager storage.Manager, gravatarBaseURL string) (*dto.PostDTO, error) {
 	if post == nil {
 		return nil, nil
 	}
 
-	avatar, err := resolveUserAvatar(ctx, post.User.Avatar, post.User.Email, storageManager)
+	avatar, err := resolveUserAvatar(ctx, post.User.Avatar, post.User.Email, storageManager, gravatarBaseURL)
 	if err != nil {
 		return nil, err
 	}
@@ -364,13 +372,13 @@ func toPostDTO(ctx context.Context, post *model.Post, storageManager storage.Man
 }
 
 // toPostDTOs 将说说模型切片转换为 DTO 列表。
-func toPostDTOs(ctx context.Context, posts []model.Post, storageManager storage.Manager) ([]dto.PostDTO, error) {
+func toPostDTOs(ctx context.Context, posts []model.Post, storageManager storage.Manager, gravatarBaseURL string) ([]dto.PostDTO, error) {
 	if len(posts) == 0 {
 		return nil, nil
 	}
 	items := make([]dto.PostDTO, 0, len(posts))
 	for i := range posts {
-		postDTO, err := toPostDTO(ctx, &posts[i], storageManager)
+		postDTO, err := toPostDTO(ctx, &posts[i], storageManager, gravatarBaseURL)
 		if err != nil {
 			return nil, err
 		}

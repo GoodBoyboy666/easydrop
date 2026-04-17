@@ -55,6 +55,9 @@ func TestLoadDefaultsWithoutConfigFile(t *testing.T) {
 	if len(cfg.RateLimit.Rules) != 0 {
 		t.Fatalf("expected default rate limit rules empty, got %v", cfg.RateLimit.Rules)
 	}
+	if cfg.Avatar.GravatarBaseURL != "https://www.gravatar.com/avatar/" {
+		t.Fatalf("expected default gravatar base url https://www.gravatar.com/avatar/, got %q", cfg.Avatar.GravatarBaseURL)
+	}
 }
 
 func TestLoadModeFromEnv(t *testing.T) {
@@ -132,5 +135,25 @@ func TestLoadRateLimitRuleOverrides(t *testing.T) {
 	}
 	if cfg.RateLimit.Rules["comment_write"].Limit != 5 {
 		t.Fatalf("expected comment_write limit 5, got %d", cfg.RateLimit.Rules["comment_write"].Limit)
+	}
+}
+
+func TestLoadAvatarGravatarBaseURLOverride(t *testing.T) {
+	dir := t.TempDir()
+	content := []byte(
+		"avatar:\n" +
+			"  gravatar_base_url: https://gravatar.example.com/avatar\n",
+	)
+	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), content, 0o644); err != nil {
+		t.Fatalf("write config file failed: %v", err)
+	}
+
+	cfg, err := Load(dir, false)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	if cfg.Avatar.GravatarBaseURL != "https://gravatar.example.com/avatar" {
+		t.Fatalf("expected gravatar base url override, got %q", cfg.Avatar.GravatarBaseURL)
 	}
 }

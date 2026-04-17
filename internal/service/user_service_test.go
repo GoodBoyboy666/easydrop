@@ -258,7 +258,7 @@ func TestUserServiceUploadAvatarReplacesManagedAvatar(t *testing.T) {
 			},
 		},
 	}
-	service := NewUserService(repo, storageManager, nil, nil, nil)
+	service := NewUserService(repo, storageManager, nil, nil, nil, nil)
 
 	result, err := service.UploadAvatar(context.Background(), dto.UserAvatarUploadInput{
 		UserID:           1,
@@ -316,7 +316,7 @@ func TestUserServiceDeleteAvatarClearsManagedAvatar(t *testing.T) {
 			},
 		},
 	}
-	service := NewUserService(repo, storageManager, nil, nil, nil)
+	service := NewUserService(repo, storageManager, nil, nil, nil, nil)
 
 	err := service.DeleteAvatar(context.Background(), 2)
 	if err != nil {
@@ -348,7 +348,7 @@ func TestUserServiceUploadAvatarQuotaExceededRollsBackObject(t *testing.T) {
 			},
 		},
 	}
-	service := NewUserService(repo, storageManager, nil, nil, nil)
+	service := NewUserService(repo, storageManager, nil, nil, nil, nil)
 
 	_, err := service.UploadAvatar(context.Background(), dto.UserAvatarUploadInput{
 		UserID:           3,
@@ -387,7 +387,7 @@ func TestUserServiceDeleteAvatarWithExternalURL(t *testing.T) {
 			},
 		},
 	}
-	service := NewUserService(repo, nil, nil, nil, nil)
+	service := NewUserService(repo, nil, nil, nil, nil, nil)
 
 	err := service.DeleteAvatar(context.Background(), 4)
 	if err != nil {
@@ -473,7 +473,7 @@ func TestUserServiceUpdateProfile(t *testing.T) {
 			},
 		},
 	}
-	svc := NewUserService(repo, nil, nil, nil, nil)
+	svc := NewUserService(repo, nil, nil, nil, nil, nil)
 
 	nickname := "  Neo Matrix  "
 	result, err := svc.UpdateProfile(context.Background(), dto.UserProfileUpdateInput{UserID: 7, Nickname: &nickname})
@@ -502,7 +502,7 @@ func TestUserServiceUpdateClearsStorageQuotaWhenUseDefaultStorageQuotaIsTrue(t *
 			},
 		},
 	}
-	svc := NewUserService(repo, nil, nil, nil, nil)
+	svc := NewUserService(repo, nil, nil, nil, nil, nil)
 	useDefault := true
 
 	result, err := svc.Update(context.Background(), dto.UserUpdateInput{
@@ -538,7 +538,7 @@ func TestUserServiceChangePassword(t *testing.T) {
 			},
 		},
 	}
-	svc := NewUserService(repo, nil, nil, nil, nil)
+	svc := NewUserService(repo, nil, nil, nil, nil, nil)
 
 	err = svc.ChangePassword(context.Background(), dto.UserChangePasswordInput{
 		UserID:      8,
@@ -570,7 +570,7 @@ func TestUserServiceChangePasswordWithWrongOldPassword(t *testing.T) {
 			},
 		},
 	}
-	svc := NewUserService(repo, nil, nil, nil, nil)
+	svc := NewUserService(repo, nil, nil, nil, nil, nil)
 
 	err = svc.ChangePassword(context.Background(), dto.UserChangePasswordInput{
 		UserID:      9,
@@ -729,7 +729,7 @@ func TestUserServiceListFiltersByID(t *testing.T) {
 			},
 		},
 	}
-	svc := NewUserService(repo, nil, nil, nil, nil)
+	svc := NewUserService(repo, nil, nil, nil, nil, nil)
 	userID := uint(8)
 
 	result, err := svc.List(context.Background(), dto.UserListInput{ID: &userID})

@@ -8,12 +8,13 @@ import (
 
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
+	avatarpkg "easydrop/internal/pkg/avatar"
 	"easydrop/internal/pkg/storage"
 )
 
 // toUserDTO 将用户模型转换为对外返回的 DTO。
-func toUserDTO(ctx context.Context, user *model.User, storageManager storage.Manager) (dto.UserDTO, error) {
-	avatar, err := resolveUserAvatar(ctx, user.Avatar, user.Email, storageManager)
+func toUserDTO(ctx context.Context, user *model.User, storageManager storage.Manager, gravatarBaseURL string) (dto.UserDTO, error) {
+	avatar, err := resolveUserAvatar(ctx, user.Avatar, user.Email, storageManager, gravatarBaseURL)
 	if err != nil {
 		return dto.UserDTO{}, err
 	}
@@ -35,14 +36,14 @@ func toUserDTO(ctx context.Context, user *model.User, storageManager storage.Man
 }
 
 // toUserDTOs 将用户模型切片转换为 DTO 列表。
-func toUserDTOs(ctx context.Context, users []model.User, storageManager storage.Manager) ([]dto.UserDTO, error) {
+func toUserDTOs(ctx context.Context, users []model.User, storageManager storage.Manager, gravatarBaseURL string) ([]dto.UserDTO, error) {
 	if len(users) == 0 {
 		return nil, nil
 	}
 
 	items := make([]dto.UserDTO, 0, len(users))
 	for i := range users {
-		item, err := toUserDTO(ctx, &users[i], storageManager)
+		item, err := toUserDTO(ctx, &users[i], storageManager, gravatarBaseURL)
 		if err != nil {
 			return nil, err
 		}
@@ -51,9 +52,9 @@ func toUserDTOs(ctx context.Context, users []model.User, storageManager storage.
 	return items, nil
 }
 
-func resolveUserAvatar(ctx context.Context, avatar *string, email string, storageManager storage.Manager) (*string, error) {
+func resolveUserAvatar(ctx context.Context, avatar *string, email string, storageManager storage.Manager, gravatarBaseURL string) (*string, error) {
 	if avatar == nil {
-		return buildGravatarURL(email), nil
+		return buildGravatarURL(email, gravatarBaseURL), nil
 	}
 
 	trimmed := strings.TrimSpace(*avatar)
@@ -71,15 +72,23 @@ func resolveUserAvatar(ctx context.Context, avatar *string, email string, storag
 	return &url, nil
 }
 
-func buildGravatarURL(email string) *string {
+func buildGravatarURL(email string, gravatarBaseURL string) *string {
 	normalized := strings.ToLower(strings.TrimSpace(email))
 	if normalized == "" {
 		return nil
 	}
 
 	hash := md5.Sum([]byte(normalized))
-	url := "https://gravatar.furwolf.com/avatar/" + hex.EncodeToString(hash[:])
+	url := normalizeGravatarBaseURL(gravatarBaseURL) + hex.EncodeToString(hash[:])
 	return &url
+}
+
+func normalizeGravatarBaseURL(gravatarBaseURL string) string {
+	base := strings.TrimSpace(gravatarBaseURL)
+	if base == "" {
+		return avatarpkg.DefaultGravatarBaseURL
+	}
+	return strings.TrimRight(base, "/") + "/"
 }
 
 func isManagedAvatarKey(value string) bool {
