@@ -10,6 +10,7 @@ import (
 
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
+	avatarcfg "easydrop/internal/pkg/avatar"
 	"easydrop/internal/pkg/storage"
 	"easydrop/internal/pkg/token"
 	"easydrop/internal/pkg/validator"
@@ -62,21 +63,28 @@ type emailChangeTokenPayload struct {
 }
 
 type userService struct {
-	userRepo       repo.UserRepo
-	storageManager storage.Manager
-	settings       SettingService
-	tokenManager   token.Manager
-	emailService   EmailService
+	userRepo        repo.UserRepo
+	storageManager  storage.Manager
+	settings        SettingService
+	tokenManager    token.Manager
+	emailService    EmailService
+	gravatarBaseURL string
 }
 
 // NewUserService 创建用户服务实例。
-func NewUserService(userRepo repo.UserRepo, storageManager storage.Manager, settings SettingService, tokenManager token.Manager, emailService EmailService) UserService {
+func NewUserService(userRepo repo.UserRepo, storageManager storage.Manager, settings SettingService, tokenManager token.Manager, emailService EmailService, avatarConfig *avatarcfg.Config) UserService {
+	gravatarBaseURL := ""
+	if avatarConfig != nil {
+		gravatarBaseURL = avatarConfig.GravatarBaseURL
+	}
+
 	return &userService{
-		userRepo:       userRepo,
-		storageManager: storageManager,
-		settings:       settings,
-		tokenManager:   tokenManager,
-		emailService:   emailService,
+		userRepo:        userRepo,
+		storageManager:  storageManager,
+		settings:        settings,
+		tokenManager:    tokenManager,
+		emailService:    emailService,
+		gravatarBaseURL: normalizeGravatarBaseURL(gravatarBaseURL),
 	}
 }
 
@@ -146,7 +154,7 @@ func (s *userService) Create(ctx context.Context, input dto.UserCreateInput) (*d
 		return nil, ErrInternal
 	}
 
-	userDTO, err := toUserDTO(ctx, user, s.storageManager)
+	userDTO, err := toUserDTO(ctx, user, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("构建用户 DTO 失败: %v", err)
 		return nil, ErrInternal
@@ -169,7 +177,7 @@ func (s *userService) Get(ctx context.Context, id uint) (*dto.UserDTO, error) {
 		return nil, ErrInternal
 	}
 
-	userDTO, err := toUserDTO(ctx, user, s.storageManager)
+	userDTO, err := toUserDTO(ctx, user, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("构建用户 DTO 失败: %v", err)
 		return nil, ErrInternal
@@ -205,7 +213,7 @@ func (s *userService) UpdateProfile(ctx context.Context, input dto.UserProfileUp
 		}
 	}
 
-	userDTO, err := toUserDTO(ctx, user, s.storageManager)
+	userDTO, err := toUserDTO(ctx, user, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("构建用户 DTO 失败: %v", err)
 		return nil, ErrInternal
@@ -358,7 +366,7 @@ func (s *userService) ConfirmEmailChange(ctx context.Context, input dto.UserChan
 		return nil, ErrInternal
 	}
 
-	userDTO, err := toUserDTO(ctx, user, s.storageManager)
+	userDTO, err := toUserDTO(ctx, user, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("构建用户 DTO 失败: %v", err)
 		return nil, ErrInternal
@@ -458,7 +466,7 @@ func (s *userService) Update(ctx context.Context, input dto.UserUpdateInput) (*d
 		return nil, ErrInternal
 	}
 
-	userDTO, err := toUserDTO(ctx, user, s.storageManager)
+	userDTO, err := toUserDTO(ctx, user, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("构建用户 DTO 失败: %v", err)
 		return nil, ErrInternal
@@ -533,7 +541,7 @@ func (s *userService) UploadAvatar(ctx context.Context, input dto.UserAvatarUplo
 		}
 	}
 
-	userDTO, err := toUserDTO(ctx, updatedUser, s.storageManager)
+	userDTO, err := toUserDTO(ctx, updatedUser, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("构建用户 DTO 失败: %v", err)
 		return nil, ErrInternal
@@ -628,7 +636,7 @@ func (s *userService) List(ctx context.Context, input dto.UserListInput) (*dto.U
 		return nil, ErrInternal
 	}
 
-	items, err := toUserDTOs(ctx, users, s.storageManager)
+	items, err := toUserDTOs(ctx, users, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("构建用户列表 DTO 失败: %v", err)
 		return nil, ErrInternal

@@ -95,7 +95,8 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	userService := service.NewUserService(userRepo, storageManager, settingService, tokenManager, emailService)
+	avatarConfig := config.ProvideAvatarConfig(staticConfig)
+	userService := service.NewUserService(userRepo, storageManager, settingService, tokenManager, emailService, avatarConfig)
 	authHandler := handler.NewAuthHandler(authService, userService, authCookie)
 	captchaConfigService := service.NewCaptchaConfigService(allCaptchaConfig)
 	captchaHandler := handler.NewCaptchaHandler(captchaConfigService)
@@ -109,14 +110,14 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	commentRepo := repo.NewCommentRepo(db)
 	postRepo := repo.NewPostRepo(db)
 	postVisibilityPolicy := service.NewPostVisibilityPolicy()
-	commentService := service.NewCommentService(commentRepo, postRepo, userRepo, storageManager, postVisibilityPolicy, verifier)
+	commentService := service.NewCommentService(commentRepo, postRepo, userRepo, storageManager, postVisibilityPolicy, verifier, avatarConfig)
 	commentHandler := handler.NewCommentHandler(commentService)
 	commentAdminHandler := handler.NewCommentAdminHandler(commentService)
 	overviewRepo := repo.NewOverviewRepo(db)
 	adminOverviewService := service.NewAdminOverviewService(overviewRepo)
 	overviewAdminHandler := handler.NewOverviewAdminHandler(adminOverviewService)
 	tagRepo := repo.NewTagRepo(db)
-	postService := service.NewPostService(postRepo, commentRepo, tagRepo, storageManager)
+	postService := service.NewPostService(postRepo, commentRepo, tagRepo, storageManager, avatarConfig)
 	postAdminHandler := handler.NewPostAdminHandler(postService)
 	postHandler := handler.NewPostHandler(postService)
 	settingAdminHandler := handler.NewSettingAdminHandler(settingService)

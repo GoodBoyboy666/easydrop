@@ -120,6 +120,10 @@ captcha:
     secret_key: ""
     verify_url: ""
 
+avatar:
+  # Gravatar 头像基础地址
+  gravatar_base_url: "https://www.gravatar.com/avatar/"
+
 storage:
   backend: "local" # local 或 s3
   local:
