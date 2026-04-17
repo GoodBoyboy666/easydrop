@@ -91,6 +91,12 @@ func BuildEngine(app *di.App) *gin.Engine {
 	userSecurityWriteLimit := passthroughMiddleware()
 	commentWriteLimit := passthroughMiddleware()
 	attachmentWriteLimit := passthroughMiddleware()
+	csrfProtect := passthroughMiddleware()
+	issueCSRFCookieOnSuccess := passthroughMiddleware()
+	if app.CSRF != nil {
+		csrfProtect = app.CSRF.Protect
+		issueCSRFCookieOnSuccess = app.CSRF.IssueCSRFCookieOnSuccess
+	}
 	if app.RequestBodyLimit != nil {
 		ordinaryLimit = app.RequestBodyLimit.Ordinary
 		uploadLimit = app.RequestBodyLimit.Upload
@@ -111,8 +117,8 @@ func BuildEngine(app *di.App) *gin.Engine {
 		authGroup.Use(ordinaryLimit, authWriteLimit)
 		{
 			authGroup.POST("/register", authHandler.Register)
-			authGroup.POST("/login", authHandler.Login)
-			authGroup.POST("/logout", authHandler.Logout)
+			authGroup.POST("/login", issueCSRFCookieOnSuccess, authHandler.Login)
+			authGroup.POST("/logout", csrfProtect, authHandler.Logout)
 			authGroup.POST("/password-reset/request", authHandler.RequestPasswordReset)
 			authGroup.POST("/password-reset/confirm", authHandler.ConfirmPasswordReset)
 			authGroup.POST("/verify-email/confirm", authHandler.ConfirmVerifyEmail)
@@ -133,7 +139,7 @@ func BuildEngine(app *di.App) *gin.Engine {
 		}
 
 		loginGroup := v1.Group("")
-		loginGroup.Use(requireLogin)
+		loginGroup.Use(csrfProtect, requireLogin)
 		{
 			usersMe := loginGroup.Group("/users/me")
 			usersMe.Use(ordinaryLimit)
@@ -206,7 +212,7 @@ func BuildEngine(app *di.App) *gin.Engine {
 		}
 
 		adminGroup := v1.Group("/admin")
-		adminGroup.Use(requireAdmin)
+		adminGroup.Use(csrfProtect, requireAdmin)
 		{
 			overview := adminGroup.Group("/overview")
 			overview.Use(ordinaryLimit)

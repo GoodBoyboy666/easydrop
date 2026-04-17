@@ -14,6 +14,7 @@ type App struct {
 	InitService            service.InitService
 	InitSecretGuard        initsecret.Guard
 	Middleware             middleware.Auth
+	CSRF                   middleware.CSRF
 	SecurityHeaders        middleware.SecurityHeaders
 	RateLimit              middleware.RateLimit
 	RequestBodyLimit       middleware.RequestBodyLimit
@@ -39,6 +40,7 @@ func NewApp(
 	initService service.InitService,
 	initSecretGuard initsecret.Guard,
 	authMiddleware middleware.Auth,
+	csrf middleware.CSRF,
 	securityHeaders middleware.SecurityHeaders,
 	rateLimit middleware.RateLimit,
 	requestBodyLimit middleware.RequestBodyLimit,
@@ -63,6 +65,7 @@ func NewApp(
 		InitService:            initService,
 		InitSecretGuard:        initSecretGuard,
 		Middleware:             authMiddleware,
+		CSRF:                   csrf,
 		SecurityHeaders:        securityHeaders,
 		RateLimit:              rateLimit,
 		RequestBodyLimit:       requestBodyLimit,

@@ -7,4 +7,5 @@ var MiddlewareSet = wire.NewSet(
 	NewSecurityHeaders,
 	NewRateLimit,
 	NewRequestBodyLimit,
+	NewCSRF,
 )
