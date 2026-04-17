@@ -19,6 +19,7 @@ import (
 	"easydrop/internal/middleware"
 	"easydrop/internal/pkg/captcha"
 	cookiepkg "easydrop/internal/pkg/cookie"
+	"easydrop/internal/pkg/jwt"
 	"easydrop/internal/pkg/ratelimit"
 	"easydrop/internal/pkg/storage"
 
@@ -290,6 +291,67 @@ func TestBuildEngineAppliesMiddlewareGroups(t *testing.T) {
 		r.ServeHTTP(w, req)
 		if w.Code == http.StatusUnauthorized || w.Code == http.StatusForbidden {
 			t.Fatalf("public init route should not be blocked by auth middleware, got %d", w.Code)
+		}
+	}
+}
+
+func TestBuildEngineAppliesDoubleSubmitCSRFForCookieWriteRoutes(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	r := BuildEngine(newTestApp(allowAuthMiddleware{}))
+
+	{
+		req := httptest.NewRequest(http.MethodPatch, "/api/v1/users/me/profile", strings.NewReader(`{"nickname":"neo"}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.AddCookie(&http.Cookie{Name: "easydrop_access_token", Value: "session-token"})
+		req.AddCookie(&http.Cookie{Name: middleware.DefaultCSRFCookieName, Value: "csrf-token"})
+
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 when csrf header is missing, got %d", w.Code)
+		}
+	}
+
+	{
+		req := httptest.NewRequest(http.MethodPatch, "/api/v1/users/me/profile", strings.NewReader(`{"nickname":"neo"}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set(middleware.CSRFHeaderName, "csrf-token")
+		req.AddCookie(&http.Cookie{Name: "easydrop_access_token", Value: "session-token"})
+		req.AddCookie(&http.Cookie{Name: middleware.DefaultCSRFCookieName, Value: "csrf-token"})
+
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		if w.Code == http.StatusForbidden {
+			t.Fatalf("expected non-403 when csrf header matches")
+		}
+	}
+
+	{
+		req := httptest.NewRequest(http.MethodPatch, "/api/v1/users/me/profile", strings.NewReader(`{"nickname":"neo"}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer bearer-token")
+		req.AddCookie(&http.Cookie{Name: "easydrop_access_token", Value: "session-token"})
+
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		if w.Code == http.StatusForbidden {
+			t.Fatalf("expected bearer request to bypass csrf check")
+		}
+	}
+
+	{
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout", nil)
+		req.AddCookie(&http.Cookie{Name: "easydrop_access_token", Value: "session-token"})
+
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("expected 403 for logout without csrf header when auth cookie exists, got %d", w.Code)
 		}
 	}
 }
@@ -585,11 +647,20 @@ func newTestApp(auth middleware.Auth) *di.App {
 }
 
 func newTestAppWithMode(auth middleware.Auth, mode string) *di.App {
-	return &di.App{
-		Config: &config.StaticConfig{
-			Server: config.ServerConfig{Mode: mode},
+	testConfig := &config.StaticConfig{
+		Server: config.ServerConfig{Mode: mode},
+		AuthCookie: cookiepkg.Config{
+			Name:     "easydrop_access_token",
+			Path:     "/",
+			SameSite: "lax",
 		},
+		JWT: jwt.Config{Expire: 24 * time.Hour},
+	}
+
+	return &di.App{
+		Config:                 testConfig,
 		Middleware:             auth,
+		CSRF:                   middleware.NewCSRF(testConfig),
 		SecurityHeaders:        middleware.NewSecurityHeaders(&captcha.AllCaptchaConfig{}),
 		RateLimit:              nil,
 		RequestBodyLimit:       middleware.NewRequestBodyLimit(nil),

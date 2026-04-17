@@ -285,7 +285,11 @@ func initDefaultSettings(settingRepo repo.SettingRepo) error {
 		},
 	}
 
-	return settingRepo.SyncDefaults(context.Background(), defaults)
+	if err := settingRepo.SyncDefaults(context.Background(), defaults); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 var _ SettingService = (*settingService)(nil)

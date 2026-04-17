@@ -193,7 +193,7 @@ func TestSettingServiceSeedsAttachmentExtensionsFromPresetDefaults(t *testing.T)
 	}
 }
 
-func TestNewSettingServiceSyncsBlankAttachmentExtensionsValueToPresetDefaults(t *testing.T) {
+func TestNewSettingServiceKeepsBlankAttachmentExtensionsValue(t *testing.T) {
 	db := newSettingServiceTestDB(t)
 	if err := db.Create(&model.Setting{
 		Key:      consts.AttachmentAllowedExtensionsSettingKey,
@@ -219,8 +219,8 @@ func TestNewSettingServiceSyncsBlankAttachmentExtensionsValueToPresetDefaults(t 
 	if err := db.Where("key = ?", consts.AttachmentAllowedExtensionsSettingKey).First(&setting).Error; err != nil {
 		t.Fatalf("load attachment extension setting failed: %v", err)
 	}
-	if setting.Value != consts.DefaultAttachmentAllowedExtensionsSettingValue {
-		t.Fatalf("expected preset attachment extensions %q, got %q", consts.DefaultAttachmentAllowedExtensionsSettingValue, setting.Value)
+	if setting.Value != "" {
+		t.Fatalf("expected blank attachment extensions to be preserved, got %q", setting.Value)
 	}
 }
 

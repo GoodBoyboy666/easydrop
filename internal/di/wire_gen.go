@@ -64,6 +64,7 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	cookieConfig := config.ProvideAuthCookieConfig(staticConfig)
 	authCookie := cookie.NewAuthCookie(cookieConfig)
 	auth := middleware.NewAuth(manager, userRepo, authCookie)
+	csrf := middleware.NewCSRF(staticConfig)
 	allCaptchaConfig := config.ProvideCaptchaConfig(staticConfig)
 	securityHeaders := middleware.NewSecurityHeaders(allCaptchaConfig)
 	ratelimitConfig := config.ProvideRateLimitConfig(staticConfig)
@@ -123,6 +124,6 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	settingAdminHandler := handler.NewSettingAdminHandler(settingService)
 	tagService := service.NewTagService(tagRepo)
 	tagHandler := handler.NewTagHandler(tagService)
-	app := NewApp(staticConfig, initService, guard, auth, securityHeaders, rateLimit, requestBodyLimit, authHandler, captchaHandler, initHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, overviewAdminHandler, postAdminHandler, postHandler, settingAdminHandler, tagHandler)
+	app := NewApp(staticConfig, initService, guard, auth, csrf, securityHeaders, rateLimit, requestBodyLimit, authHandler, captchaHandler, initHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, overviewAdminHandler, postAdminHandler, postHandler, settingAdminHandler, tagHandler)
 	return app, nil
 }

@@ -466,3 +466,46 @@ describe('api.initializeSystem', () => {
     )
   })
 })
+
+describe('api CSRF header', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('attaches csrf header for unsafe requests when csrf cookie is present', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          message: 'ok',
+        }),
+        {
+          headers: {
+            'content-type': 'application/json',
+          },
+          status: 200,
+        },
+      ),
+    )
+
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal(
+      'document',
+      {
+        cookie: 'easydrop_csrf_token=csrf-token-123',
+      } as Document,
+    )
+
+    await api.logout()
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/auth/logout',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'X-CSRF-Token': 'csrf-token-123',
+        }),
+        method: 'POST',
+      }),
+    )
+  })
+})
