@@ -104,8 +104,11 @@ const emailChangeFallbackTemplate = `<!doctype html>
 
 // EmailService 负责渲染邮件模板并发送业务邮件。
 type EmailService interface {
+	// SendPasswordResetEmail 发送重置密码邮件。
 	SendPasswordResetEmail(ctx context.Context, to, tokenValue string, ttl time.Duration) error
+	// SendVerifyEmail 发送邮箱验证邮件。
 	SendVerifyEmail(ctx context.Context, to, tokenValue string, ttl time.Duration) error
+	// SendChangeEmailEmail 发送邮箱变更确认邮件。
 	SendChangeEmailEmail(ctx context.Context, to, newEmail, tokenValue string, ttl time.Duration) error
 }
 
@@ -126,7 +129,9 @@ func NewEmailService(sender email.Client, settings SettingService) EmailService 
 	return &emailService{sender: sender, settings: settings}
 }
 
+// SendPasswordResetEmail 组装并发送重置密码邮件。
 func (s *emailService) SendPasswordResetEmail(ctx context.Context, to, tokenValue string, ttl time.Duration) error {
+	// 构建模板变量并渲染正文。
 	data, err := s.newTemplateData(ctx, tokenValue, ttl, passwordResetPath)
 	if err != nil {
 		return err
@@ -140,7 +145,9 @@ func (s *emailService) SendPasswordResetEmail(ctx context.Context, to, tokenValu
 	return s.send(ctx, to, passwordResetSubject, body)
 }
 
+// SendVerifyEmail 组装并发送邮箱验证邮件。
 func (s *emailService) SendVerifyEmail(ctx context.Context, to, tokenValue string, ttl time.Duration) error {
+	// 构建模板变量并渲染正文。
 	data, err := s.newTemplateData(ctx, tokenValue, ttl, emailVerifyPath)
 	if err != nil {
 		return err
@@ -154,7 +161,9 @@ func (s *emailService) SendVerifyEmail(ctx context.Context, to, tokenValue strin
 	return s.send(ctx, to, emailVerifySubject, body)
 }
 
+// SendChangeEmailEmail 组装并发送邮箱变更确认邮件。
 func (s *emailService) SendChangeEmailEmail(ctx context.Context, to, newEmail, tokenValue string, ttl time.Duration) error {
+	// 构建模板变量并补充新邮箱展示字段。
 	data, err := s.newTemplateData(ctx, tokenValue, ttl, emailChangePath)
 	if err != nil {
 		return err
@@ -169,6 +178,7 @@ func (s *emailService) SendChangeEmailEmail(ctx context.Context, to, newEmail, t
 	return s.send(ctx, to, emailChangeSubject, body)
 }
 
+// send 执行底层邮件发送并统一参数校验。
 func (s *emailService) send(ctx context.Context, to, subject, body string) error {
 	if s.sender == nil {
 		return ErrEmailServiceUnavailable
@@ -185,6 +195,7 @@ func (s *emailService) send(ctx context.Context, to, subject, body string) error
 	return nil
 }
 
+// newTemplateData 构建邮件模板渲染数据。
 func (s *emailService) newTemplateData(ctx context.Context, tokenValue string, ttl time.Duration, actionPath string) (*emailTemplateData, error) {
 	tokenValue = strings.TrimSpace(tokenValue)
 	if tokenValue == "" {
@@ -194,6 +205,7 @@ func (s *emailService) newTemplateData(ctx context.Context, tokenValue string, t
 		return nil, ErrEmailTTLInvalid
 	}
 
+	// 站点地址可选；无站点地址时会返回相对链接。
 	siteURL := s.getSiteURL(ctx)
 	actionURL := buildActionURL(siteURL, actionPath, tokenValue)
 
@@ -204,6 +216,7 @@ func (s *emailService) newTemplateData(ctx context.Context, tokenValue string, t
 	}, nil
 }
 
+// getSiteURL 读取站点 URL 配置，读取失败时返回空字符串。
 func (s *emailService) getSiteURL(ctx context.Context) string {
 	if s.settings == nil {
 		return ""
@@ -221,7 +234,9 @@ func (s *emailService) getSiteURL(ctx context.Context) string {
 	return strings.TrimSpace(value)
 }
 
+// renderTemplate 读取模板内容并渲染为 HTML 字符串。
 func (s *emailService) renderTemplate(templateFile string, data *emailTemplateData) (string, error) {
+	// 优先读取外部模板，缺失时退回内置模板。
 	content, found, err := loadTemplateContent(templateFile)
 	if err != nil {
 		return "", err
@@ -243,6 +258,7 @@ func (s *emailService) renderTemplate(templateFile string, data *emailTemplateDa
 	return builder.String(), nil
 }
 
+// fallbackTemplateFor 返回模板文件对应的内置兜底模板。
 func fallbackTemplateFor(templateFile string) string {
 	switch templateFile {
 	case passwordResetTemplateFile:
@@ -256,6 +272,7 @@ func fallbackTemplateFor(templateFile string) string {
 	}
 }
 
+// loadTemplateContent 从配置目录尝试加载邮件模板文件。
 func loadTemplateContent(templateFile string) (string, bool, error) {
 	configDir := strings.TrimSpace(config.GlobalConfigDir)
 	if configDir == "" {
@@ -281,6 +298,7 @@ func loadTemplateContent(templateFile string) (string, bool, error) {
 	return "", false, nil
 }
 
+// buildActionURL 基于站点地址和 action 路径生成带 token 的跳转地址。
 func buildActionURL(siteURL, actionPath, tokenValue string) string {
 	actionPath = strings.Trim(strings.TrimSpace(actionPath), "/")
 	if actionPath == "" {
@@ -294,6 +312,7 @@ func buildActionURL(siteURL, actionPath, tokenValue string) string {
 		return "/" + actionPath + "?" + query.Encode()
 	}
 
+	// 仅在站点地址合法时生成绝对 URL，否则回退相对路径。
 	base, err := url.Parse(trimmedSiteURL)
 	if err != nil || base.Scheme == "" || base.Host == "" {
 		return "/" + actionPath + "?" + query.Encode()

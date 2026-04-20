@@ -16,9 +16,13 @@ import (
 
 // SettingService 提供站点动态配置读写能力。
 type SettingService interface {
+	// GetValue 按 key 读取配置值。
 	GetValue(ctx context.Context, key string) (string, bool, error)
+	// ListItems 查询配置项列表。
 	ListItems(ctx context.Context, input dto.SettingListInput) (*dto.SettingListResult, error)
+	// UpdateItem 更新或创建单个配置项。
 	UpdateItem(ctx context.Context, input dto.SettingUpdateInput) error
+	// GetPublicItems 返回公开配置项。
 	GetPublicItems(ctx context.Context) (*dto.SettingPublicResult, error)
 }
 
@@ -53,12 +57,15 @@ func NewSettingService(db *gorm.DB, settingRepo repo.SettingRepo, kvCache cache.
 	return &settingService{settingRepo: settingRepo, cache: kvCache}, nil
 }
 
+// get 按 key 获取配置，优先读取缓存，未命中时回源数据库并回填缓存。
 func (s *settingService) get(ctx context.Context, key string) (model.Setting, error) {
 	cleanKey := strings.TrimSpace(key)
+	// 缓存命中直接返回。
 	if value, found, err := s.cache.Get(ctx, settingCacheKey(cleanKey)); err == nil && found {
 		return model.Setting{Key: cleanKey, Value: value}, nil
 	}
 
+	// 缓存未命中则回源数据库，并尝试回写缓存。
 	setting, err := s.settingRepo.GetByKey(ctx, cleanKey)
 	if err != nil {
 		return model.Setting{}, err
@@ -67,6 +74,7 @@ func (s *settingService) get(ctx context.Context, key string) (model.Setting, er
 	return *setting, nil
 }
 
+// GetValue 读取指定 key 的配置值，不存在时返回 found=false。
 func (s *settingService) GetValue(ctx context.Context, key string) (string, bool, error) {
 	setting, err := s.get(ctx, key)
 	if err != nil {
@@ -78,6 +86,7 @@ func (s *settingService) GetValue(ctx context.Context, key string) (string, bool
 	return setting.Value, true, nil
 }
 
+// ListItems 按筛选条件查询配置列表。
 func (s *settingService) ListItems(ctx context.Context, input dto.SettingListInput) (*dto.SettingListResult, error) {
 	page, size := normalizeServiceListPageSize(input.Page, input.Size)
 
@@ -108,12 +117,14 @@ func (s *settingService) ListItems(ctx context.Context, input dto.SettingListInp
 	return &dto.SettingListResult{Items: items, Total: total}, nil
 }
 
+// UpdateItem 更新或创建配置项，并同步刷新缓存。
 func (s *settingService) UpdateItem(ctx context.Context, input dto.SettingUpdateInput) error {
 	cleanKey := strings.TrimSpace(input.Key)
 	if cleanKey == "" {
 		return ErrSettingKeyRequired
 	}
 
+	// 先读取旧值，不存在则创建新记录。
 	setting, err := s.settingRepo.GetByKey(ctx, cleanKey)
 	found := true
 	if err != nil {
@@ -125,6 +136,7 @@ func (s *settingService) UpdateItem(ctx context.Context, input dto.SettingUpdate
 		}
 	}
 
+	// 应用输入值并持久化，再回填缓存。
 	if input.Value != nil {
 		setting.Value = *input.Value
 	} else if !found {
@@ -139,6 +151,7 @@ func (s *settingService) UpdateItem(ctx context.Context, input dto.SettingUpdate
 	return nil
 }
 
+// GetPublicItems 返回公开配置项集合。
 func (s *settingService) GetPublicItems(ctx context.Context) (*dto.SettingPublicResult, error) {
 	public := true
 	settings, _, err := s.settingRepo.List(ctx, repo.SettingFilter{Public: &public}, repo.ListOptions{
@@ -161,10 +174,12 @@ func (s *settingService) GetPublicItems(ctx context.Context) (*dto.SettingPublic
 	return &dto.SettingPublicResult{Items: items}, nil
 }
 
+// settingCacheKey 构建配置项缓存 key。
 func settingCacheKey(key string) string {
 	return "setting:" + key
 }
 
+// initDefaultSettings 初始化系统默认配置项。
 func initDefaultSettings(settingRepo repo.SettingRepo) error {
 	defaults := []model.Setting{
 		{

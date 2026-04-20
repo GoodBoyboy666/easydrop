@@ -75,6 +75,7 @@ func NewCommentService(commentRepo repo.CommentRepo, postRepo repo.PostRepo, use
 
 // Create 校验评论输入并创建。
 func (s *commentService) Create(ctx context.Context, input dto.CommentCreateInput) (*dto.CommentDTO, error) {
+	// 先校验验证码与基础输入。
 	if err := s.verifyCaptcha(ctx, input.Captcha); err != nil {
 		return nil, err
 	}
@@ -91,6 +92,7 @@ func (s *commentService) Create(ctx context.Context, input dto.CommentCreateInpu
 		return nil, ErrEmptyCommentContent
 	}
 
+	// 校验说说可见性与评论开关。
 	post, err := s.visibilityPolicy.EnsurePostReadable(ctx, s.postRepo, input.PostID, input.CanViewHidden)
 	if err != nil {
 		return nil, err
@@ -103,6 +105,7 @@ func (s *commentService) Create(ctx context.Context, input dto.CommentCreateInpu
 		return nil, err
 	}
 
+	// 处理 parent/root/replyTo 关系，保证扁平接楼关系正确。
 	var parentID *uint
 	var rootID *uint
 	var replyToUserID *uint
@@ -135,6 +138,7 @@ func (s *commentService) Create(ctx context.Context, input dto.CommentCreateInpu
 		replyToUserID = &replyUID
 	}
 
+	// 写入评论并回查完整数据（含关联用户）用于 DTO 转换。
 	comment := &model.Comment{
 		PostID:        input.PostID,
 		UserID:        input.UserID,
@@ -318,6 +322,7 @@ func (s *commentService) ListPublic(ctx context.Context, input dto.CommentPublic
 	}, nil
 }
 
+// list 执行评论通用列表查询并转换为 DTO 结果。
 func (s *commentService) list(ctx context.Context, filter repo.CommentFilter, page, size int, order string) (*dto.CommentListResult, error) {
 	normalizedPage, normalizedSize := normalizeServiceListPageSize(page, size)
 
@@ -372,6 +377,7 @@ func (s *commentService) ensureUserExists(ctx context.Context, userID uint) erro
 	return nil
 }
 
+// verifyCaptcha 在启用评论验证码时执行人机校验。
 func (s *commentService) verifyCaptcha(ctx context.Context, input *dto.CaptchaInput) error {
 	if s.captcha == nil || !s.captcha.Enabled() {
 		return nil

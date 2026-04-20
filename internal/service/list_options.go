@@ -75,6 +75,7 @@ func normalizeServiceListSize(size int) int {
 	return serviceListBounds.NormalizeSize(size)
 }
 
+// normalizeServiceListPageSize 同时规范化分页页码和每页大小。
 func normalizeServiceListPageSize(page, size int) (int, int) {
 	return serviceListBounds.NormalizePageSize(page, size)
 }

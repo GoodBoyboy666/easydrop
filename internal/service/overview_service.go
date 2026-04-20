@@ -13,6 +13,7 @@ const adminOverviewRecentDays = 7
 
 // AdminOverviewService 定义后台概览聚合服务。
 type AdminOverviewService interface {
+	// Get 返回后台统计总览与趋势数据。
 	Get(ctx context.Context) (*dto.AdminOverviewResult, error)
 }
 
@@ -29,11 +30,14 @@ func NewAdminOverviewService(overviewRepo repo.OverviewRepo) AdminOverviewServic
 	}
 }
 
+// Get 聚合统计总览数据，并构建最近 N 天趋势序列。
 func (s *adminOverviewService) Get(ctx context.Context) (*dto.AdminOverviewResult, error) {
+	// 计算统计窗口：从最近 N 天的起始日到次日零点。
 	today := startOfDay(s.now())
 	start := today.AddDate(0, 0, -(adminOverviewRecentDays - 1))
 	until := today.AddDate(0, 0, 1)
 
+	// 拉取一次性聚合快照。
 	snapshot, err := s.overviewRepo.GetSnapshot(ctx, start, until)
 	if err != nil {
 		log.Printf("查询后台概览聚合失败: %v", err)
@@ -43,6 +47,7 @@ func (s *adminOverviewService) Get(ctx context.Context) (*dto.AdminOverviewResul
 		snapshot = &repo.OverviewSnapshot{}
 	}
 
+	// 将日统计映射为日期索引，再按固定天数补齐趋势序列。
 	postDaily := toOverviewDailyMap(snapshot.PostDaily)
 	commentDaily := toOverviewDailyMap(snapshot.CommentDaily)
 	recentActivity := make([]dto.AdminOverviewTrendItem, 0, adminOverviewRecentDays)
@@ -67,11 +72,13 @@ func (s *adminOverviewService) Get(ctx context.Context) (*dto.AdminOverviewResul
 	}, nil
 }
 
+// startOfDay 将时间归一化到当天零点。
 func startOfDay(value time.Time) time.Time {
 	year, month, day := value.Date()
 	return time.Date(year, month, day, 0, 0, 0, 0, value.Location())
 }
 
+// toOverviewDailyMap 将按天计数列表转为日期到计数的映射。
 func toOverviewDailyMap(items []repo.OverviewDailyCount) map[string]int64 {
 	if len(items) == 0 {
 		return map[string]int64{}
