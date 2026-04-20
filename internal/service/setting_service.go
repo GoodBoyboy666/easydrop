@@ -165,17 +165,6 @@ func settingCacheKey(key string) string {
 	return "setting:" + key
 }
 
-func normalizeSettingListOrder(order string) string {
-	switch strings.ToLower(strings.TrimSpace(order)) {
-	case "key_desc":
-		return "key desc"
-	case "key_asc", "":
-		return "key asc"
-	default:
-		return "key asc"
-	}
-}
-
 func initDefaultSettings(settingRepo repo.SettingRepo) error {
 	defaults := []model.Setting{
 		{
