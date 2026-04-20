@@ -53,9 +53,7 @@ func validateAttachmentUpload(ctx context.Context, settings SettingService, orig
 
 func validateAvatarUpload(originalFilename, declaredContentType string, content []byte) error {
 	allowedExtensions := make([]string, 0, len(avatarAllowedExtensions))
-	for _, ext := range avatarAllowedExtensions {
-		allowedExtensions = append(allowedExtensions, ext)
-	}
+	allowedExtensions = append(allowedExtensions, avatarAllowedExtensions...)
 
 	return validateUpload(
 		originalFilename,
