@@ -29,6 +29,7 @@ func NewUserHandler(userService service.UserService, errorResponder ErrorRespond
 // @Security BearerAuth
 // @Success 200 {object} dto.UserDTO
 // @Failure 401 {object} dto.ErrorResponse "未登录或登录失效"
+// @Failure 404 {object} dto.ErrorResponse "用户不存在"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /users/me [get]
 func (h *UserHandler) GetProfile(c *gin.Context) {
