@@ -10,6 +10,7 @@ import (
 
 // CaptchaConfigService 提供验证码公开配置读取能力。
 type CaptchaConfigService interface {
+	// GetConfig 返回可公开给前端的验证码配置。
 	GetConfig(ctx context.Context) *dto.CaptchaConfigResult
 }
 
@@ -22,6 +23,7 @@ func NewCaptchaConfigService(cfg *captcha.AllCaptchaConfig) CaptchaConfigService
 	return &captchaConfigService{cfg: cfg}
 }
 
+// GetConfig 返回前端可见的验证码配置（不包含敏感密钥）。
 func (s *captchaConfigService) GetConfig(context.Context) *dto.CaptchaConfigResult {
 	if s == nil || s.cfg == nil {
 		return &dto.CaptchaConfigResult{}
@@ -34,10 +36,12 @@ func (s *captchaConfigService) GetConfig(context.Context) *dto.CaptchaConfigResu
 		SiteKey:  "",
 	}
 
+	// 未启用验证码时仅返回开关与提供商信息。
 	if !s.cfg.Enabled {
 		return result
 	}
 
+	// 按提供商提取对应站点 key，未知提供商返回空字符串。
 	var siteKey string
 	switch captcha.Provider(strings.ToLower(provider)) {
 	case captcha.ProviderTurnstile:

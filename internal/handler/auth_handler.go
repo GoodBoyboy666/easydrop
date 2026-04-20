@@ -1,12 +1,10 @@
 package handler
 
 import (
-	"errors"
 	"net/http"
 
 	"easydrop/internal/dto"
 	cookiepkg "easydrop/internal/pkg/cookie"
-	"easydrop/internal/pkg/validator"
 	"easydrop/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -14,17 +12,19 @@ import (
 
 // AuthHandler 处理认证相关请求。
 type AuthHandler struct {
-	authService service.AuthService
-	userService service.UserService
-	authCookie  cookiepkg.AuthCookie
+	authService    service.AuthService
+	userService    service.UserService
+	authCookie     cookiepkg.AuthCookie
+	errorResponder ErrorResponder
 }
 
 // NewAuthHandler 创建认证处理器。
-func NewAuthHandler(authService service.AuthService, userService service.UserService, authCookie cookiepkg.AuthCookie) *AuthHandler {
+func NewAuthHandler(authService service.AuthService, userService service.UserService, authCookie cookiepkg.AuthCookie, errorResponder ErrorResponder) *AuthHandler {
 	return &AuthHandler{
-		authService: authService,
-		userService: userService,
-		authCookie:  authCookie,
+		authService:    authService,
+		userService:    userService,
+		authCookie:     authCookie,
+		errorResponder: ensureErrorResponder(errorResponder),
 	}
 }
 
@@ -57,8 +57,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	result, err := h.authService.Register(c.Request.Context(), input)
 	if err != nil {
-		status := mapAuthErrorStatus(err)
-		c.JSON(status, dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -94,8 +93,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	result, err := h.authService.Login(c.Request.Context(), input)
 	if err != nil {
-		status := mapAuthErrorStatus(err)
-		c.JSON(status, dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -146,7 +144,7 @@ func (h *AuthHandler) RequestPasswordReset(c *gin.Context) {
 	}
 
 	if err := h.authService.RequestPasswordReset(c.Request.Context(), input); err != nil {
-		c.JSON(mapAuthActionErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -177,7 +175,7 @@ func (h *AuthHandler) ConfirmPasswordReset(c *gin.Context) {
 	}
 
 	if err := h.authService.ConfirmPasswordReset(c.Request.Context(), input); err != nil {
-		c.JSON(mapAuthActionErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -208,7 +206,7 @@ func (h *AuthHandler) ConfirmVerifyEmail(c *gin.Context) {
 	}
 
 	if err := h.authService.ConfirmVerifyEmail(c.Request.Context(), input); err != nil {
-		c.JSON(mapAuthActionErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -241,72 +239,9 @@ func (h *AuthHandler) ConfirmEmailChange(c *gin.Context) {
 
 	result, err := h.userService.ConfirmEmailChange(c.Request.Context(), input)
 	if err != nil {
-		c.JSON(mapAuthActionErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, result)
-}
-
-func mapAuthErrorStatus(err error) int {
-	switch {
-	case errors.Is(err, validator.ErrEmptyUsername),
-		errors.Is(err, validator.ErrUsernameTooShort),
-		errors.Is(err, validator.ErrUsernameTooLong),
-		errors.Is(err, validator.ErrInvalidUsernameFormat),
-		errors.Is(err, validator.ErrEmptyPassword),
-		errors.Is(err, validator.ErrPasswordTooShort),
-		errors.Is(err, validator.ErrPasswordContainsSpace),
-		errors.Is(err, validator.ErrPasswordMissingLetter),
-		errors.Is(err, validator.ErrPasswordMissingNumber),
-		errors.Is(err, validator.ErrEmptyEmail),
-		errors.Is(err, validator.ErrInvalidEmailFormat),
-		errors.Is(err, service.ErrEmptyAccount),
-		errors.Is(err, service.ErrCaptchaRequired),
-		errors.Is(err, service.ErrCaptchaFailed),
-		errors.Is(err, service.ErrInvalidSiteSetting):
-		return http.StatusBadRequest
-	case errors.Is(err, service.ErrUserNotFound),
-		errors.Is(err, service.ErrInvalidPassword),
-		errors.Is(err, service.ErrInvalidCredentials):
-		return http.StatusUnauthorized
-	case errors.Is(err, service.ErrRegisterClosed),
-		errors.Is(err, service.ErrUserDisabled),
-		errors.Is(err, service.ErrEmailNotVerified):
-		return http.StatusForbidden
-	case errors.Is(err, service.ErrUsernameExists),
-		errors.Is(err, service.ErrEmailExists):
-		return http.StatusConflict
-	case errors.Is(err, service.ErrInternal):
-		return http.StatusInternalServerError
-	default:
-		return http.StatusInternalServerError
-	}
-}
-
-func mapAuthActionErrorStatus(err error) int {
-	switch {
-	case errors.Is(err, validator.ErrEmptyPassword),
-		errors.Is(err, validator.ErrPasswordTooShort),
-		errors.Is(err, validator.ErrPasswordContainsSpace),
-		errors.Is(err, validator.ErrPasswordMissingLetter),
-		errors.Is(err, validator.ErrPasswordMissingNumber),
-		errors.Is(err, validator.ErrEmptyEmail),
-		errors.Is(err, validator.ErrInvalidEmailFormat),
-		errors.Is(err, service.ErrCaptchaRequired),
-		errors.Is(err, service.ErrCaptchaFailed),
-		errors.Is(err, service.ErrInvalidPasswordReset),
-		errors.Is(err, service.ErrInvalidEmailVerify),
-		errors.Is(err, service.ErrInvalidEmailChange):
-		return http.StatusBadRequest
-	case errors.Is(err, service.ErrUserNotFound):
-		return http.StatusNotFound
-	case errors.Is(err, service.ErrEmailExists),
-		errors.Is(err, service.ErrEmailChanged):
-		return http.StatusConflict
-	case errors.Is(err, service.ErrInternal):
-		return http.StatusInternalServerError
-	default:
-		return http.StatusInternalServerError
-	}
 }

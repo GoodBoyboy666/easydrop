@@ -34,6 +34,7 @@ var attachmentAllowedMIMETypes = map[string][]string{
 
 var avatarAllowedExtensions = []string{"jpg", "jpeg", "png", "webp"}
 
+// validateAttachmentUpload 按配置的扩展名与 MIME 规则校验附件上传请求。
 func validateAttachmentUpload(ctx context.Context, settings SettingService, originalFilename, declaredContentType string, content []byte) error {
 	allowedExtensions, err := getAllowedAttachmentExtensions(ctx, settings)
 	if err != nil {
@@ -51,6 +52,7 @@ func validateAttachmentUpload(ctx context.Context, settings SettingService, orig
 	)
 }
 
+// validateAvatarUpload 按头像固定规则校验头像上传请求。
 func validateAvatarUpload(originalFilename, declaredContentType string, content []byte) error {
 	allowedExtensions := make([]string, 0, len(avatarAllowedExtensions))
 	allowedExtensions = append(allowedExtensions, avatarAllowedExtensions...)
@@ -66,12 +68,15 @@ func validateAvatarUpload(originalFilename, declaredContentType string, content 
 	)
 }
 
+// validateUpload 执行统一上传校验流程：扩展名、声明 MIME、内容探测 MIME。
 func validateUpload(originalFilename, declaredContentType string, content []byte, allowedExtensions []string, allowedMIMETypes map[string][]string, extensionErr error, mimeErr error) error {
+	// 先校验扩展名是否被允许。
 	extension := normalizeFileExtension(originalFilename)
 	if extension == "" || !slices.Contains(allowedExtensions, extension) {
 		return extensionErr
 	}
 
+	// 再校验声明的 MIME 类型是否与扩展名匹配。
 	allowedTypes := allowedMIMETypes[extension]
 	if len(allowedTypes) == 0 {
 		return mimeErr
@@ -82,6 +87,7 @@ func validateUpload(originalFilename, declaredContentType string, content []byte
 		return mimeErr
 	}
 
+	// 最后基于内容探测 MIME，防止仅伪造 Content-Type。
 	detectedType := normalizeContentType(http.DetectContentType(content))
 	if detectedType == "" || !slices.Contains(allowedTypes, detectedType) {
 		return mimeErr
@@ -90,6 +96,7 @@ func validateUpload(originalFilename, declaredContentType string, content []byte
 	return nil
 }
 
+// getAllowedAttachmentExtensions 从动态配置读取并解析允许的附件扩展名。
 func getAllowedAttachmentExtensions(ctx context.Context, settings SettingService) ([]string, error) {
 	if settings == nil {
 		return nil, ErrAttachmentExtensionsNotConfigured
@@ -111,6 +118,7 @@ func getAllowedAttachmentExtensions(ctx context.Context, settings SettingService
 	return extensions, nil
 }
 
+// parseAllowedAttachmentExtensions 解析逗号分隔扩展名并做去重清洗。
 func parseAllowedAttachmentExtensions(value string) []string {
 	items := strings.Split(value, ",")
 	if len(items) == 0 {
@@ -134,16 +142,19 @@ func parseAllowedAttachmentExtensions(value string) []string {
 	return extensions
 }
 
+// normalizeFileExtension 提取文件扩展名并转换为不带点的小写形式。
 func normalizeFileExtension(value string) string {
 	ext := strings.ToLower(strings.TrimSpace(filepath.Ext(strings.TrimSpace(value))))
 	return strings.TrimPrefix(ext, ".")
 }
 
+// normalizeExtensionValue 规范化配置中的扩展名值。
 func normalizeExtensionValue(value string) string {
 	normalized := strings.ToLower(strings.TrimSpace(value))
 	return strings.TrimPrefix(normalized, ".")
 }
 
+// normalizeContentType 规范化 MIME 字符串并去除参数部分。
 func normalizeContentType(value string) string {
 	normalized := strings.ToLower(strings.TrimSpace(value))
 	if normalized == "" {

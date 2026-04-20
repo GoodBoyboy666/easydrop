@@ -103,7 +103,7 @@ func TestUserAdminHandlerListSuccess(t *testing.T) {
 			}
 			return &dto.UserListResult{Items: []dto.UserDTO{}, Total: 0}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/admin/users?username=neo&email=@example.com&status=1&page=3&size=10&order=id%20desc")
 	h.List(c)
@@ -126,7 +126,7 @@ func TestUserAdminHandlerCreateSuccess(t *testing.T) {
 			}
 			return &dto.UserDTO{ID: 5, Username: input.Username}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/admin/users", `{"username":"admin_created","email":"new@example.com","password":"Pass1234"}`)
 	h.Create(c)
@@ -149,7 +149,7 @@ func TestUserAdminHandlerUpdateBindsPathID(t *testing.T) {
 			}
 			return &dto.UserDTO{ID: 8, Nickname: "Trinity"}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContextWithBody(http.MethodPatch, "/api/v1/admin/users/8", `{"id":999,"nickname":"Trinity"}`)
 	c.Params = gin.Params{{Key: "id", Value: "8"}}
@@ -173,7 +173,7 @@ func TestUserAdminHandlerUpdateBindsUseDefaultStorageQuota(t *testing.T) {
 			}
 			return &dto.UserDTO{ID: 8, Nickname: "Trinity"}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContextWithBody(http.MethodPatch, "/api/v1/admin/users/8", `{"use_default_storage_quota":true}`)
 	c.Params = gin.Params{{Key: "id", Value: "8"}}
@@ -191,14 +191,14 @@ func TestUserAdminHandlerDeleteUserNotFound(t *testing.T) {
 		deleteFn: func(_ context.Context, _ uint) error {
 			return service.ErrUserNotFound
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodDelete, "/api/v1/admin/users/2")
 	c.Params = gin.Params{{Key: "id", Value: "2"}}
 	h.Delete(c)
 
-	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("expected status 401, got %d", w.Code)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected status 404, got %d", w.Code)
 	}
 }
 
@@ -228,7 +228,7 @@ func TestUserAdminHandlerUploadAvatarSuccess(t *testing.T) {
 			}
 			return &dto.UserDTO{ID: 33}, nil
 		},
-	})
+	}, nil)
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -259,7 +259,7 @@ func TestUserAdminHandlerUploadAvatarSuccess(t *testing.T) {
 func TestUserAdminHandlerUploadAvatarMissingFile(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewUserAdminHandler(&mockUserAdminService{})
+	h := NewUserAdminHandler(&mockUserAdminService{}, nil)
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 	if err := writer.Close(); err != nil {
@@ -289,7 +289,7 @@ func TestUserAdminHandlerDeleteAvatarSuccess(t *testing.T) {
 			}
 			return nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodDelete, "/api/v1/admin/users/11/avatar")
 	c.Params = gin.Params{{Key: "id", Value: "11"}}
@@ -303,7 +303,7 @@ func TestUserAdminHandlerDeleteAvatarSuccess(t *testing.T) {
 func TestUserAdminHandlerInvalidPathID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewUserAdminHandler(&mockUserAdminService{})
+	h := NewUserAdminHandler(&mockUserAdminService{}, nil)
 	c, w := newTestContext(http.MethodPatch, "/api/v1/admin/users/0")
 	c.Params = gin.Params{{Key: "id", Value: "0"}}
 	c.Request, _ = http.NewRequest(http.MethodPatch, "/api/v1/admin/users/0", bytes.NewBufferString(`{"nickname":"n"}`))

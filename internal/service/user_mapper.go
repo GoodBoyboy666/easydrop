@@ -52,7 +52,9 @@ func toUserDTOs(ctx context.Context, users []model.User, storageManager storage.
 	return items, nil
 }
 
+// resolveUserAvatar 解析用户头像地址，优先用户头像，其次 Gravatar 回退。
 func resolveUserAvatar(ctx context.Context, avatar *string, email string, storageManager storage.Manager, gravatarBaseURL string) (*string, error) {
+	// 未设置头像时回退到 Gravatar。
 	if avatar == nil {
 		return buildGravatarURL(email, gravatarBaseURL), nil
 	}
@@ -65,6 +67,7 @@ func resolveUserAvatar(ctx context.Context, avatar *string, email string, storag
 		return &trimmed, nil
 	}
 
+	// 托管头像需要转换为可访问 URL。
 	url, err := storageManager.URL(ctx, trimmed)
 	if err != nil {
 		return nil, err
@@ -72,6 +75,7 @@ func resolveUserAvatar(ctx context.Context, avatar *string, email string, storag
 	return &url, nil
 }
 
+// buildGravatarURL 基于邮箱计算 Gravatar 头像地址。
 func buildGravatarURL(email string, gravatarBaseURL string) *string {
 	normalized := strings.ToLower(strings.TrimSpace(email))
 	if normalized == "" {
@@ -83,6 +87,7 @@ func buildGravatarURL(email string, gravatarBaseURL string) *string {
 	return &url
 }
 
+// normalizeGravatarBaseURL 规范化 Gravatar 基础地址并保证末尾分隔符。
 func normalizeGravatarBaseURL(gravatarBaseURL string) string {
 	base := strings.TrimSpace(gravatarBaseURL)
 	if base == "" {
@@ -91,6 +96,7 @@ func normalizeGravatarBaseURL(gravatarBaseURL string) string {
 	return strings.TrimRight(base, "/") + "/"
 }
 
+// isManagedAvatarKey 判断头像值是否为系统托管存储对象键。
 func isManagedAvatarKey(value string) bool {
 	return strings.HasPrefix(strings.TrimSpace(value), storage.CategoryAvatar+"/")
 }

@@ -2,7 +2,6 @@ package handler
 
 import (
 	"easydrop/internal/middleware"
-	"errors"
 	"net/http"
 	"strings"
 
@@ -14,12 +13,13 @@ import (
 
 // PostAdminHandler 处理管理端说说请求。
 type PostAdminHandler struct {
-	postService service.PostService
+	postService    service.PostService
+	errorResponder ErrorResponder
 }
 
 // NewPostAdminHandler 创建管理端说说处理器。
-func NewPostAdminHandler(postService service.PostService) *PostAdminHandler {
-	return &PostAdminHandler{postService: postService}
+func NewPostAdminHandler(postService service.PostService, errorResponder ErrorResponder) *PostAdminHandler {
+	return &PostAdminHandler{postService: postService, errorResponder: ensureErrorResponder(errorResponder)}
 }
 
 // List 查询说说列表（管理端）
@@ -55,7 +55,7 @@ func (h *PostAdminHandler) List(c *gin.Context) {
 
 	result, err := h.postService.List(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(mapPostErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -89,7 +89,7 @@ func (h *PostAdminHandler) Get(c *gin.Context) {
 
 	result, err := h.postService.Get(c.Request.Context(), req.ID)
 	if err != nil {
-		c.JSON(mapPostErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -130,7 +130,7 @@ func (h *PostAdminHandler) Create(c *gin.Context) {
 
 	result, err := h.postService.Create(c.Request.Context(), input)
 	if err != nil {
-		c.JSON(mapPostErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -173,7 +173,7 @@ func (h *PostAdminHandler) Update(c *gin.Context) {
 
 	result, err := h.postService.Update(c.Request.Context(), input)
 	if err != nil {
-		c.JSON(mapPostErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -206,24 +206,9 @@ func (h *PostAdminHandler) Delete(c *gin.Context) {
 	}
 
 	if err := h.postService.Delete(c.Request.Context(), req.ID); err != nil {
-		c.JSON(mapPostErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, dto.ErrorResponse{Message: "ok"})
-}
-
-func mapPostErrorStatus(err error) int {
-	switch {
-	case errors.Is(err, service.ErrEmptyPostContent),
-		errors.Is(err, service.ErrInvalidPostUser),
-		errors.Is(err, service.ErrTagNameTooLong):
-		return http.StatusBadRequest
-	case errors.Is(err, service.ErrPostNotFound):
-		return http.StatusNotFound
-	case errors.Is(err, service.ErrInternal):
-		return http.StatusInternalServerError
-	default:
-		return http.StatusInternalServerError
-	}
 }

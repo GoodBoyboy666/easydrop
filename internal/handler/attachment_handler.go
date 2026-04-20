@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -18,11 +17,12 @@ import (
 type AttachmentHandler struct {
 	attachmentService service.AttachmentService
 	settingService    service.SettingService
+	errorResponder    ErrorResponder
 }
 
 // NewAttachmentHandler 创建附件处理器。
-func NewAttachmentHandler(attachmentService service.AttachmentService, settingService service.SettingService) *AttachmentHandler {
-	return &AttachmentHandler{attachmentService: attachmentService, settingService: settingService}
+func NewAttachmentHandler(attachmentService service.AttachmentService, settingService service.SettingService, errorResponder ErrorResponder) *AttachmentHandler {
+	return &AttachmentHandler{attachmentService: attachmentService, settingService: settingService, errorResponder: ensureErrorResponder(errorResponder)}
 }
 
 // Upload 上传附件
@@ -89,8 +89,7 @@ func (h *AttachmentHandler) Upload(c *gin.Context) {
 		ContentSample:    sample,
 	})
 	if err != nil {
-		status := mapAttachmentErrorStatus(err)
-		c.JSON(status, dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -129,8 +128,7 @@ func (h *AttachmentHandler) Get(c *gin.Context) {
 
 	result, err := h.attachmentService.Get(c.Request.Context(), req.ID)
 	if err != nil {
-		status := mapAttachmentErrorStatus(err)
-		c.JSON(status, dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -179,8 +177,7 @@ func (h *AttachmentHandler) List(c *gin.Context) {
 
 	result, err := h.attachmentService.ListByUser(c.Request.Context(), input)
 	if err != nil {
-		status := mapAttachmentErrorStatus(err)
-		c.JSON(status, dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -219,8 +216,7 @@ func (h *AttachmentHandler) Delete(c *gin.Context) {
 
 	attachment, err := h.attachmentService.Get(c.Request.Context(), req.ID)
 	if err != nil {
-		status := mapAttachmentErrorStatus(err)
-		c.JSON(status, dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -230,33 +226,11 @@ func (h *AttachmentHandler) Delete(c *gin.Context) {
 	}
 
 	if err := h.attachmentService.Delete(c.Request.Context(), req.ID); err != nil {
-		status := mapAttachmentErrorStatus(err)
-		c.JSON(status, dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, dto.ErrorResponse{Message: "ok"})
-}
-
-func mapAttachmentErrorStatus(err error) int {
-	switch {
-	case errors.Is(err, service.ErrInvalidAttachmentBizType),
-		errors.Is(err, service.ErrInvalidFileSize),
-		errors.Is(err, service.ErrEmptyAttachmentContent),
-		errors.Is(err, service.ErrAttachmentExtensionsNotConfigured),
-		errors.Is(err, service.ErrAttachmentExtensionNotAllowed),
-		errors.Is(err, service.ErrAttachmentMIMETypeNotAllowed):
-		return http.StatusBadRequest
-	case errors.Is(err, service.ErrStorageQuotaExceeded):
-		return http.StatusForbidden
-	case errors.Is(err, service.ErrAttachmentNotFound),
-		errors.Is(err, service.ErrUserNotFound):
-		return http.StatusNotFound
-	case errors.Is(err, service.ErrInternal):
-		return http.StatusInternalServerError
-	default:
-		return http.StatusInternalServerError
-	}
 }
 
 func (h *AttachmentHandler) isUserUploadAllowed(c *gin.Context) (bool, error) {

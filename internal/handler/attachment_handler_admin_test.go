@@ -41,7 +41,7 @@ func TestAttachmentAdminHandlerListSuccess(t *testing.T) {
 			}
 			return &dto.AttachmentListResult{Items: []dto.AttachmentDTO{}, Total: 0}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/admin/attachments?id=12&user_id=100&biz_type=2&created_from=1700000000&created_to=1800000000&page=3&size=10&order=created_at_desc")
 
@@ -58,7 +58,7 @@ func TestAttachmentAdminHandlerListSuccess(t *testing.T) {
 func TestAttachmentAdminHandlerListInvalidTimeRange(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewAttachmentAdminHandler(&mockAttachmentService{})
+	h := NewAttachmentAdminHandler(&mockAttachmentService{}, nil)
 	c, w := newTestContext(http.MethodGet, "/api/v1/admin/attachments?created_from=1800000000&created_to=1700000000")
 
 	h.List(c)
@@ -71,7 +71,7 @@ func TestAttachmentAdminHandlerListInvalidTimeRange(t *testing.T) {
 func TestAttachmentAdminHandlerListInvalidID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewAttachmentAdminHandler(&mockAttachmentService{})
+	h := NewAttachmentAdminHandler(&mockAttachmentService{}, nil)
 	c, w := newTestContext(http.MethodGet, "/api/v1/admin/attachments?id=0")
 
 	h.List(c)
@@ -93,7 +93,7 @@ func TestAttachmentAdminHandlerDeleteSuccess(t *testing.T) {
 			}
 			return nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodDelete, "/api/v1/admin/attachments/9")
 	c.Params = gin.Params{{Key: "id", Value: "9"}}
@@ -118,7 +118,7 @@ func TestAttachmentAdminHandlerBatchDeletePartialFailure(t *testing.T) {
 			}
 			return nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/admin/attachments/batch-delete", `{"ids":[1,2,3]}`)
 

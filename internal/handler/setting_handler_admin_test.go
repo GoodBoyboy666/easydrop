@@ -57,7 +57,7 @@ func TestSettingAdminHandlerListSuccess(t *testing.T) {
 			}
 			return &dto.SettingListResult{Total: 1, Items: []dto.SettingItem{{Key: "site.url", Value: "https://example.com"}}}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/admin/settings?category=site&key=site.&page=3&size=10&order=key_desc")
 	h.List(c)
@@ -82,7 +82,7 @@ func TestSettingAdminHandlerUpdateSuccess(t *testing.T) {
 			}
 			return nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContextWithBody(http.MethodPatch, "/api/v1/admin/settings/site.url", `{"value":"https://example.com"}`)
 	c.Params = gin.Params{{Key: "key", Value: "site.url"}}
@@ -99,7 +99,7 @@ func TestSettingAdminHandlerUpdateSuccess(t *testing.T) {
 func TestSettingAdminHandlerNilService(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewSettingAdminHandler(nil)
+	h := NewSettingAdminHandler(nil, nil)
 	c, w := newTestContext(http.MethodGet, "/api/v1/admin/settings")
 	h.List(c)
 
@@ -115,7 +115,7 @@ func TestSettingAdminHandlerMapBadRequest(t *testing.T) {
 		updateItemFn: func(_ context.Context, _ dto.SettingUpdateInput) error {
 			return service.ErrSettingKeyRequired
 		},
-	})
+	}, nil)
 
 	c, w := newTestContextWithBody(http.MethodPatch, "/api/v1/admin/settings/site.url", `{"value":"x"}`)
 	c.Params = gin.Params{{Key: "key", Value: "site.url"}}
@@ -135,7 +135,7 @@ func TestSettingAdminHandlerPublicSuccess(t *testing.T) {
 			called = true
 			return &dto.SettingPublicResult{Items: []dto.SettingPublicItem{{Key: "site.name", Value: "EasyDrop"}}}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/settings/public")
 	h.Public(c)

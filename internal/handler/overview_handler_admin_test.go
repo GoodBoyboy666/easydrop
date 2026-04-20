@@ -41,7 +41,7 @@ func TestOverviewAdminHandlerGetSuccess(t *testing.T) {
 				},
 			}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/admin/overview")
 	h.Get(c)
@@ -57,7 +57,7 @@ func TestOverviewAdminHandlerGetSuccess(t *testing.T) {
 func TestOverviewAdminHandlerNilService(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewOverviewAdminHandler(nil)
+	h := NewOverviewAdminHandler(nil, nil)
 	c, w := newTestContext(http.MethodGet, "/api/v1/admin/overview")
 	h.Get(c)
 
@@ -73,7 +73,7 @@ func TestOverviewAdminHandlerServiceError(t *testing.T) {
 		getFn: func(_ context.Context) (*dto.AdminOverviewResult, error) {
 			return nil, service.ErrInternal
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/admin/overview")
 	h.Get(c)

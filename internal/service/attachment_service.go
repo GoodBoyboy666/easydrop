@@ -58,6 +58,7 @@ func NewAttachmentService(attachmentRepo repo.AttachmentRepo, userRepo repo.User
 
 // Create 校验输入后创建附件记录。
 func (s *attachmentService) Create(ctx context.Context, input dto.AttachmentCreateInput) (*dto.AttachmentDTO, error) {
+	// 先校验用户与上传基础输入。
 	if input.UserID == 0 {
 		return nil, ErrUserNotFound
 	}
@@ -70,6 +71,7 @@ func (s *attachmentService) Create(ctx context.Context, input dto.AttachmentCrea
 		return nil, ErrEmptyAttachmentContent
 	}
 
+	// 执行扩展名和 MIME 校验，并推断业务类型。
 	if err := validateAttachmentUpload(ctx, s.settings, input.OriginalFilename, input.ContentType, input.ContentSample); err != nil {
 		return nil, err
 	}
@@ -85,6 +87,7 @@ func (s *attachmentService) Create(ctx context.Context, input dto.AttachmentCrea
 		return nil, ErrInvalidFileSize
 	}
 
+	// 读取默认配额并上传存储对象。
 	defaultQuota, err := s.getDefaultStorageQuota(ctx)
 	if err != nil {
 		return nil, err
@@ -101,6 +104,7 @@ func (s *attachmentService) Create(ctx context.Context, input dto.AttachmentCrea
 		return nil, ErrInternal
 	}
 
+	// 写入数据库并在失败时回滚已上传对象。
 	attachment := &model.Attachment{
 		UserID:      input.UserID,
 		StorageType: s.storageManager.BackendType(),
@@ -123,6 +127,7 @@ func (s *attachmentService) Create(ctx context.Context, input dto.AttachmentCrea
 		return nil, ErrInternal
 	}
 
+	// 转换为对外 DTO（含可访问 URL）。
 	d, err := s.toAttachmentDTO(ctx, attachment)
 	if err != nil {
 		log.Printf("生成附件 URL 失败: %v", err)
@@ -253,6 +258,7 @@ func (s *attachmentService) ListByUser(ctx context.Context, input dto.Attachment
 	}, nil
 }
 
+// toTimePtrFromUnix 将 Unix 秒时间戳指针转换为 time.Time 指针。
 func toTimePtrFromUnix(v *int64) *time.Time {
 	if v == nil {
 		return nil

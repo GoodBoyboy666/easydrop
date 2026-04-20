@@ -76,7 +76,7 @@ func TestPostAdminHandlerListSuccess(t *testing.T) {
 			}
 			return &dto.PostListResult{Items: []dto.PostDTO{}, Total: 0}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/admin/posts?user_id=12&tag_id=3&content=%20admin%20key%20&page=3&size=10&order=created_at%20desc")
 	h.List(c)
@@ -99,7 +99,7 @@ func TestPostAdminHandlerGetSuccess(t *testing.T) {
 			}
 			return &dto.PostDTO{ID: 8, Content: "hello", Author: dto.PostAuthorDTO{ID: 1}}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/admin/posts/8")
 	c.Params = gin.Params{{Key: "id", Value: "8"}}
@@ -113,7 +113,7 @@ func TestPostAdminHandlerGetSuccess(t *testing.T) {
 func TestPostAdminHandlerGetInvalidPathID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewPostAdminHandler(&mockPostAdminService{})
+	h := NewPostAdminHandler(&mockPostAdminService{}, nil)
 	c, w := newTestContext(http.MethodGet, "/api/v1/admin/posts/0")
 	c.Params = gin.Params{{Key: "id", Value: "0"}}
 	h.Get(c)
@@ -145,7 +145,7 @@ func TestPostAdminHandlerCreateSuccess(t *testing.T) {
 			}
 			return &dto.PostDTO{ID: 11, Author: dto.PostAuthorDTO{ID: input.UserID}, Content: input.Content, Hide: input.Hide, DisableComment: input.DisableComment}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/admin/posts", `{"user_id":5,"content":"post content","hide":true,"disable_comment":true,"pin":7}`)
 	c.Set(middleware.ContextUserIDKey, uint(5))
@@ -159,7 +159,7 @@ func TestPostAdminHandlerCreateSuccess(t *testing.T) {
 func TestPostAdminHandlerCreateInvalidJSON(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewPostAdminHandler(&mockPostAdminService{})
+	h := NewPostAdminHandler(&mockPostAdminService{}, nil)
 	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/admin/posts", `{`)
 	h.Create(c)
 
@@ -193,7 +193,7 @@ func TestPostAdminHandlerUpdateBindsPathID(t *testing.T) {
 			}
 			return &dto.PostDTO{ID: input.ID, Content: *input.Content, Author: dto.PostAuthorDTO{ID: 2}, Hide: *input.Hide, DisableComment: *input.DisableComment, Pin: input.Pin}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContextWithBody(http.MethodPatch, "/api/v1/admin/posts/9", `{"id":999,"content":"updated","hide":true,"disable_comment":true,"pin":123,"clear_pin":false}`)
 	c.Params = gin.Params{{Key: "id", Value: "9"}}
@@ -220,7 +220,7 @@ func TestPostAdminHandlerUpdateSupportsClearPin(t *testing.T) {
 			}
 			return &dto.PostDTO{ID: input.ID, Content: "updated", Author: dto.PostAuthorDTO{ID: 2}}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContextWithBody(http.MethodPatch, "/api/v1/admin/posts/12", `{"content":"updated","clear_pin":true}`)
 	c.Params = gin.Params{{Key: "id", Value: "12"}}
@@ -243,7 +243,7 @@ func TestPostAdminHandlerDeleteSuccess(t *testing.T) {
 			}
 			return nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodDelete, "/api/v1/admin/posts/10")
 	c.Params = gin.Params{{Key: "id", Value: "10"}}
@@ -264,7 +264,7 @@ func TestPostAdminHandlerDeleteNotFound(t *testing.T) {
 		deleteFn: func(_ context.Context, _ uint) error {
 			return service.ErrPostNotFound
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodDelete, "/api/v1/admin/posts/10")
 	c.Params = gin.Params{{Key: "id", Value: "10"}}
@@ -278,7 +278,7 @@ func TestPostAdminHandlerDeleteNotFound(t *testing.T) {
 func TestPostAdminHandlerNilService(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewPostAdminHandler(nil)
+	h := NewPostAdminHandler(nil, nil)
 	c, w := newTestContext(http.MethodGet, "/api/v1/admin/posts")
 	h.List(c)
 

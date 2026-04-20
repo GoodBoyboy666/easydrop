@@ -13,11 +13,12 @@ import (
 // CommentAdminHandler 处理管理端评论请求。
 type CommentAdminHandler struct {
 	commentService service.CommentService
+	errorResponder ErrorResponder
 }
 
 // NewCommentAdminHandler 创建管理端评论处理器。
-func NewCommentAdminHandler(commentService service.CommentService) *CommentAdminHandler {
-	return &CommentAdminHandler{commentService: commentService}
+func NewCommentAdminHandler(commentService service.CommentService, errorResponder ErrorResponder) *CommentAdminHandler {
+	return &CommentAdminHandler{commentService: commentService, errorResponder: ensureErrorResponder(errorResponder)}
 }
 
 // List 查询评论列表（管理端）。
@@ -51,7 +52,7 @@ func (h *CommentAdminHandler) List(c *gin.Context) {
 
 	result, err := h.commentService.List(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(mapCommentErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -85,7 +86,7 @@ func (h *CommentAdminHandler) Get(c *gin.Context) {
 
 	result, err := h.commentService.Get(c.Request.Context(), req.ID)
 	if err != nil {
-		c.JSON(mapCommentErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -128,7 +129,7 @@ func (h *CommentAdminHandler) Update(c *gin.Context) {
 
 	result, err := h.commentService.Update(c.Request.Context(), input)
 	if err != nil {
-		c.JSON(mapCommentErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -161,7 +162,7 @@ func (h *CommentAdminHandler) Delete(c *gin.Context) {
 	}
 
 	if err := h.commentService.Delete(c.Request.Context(), req.ID); err != nil {
-		c.JSON(mapCommentErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 

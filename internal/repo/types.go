@@ -2,12 +2,17 @@ package repo
 
 import (
 	"context"
-	"strings"
+
+	"easydrop/internal/pkg/listing"
 
 	"gorm.io/gorm"
 )
 
-const defaultLimit = 20
+var repoListBounds = listing.Bounds{
+	DefaultPage: 1,
+	DefaultSize: 20,
+	MaxSize:     100,
+}
 
 // ListOptions 列表分页参数。
 type ListOptions struct {
@@ -17,16 +22,8 @@ type ListOptions struct {
 }
 
 func normalizeListOptions(opts ListOptions, defaultOrder string) ListOptions {
-	if opts.Limit <= 0 {
-		opts.Limit = defaultLimit
-	}
-	if opts.Offset < 0 {
-		opts.Offset = 0
-	}
-	opts.Order = strings.TrimSpace(opts.Order)
-	if opts.Order == "" {
-		opts.Order = defaultOrder
-	}
+	opts.Limit, opts.Offset = repoListBounds.NormalizeLimitOffset(opts.Limit, opts.Offset)
+	opts.Order = listing.OrderRules{Default: defaultOrder}.Normalize(opts.Order)
 	return opts
 }
 

@@ -1,12 +1,9 @@
 package handler
 
 import (
-	"errors"
 	"net/http"
 
 	"easydrop/internal/dto"
-	"easydrop/internal/pkg/initsecret"
-	"easydrop/internal/pkg/validator"
 	"easydrop/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -14,12 +11,13 @@ import (
 
 // InitHandler 处理系统初始化请求。
 type InitHandler struct {
-	initService service.InitService
+	initService    service.InitService
+	errorResponder ErrorResponder
 }
 
 // NewInitHandler 创建系统初始化处理器。
-func NewInitHandler(initService service.InitService) *InitHandler {
-	return &InitHandler{initService: initService}
+func NewInitHandler(initService service.InitService, errorResponder ErrorResponder) *InitHandler {
+	return &InitHandler{initService: initService, errorResponder: ensureErrorResponder(errorResponder)}
 }
 
 // Status 查询系统初始化状态。
@@ -37,7 +35,7 @@ func (h *InitHandler) Status(c *gin.Context) {
 
 	result, err := h.initService.GetStatus(c.Request.Context())
 	if err != nil {
-		c.JSON(mapInitErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -69,38 +67,9 @@ func (h *InitHandler) Initialize(c *gin.Context) {
 	}
 
 	if err := h.initService.Initialize(c.Request.Context(), input); err != nil {
-		c.JSON(mapInitErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
 	c.JSON(http.StatusCreated, dto.ErrorResponse{Message: "ok"})
-}
-
-func mapInitErrorStatus(err error) int {
-	switch {
-	case errors.Is(err, validator.ErrEmptyUsername),
-		errors.Is(err, validator.ErrUsernameTooShort),
-		errors.Is(err, validator.ErrUsernameTooLong),
-		errors.Is(err, validator.ErrInvalidUsernameFormat),
-		errors.Is(err, validator.ErrEmptyEmail),
-		errors.Is(err, validator.ErrInvalidEmailFormat),
-		errors.Is(err, validator.ErrEmptyPassword),
-		errors.Is(err, validator.ErrPasswordTooShort),
-		errors.Is(err, validator.ErrPasswordContainsSpace),
-		errors.Is(err, validator.ErrPasswordMissingLetter),
-		errors.Is(err, validator.ErrPasswordMissingNumber),
-		errors.Is(err, initsecret.ErrRequired),
-		errors.Is(err, service.ErrInvalidSiteSetting):
-		return http.StatusBadRequest
-	case errors.Is(err, initsecret.ErrInvalid):
-		return http.StatusForbidden
-	case errors.Is(err, service.ErrAlreadyInitialized),
-		errors.Is(err, service.ErrUsernameExists),
-		errors.Is(err, service.ErrEmailExists):
-		return http.StatusConflict
-	case errors.Is(err, service.ErrInternal):
-		return http.StatusInternalServerError
-	default:
-		return http.StatusInternalServerError
-	}
 }
