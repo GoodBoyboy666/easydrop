@@ -48,4 +48,4 @@ EXPOSE 8080
 VOLUME ["/app/data"]
 
 ENTRYPOINT ["/app/easydrop"]
-CMD ["--config-dir", "data"]
+CMD ["--auto-generate-jwt"]

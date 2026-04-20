@@ -86,6 +86,14 @@ go run . generate-jwt-token data/jwt --force
 - `data/jwt/private.pem`
 - `data/jwt/public.pem`
 
+如果希望在启动时自动检查并在缺失时生成，可以启用启动参数：
+
+```bash
+go run . --auto-generate-jwt
+```
+
+自动模式仅在 `private.pem` 和 `public.pem` 都不存在时生成；若仅存在一个文件，会直接报错并终止启动。
+
 ### 3. 启动后端
 
 ```bash
@@ -315,9 +323,15 @@ Copy-Item example\config.example.yaml data\config.yaml
 - `data/jwt/public.pem`
 - `data/uploads/...`
 
-### 2. 生成 JWT 密钥
+### 2. JWT 密钥策略
 
-可以直接使用 compose 里的 `app` 服务生成：
+镜像默认启动参数已包含 `--auto-generate-jwt`，容器启动时会执行以下策略：
+
+- 当 `data/jwt/private.pem` 和 `data/jwt/public.pem` 都不存在时：自动生成一对密钥。
+- 当两个文件都存在时：跳过生成，直接启动。
+- 当仅存在其中一个文件时：启动失败并提示手动修复（安全优先，避免误轮换密钥）。
+
+如需手动生成（例如首次离线准备或强制轮换），可以执行：
 
 ```bash
 docker compose pull

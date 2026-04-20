@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"easydrop/internal/config"
 	"easydrop/internal/di"
 	"easydrop/internal/router"
 	"encoding/pem"
@@ -49,6 +50,7 @@ func main() {
 
 func newRootCommand() *cobra.Command {
 	var configDir string
+	var autoGenerateJWT bool
 
 	cmd := &cobra.Command{
 		Use:           "easydrop",
@@ -58,15 +60,18 @@ func newRootCommand() *cobra.Command {
 		Example: strings.Join([]string{
 			"easydrop",
 			"easydrop --config-dir data",
+			"easydrop --auto-generate-jwt",
+			"easydrop --config-dir /etc/easydrop --auto-generate-jwt",
 			"easydrop generate-jwt-token data/jwt --force",
 		}, "\n"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runServer(configDir)
+			return runServer(configDir, autoGenerateJWT)
 		},
 	}
 
 	cmd.CompletionOptions.DisableDefaultCmd = true
 	cmd.Flags().StringVar(&configDir, "config-dir", "", "config directory containing config.yaml")
+	cmd.Flags().BoolVar(&autoGenerateJWT, "auto-generate-jwt", false, "启动时自动检查 JWT 密钥，缺失时生成")
 	cmd.AddCommand(newGenerateJWTTokenCommand())
 
 	return cmd
@@ -108,12 +113,16 @@ func newGenerateJWTTokenCommand() *cobra.Command {
 	return cmd
 }
 
-func runServer(configDir string) error {
+func runServer(configDir string, autoGenerateJWT bool) error {
 	if configDir == "" {
 		configDir = "data"
 	}
 
 	printBuildInfoBanner(os.Stdout)
+
+	if err := ensureJWTKeysOnStartup(configDir, autoGenerateJWT, log.Default()); err != nil {
+		return fmt.Errorf("启动前检查 JWT 密钥失败: %w", err)
+	}
 
 	app, err := di.Initialize(configDir, false)
 	if err != nil {
@@ -240,14 +249,97 @@ func buildValueOrDefault(value string, fallback string) string {
 	return trimmed
 }
 
+func ensureJWTKeysOnStartup(configDir string, autoGenerateJWT bool, logger *log.Logger) error {
+	if !autoGenerateJWT {
+		return nil
+	}
+	if logger == nil {
+		logger = log.Default()
+	}
+
+	cfg, err := config.Load(configDir, false)
+	if err != nil {
+		return fmt.Errorf("加载配置失败: %w", err)
+	}
+	if cfg == nil {
+		return errors.New("加载配置失败: 配置为空")
+	}
+
+	privatePath := strings.TrimSpace(cfg.JWT.PrivateKeyPath)
+	publicPath := strings.TrimSpace(cfg.JWT.PublicKeyPath)
+
+	privateExists, err := checkJWTKeyFileExists(privatePath)
+	if err != nil {
+		return fmt.Errorf("检查 JWT 私钥文件失败: %w", err)
+	}
+	publicExists, err := checkJWTKeyFileExists(publicPath)
+	if err != nil {
+		return fmt.Errorf("检查 JWT 公钥文件失败: %w", err)
+	}
+
+	switch {
+	case privateExists && publicExists:
+		logger.Printf("检测到 JWT 密钥文件已存在，跳过自动生成: %s, %s", privatePath, publicPath)
+		return nil
+	case !privateExists && !publicExists:
+		if err := generateJWTTokenPair(privatePath, publicPath, false); err != nil {
+			return fmt.Errorf("自动生成 JWT 密钥文件失败: %w", err)
+		}
+		logger.Printf("JWT 密钥文件不存在，已自动生成: %s, %s", privatePath, publicPath)
+		return nil
+	default:
+		return fmt.Errorf("JWT 密钥文件不完整: %s 与 %s 必须同时存在或同时不存在，请手动修复后重启", privatePath, publicPath)
+	}
+}
+
+func checkJWTKeyFileExists(path string) (bool, error) {
+	trimmed := strings.TrimSpace(path)
+	if trimmed == "" {
+		return false, errors.New("路径不能为空")
+	}
+
+	info, err := os.Stat(trimmed)
+	if err == nil {
+		if info.IsDir() {
+			return false, fmt.Errorf("路径是目录: %s", trimmed)
+		}
+		return true, nil
+	}
+
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+
+	return false, err
+}
+
 func generateJWTTokenFiles(outputDir string, forceOverwrite bool) error {
 	dir := strings.TrimSpace(outputDir)
 	if dir == "" {
 		dir = "."
 	}
 
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("创建目录失败: %w", err)
+	privatePath := filepath.Join(dir, "private.pem")
+	publicPath := filepath.Join(dir, "public.pem")
+
+	return generateJWTTokenPair(privatePath, publicPath, forceOverwrite)
+}
+
+func generateJWTTokenPair(privatePath string, publicPath string, forceOverwrite bool) error {
+	privatePath = strings.TrimSpace(privatePath)
+	if privatePath == "" {
+		return errors.New("jwt 私钥路径不能为空")
+	}
+	publicPath = strings.TrimSpace(publicPath)
+	if publicPath == "" {
+		return errors.New("jwt 公钥路径不能为空")
+	}
+
+	if err := ensureJWTKeyParentDir(privatePath); err != nil {
+		return err
+	}
+	if err := ensureJWTKeyParentDir(publicPath); err != nil {
+		return err
 	}
 
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -260,14 +352,24 @@ func generateJWTTokenFiles(outputDir string, forceOverwrite bool) error {
 		return fmt.Errorf("编码 RSA 公钥失败: %w", err)
 	}
 
-	privatePath := filepath.Join(dir, "private.pem")
-	publicPath := filepath.Join(dir, "public.pem")
-
 	if err := writePEMFile(privatePath, "RSA PRIVATE KEY", x509.MarshalPKCS1PrivateKey(privateKey), 0o600, forceOverwrite); err != nil {
 		return err
 	}
 	if err := writePEMFile(publicPath, "PUBLIC KEY", publicDER, 0o644, forceOverwrite); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func ensureJWTKeyParentDir(path string) error {
+	dir := filepath.Dir(path)
+	if dir == "" || dir == "." {
+		return nil
+	}
+
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("创建目录失败 (%s): %w", dir, err)
 	}
 
 	return nil
