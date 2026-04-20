@@ -72,7 +72,7 @@ func TestAuthHandlerLoginSetsCookieAndReturnsToken(t *testing.T) {
 		Path:     "/",
 		SameSite: "lax",
 		MaxAge:   2 * time.Hour,
-	}))
+	}), nil)
 
 	router := gin.New()
 	router.POST("/login", handler.Login)
@@ -130,7 +130,7 @@ func TestAuthHandlerRegisterReturnsMessageWithoutCookie(t *testing.T) {
 		Path:     "/",
 		SameSite: "lax",
 		MaxAge:   2 * time.Hour,
-	}))
+	}), nil)
 
 	router := gin.New()
 	router.POST("/register", handler.Register)
@@ -167,7 +167,7 @@ func TestAuthHandlerLoginEmailNotVerifiedReturnsForbidden(t *testing.T) {
 		loginFn: func(context.Context, dto.LoginInput) (*dto.AuthResult, error) {
 			return nil, service.ErrEmailNotVerified
 		},
-	}, nil, nil)
+	}, nil, nil, nil)
 
 	router := gin.New()
 	router.POST("/login", handler.Login)
@@ -190,7 +190,7 @@ func TestAuthHandlerLoginReturnsUnifiedInvalidCredentialsMessage(t *testing.T) {
 		loginFn: func(context.Context, dto.LoginInput) (*dto.AuthResult, error) {
 			return nil, service.ErrInvalidCredentials
 		},
-	}, nil, nil)
+	}, nil, nil, nil)
 
 	router := gin.New()
 	router.POST("/login", handler.Login)
@@ -224,7 +224,7 @@ func TestAuthHandlerLoginSetsSecureCookieInProduction(t *testing.T) {
 	}, nil, cookiepkg.NewAuthCookie(&cookiepkg.Config{
 		Name:   "session",
 		Secure: true,
-	}))
+	}), nil)
 
 	router := gin.New()
 	router.POST("/login", handler.Login)
@@ -250,7 +250,7 @@ func TestAuthHandlerLogoutClearsCookie(t *testing.T) {
 	handler := NewAuthHandler(nil, nil, cookiepkg.NewAuthCookie(&cookiepkg.Config{
 		Name: "session",
 		Path: "/",
-	}))
+	}), nil)
 
 	router := gin.New()
 	router.POST("/logout", handler.Logout)
@@ -293,7 +293,7 @@ func TestAuthHandlerRequestPasswordResetPassesCaptchaRemoteIP(t *testing.T) {
 			}
 			return nil
 		},
-	}, nil, nil)
+	}, nil, nil, nil)
 
 	router := gin.New()
 	router.POST("/password-reset/request", handler.RequestPasswordReset)
@@ -320,7 +320,7 @@ func TestAuthHandlerConfirmEmailChangeSuccess(t *testing.T) {
 			}
 			return &dto.UserDTO{ID: 12, Email: "new@example.com", EmailVerified: true}, nil
 		},
-	}, nil)
+	}, nil, nil)
 
 	router := gin.New()
 	router.POST("/email-change/confirm", handler.ConfirmEmailChange)

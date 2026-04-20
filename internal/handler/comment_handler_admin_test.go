@@ -29,7 +29,7 @@ func TestCommentAdminHandlerListSuccess(t *testing.T) {
 			}
 			return &dto.CommentListResult{Items: []dto.CommentDTO{}, Total: 0}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/admin/comments?post_id=11&user_id=7&page=3&size=10&order=created_at_desc")
 	h.List(c)
@@ -45,7 +45,7 @@ func TestCommentAdminHandlerListSuccess(t *testing.T) {
 func TestCommentAdminHandlerGetInvalidPathID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewCommentAdminHandler(&mockCommentServiceForHandler{})
+	h := NewCommentAdminHandler(&mockCommentServiceForHandler{}, nil)
 	c, w := newTestContext(http.MethodGet, "/api/v1/admin/comments/0")
 	c.Params = gin.Params{{Key: "id", Value: "0"}}
 
@@ -69,7 +69,7 @@ func TestCommentAdminHandlerUpdateBindsPathID(t *testing.T) {
 			}
 			return &dto.CommentDTO{ID: input.ID, Content: *input.Content}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContextWithBody(http.MethodPatch, "/api/v1/admin/comments/6", `{"id":99,"content":"updated"}`)
 	c.Params = gin.Params{{Key: "id", Value: "6"}}
@@ -88,7 +88,7 @@ func TestCommentAdminHandlerDeleteNotFound(t *testing.T) {
 		deleteFn: func(_ context.Context, _ uint) error {
 			return service.ErrCommentNotFound
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodDelete, "/api/v1/admin/comments/8")
 	c.Params = gin.Params{{Key: "id", Value: "8"}}
@@ -103,7 +103,7 @@ func TestCommentAdminHandlerDeleteNotFound(t *testing.T) {
 func TestCommentAdminHandlerNilService(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewCommentAdminHandler(nil)
+	h := NewCommentAdminHandler(nil, nil)
 	c, w := newTestContext(http.MethodGet, "/api/v1/admin/comments")
 
 	h.List(c)

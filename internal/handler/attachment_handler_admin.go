@@ -13,11 +13,12 @@ import (
 // AttachmentAdminHandler 处理管理端附件请求。
 type AttachmentAdminHandler struct {
 	attachmentService service.AttachmentService
+	errorResponder    ErrorResponder
 }
 
 // NewAttachmentAdminHandler 创建管理端附件处理器。
-func NewAttachmentAdminHandler(attachmentService service.AttachmentService) *AttachmentAdminHandler {
-	return &AttachmentAdminHandler{attachmentService: attachmentService}
+func NewAttachmentAdminHandler(attachmentService service.AttachmentService, errorResponder ErrorResponder) *AttachmentAdminHandler {
+	return &AttachmentAdminHandler{attachmentService: attachmentService, errorResponder: ensureErrorResponder(errorResponder)}
 }
 
 // List 查询附件列表（管理端）
@@ -59,8 +60,7 @@ func (h *AttachmentAdminHandler) List(c *gin.Context) {
 	req.Order = strings.TrimSpace(req.Order)
 	result, err := h.attachmentService.ListByUser(c.Request.Context(), req)
 	if err != nil {
-		status := mapAttachmentErrorStatus(err)
-		c.JSON(status, dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -93,8 +93,7 @@ func (h *AttachmentAdminHandler) Delete(c *gin.Context) {
 	}
 
 	if err := h.attachmentService.Delete(c.Request.Context(), req.ID); err != nil {
-		status := mapAttachmentErrorStatus(err)
-		c.JSON(status, dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 

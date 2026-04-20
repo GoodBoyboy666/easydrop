@@ -3,6 +3,7 @@ package handler
 import "github.com/google/wire"
 
 var HandlerSet = wire.NewSet(
+	NewErrorResponder,
 	NewAttachmentAdminHandler,
 	NewAttachmentHandler,
 	NewAuthHandler,

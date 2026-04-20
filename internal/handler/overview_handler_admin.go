@@ -3,7 +3,6 @@ package handler
 import (
 	"net/http"
 
-	"easydrop/internal/dto"
 	"easydrop/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -12,11 +11,12 @@ import (
 // OverviewAdminHandler 处理管理端概览聚合请求。
 type OverviewAdminHandler struct {
 	overviewService service.AdminOverviewService
+	errorResponder  ErrorResponder
 }
 
 // NewOverviewAdminHandler 创建管理端概览处理器。
-func NewOverviewAdminHandler(overviewService service.AdminOverviewService) *OverviewAdminHandler {
-	return &OverviewAdminHandler{overviewService: overviewService}
+func NewOverviewAdminHandler(overviewService service.AdminOverviewService, errorResponder ErrorResponder) *OverviewAdminHandler {
+	return &OverviewAdminHandler{overviewService: overviewService, errorResponder: ensureErrorResponder(errorResponder)}
 }
 
 // Get 查询后台概览聚合数据（管理端）
@@ -37,16 +37,9 @@ func (h *OverviewAdminHandler) Get(c *gin.Context) {
 
 	result, err := h.overviewService.Get(c.Request.Context())
 	if err != nil {
-		c.JSON(mapOverviewErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, result)
-}
-
-func mapOverviewErrorStatus(err error) int {
-	if err == nil {
-		return http.StatusOK
-	}
-	return http.StatusInternalServerError
 }

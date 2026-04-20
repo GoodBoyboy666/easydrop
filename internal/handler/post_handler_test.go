@@ -86,7 +86,7 @@ func TestPostHandlerListSuccess(t *testing.T) {
 				{ID: 3, Content: "normal"},
 			}, Total: 3}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/posts?user_id=7&tag_id=2&content=%20hello%20&page=3&size=5&order=created_at_desc&hide=true")
 	h.List(c)
@@ -131,7 +131,7 @@ func TestPostHandlerGetSuccess(t *testing.T) {
 			}
 			return &dto.PostDTO{ID: id, Content: "hello"}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/posts/9")
 	c.Params = gin.Params{{Key: "id", Value: "9"}}
@@ -152,7 +152,7 @@ func TestPostHandlerGetHiddenPostForPublicViewer(t *testing.T) {
 		getFn: func(_ context.Context, id uint) (*dto.PostDTO, error) {
 			return &dto.PostDTO{ID: id, Content: "hidden", Hide: true}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/posts/3")
 	c.Params = gin.Params{{Key: "id", Value: "3"}}
@@ -170,7 +170,7 @@ func TestPostHandlerGetHiddenPostForAdminViewer(t *testing.T) {
 		getFn: func(_ context.Context, id uint) (*dto.PostDTO, error) {
 			return &dto.PostDTO{ID: id, Content: "hidden", Hide: true}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/posts/3")
 	c.Params = gin.Params{{Key: "id", Value: "3"}}
@@ -186,7 +186,7 @@ func TestPostHandlerGetHiddenPostForAdminViewer(t *testing.T) {
 func TestPostHandlerGetInvalidPathID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewPostHandler(&mockPostServiceForPublicHandler{})
+	h := NewPostHandler(&mockPostServiceForPublicHandler{}, nil)
 	c, w := newTestContext(http.MethodGet, "/api/v1/posts/0")
 	c.Params = gin.Params{{Key: "id", Value: "0"}}
 	h.Get(c)
@@ -199,7 +199,7 @@ func TestPostHandlerGetInvalidPathID(t *testing.T) {
 func TestPostHandlerListInvalidQuery(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewPostHandler(&mockPostServiceForPublicHandler{})
+	h := NewPostHandler(&mockPostServiceForPublicHandler{}, nil)
 	c, w := newTestContext(http.MethodGet, "/api/v1/posts?user_id=0")
 	h.List(c)
 
@@ -211,7 +211,7 @@ func TestPostHandlerListInvalidQuery(t *testing.T) {
 func TestPostHandlerNilService(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewPostHandler(nil)
+	h := NewPostHandler(nil, nil)
 	c, w := newTestContext(http.MethodGet, "/api/v1/posts")
 	h.List(c)
 
@@ -227,7 +227,7 @@ func TestPostHandlerListServiceError(t *testing.T) {
 		listFn: func(_ context.Context, _ dto.PostListInput) (*dto.PostListResult, error) {
 			return nil, service.ErrInternal
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/posts")
 	h.List(c)
@@ -249,7 +249,7 @@ func TestPostHandlerListAdminViewerCanSeeHidePosts(t *testing.T) {
 			}
 			return &dto.PostListResult{Items: []dto.PostDTO{}, Total: 0}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/posts")
 	c.Set(middleware.ContextUserIDKey, uint(1))

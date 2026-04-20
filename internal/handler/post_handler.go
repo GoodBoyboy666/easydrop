@@ -13,12 +13,13 @@ import (
 
 // PostHandler 处理前端公开说说请求。
 type PostHandler struct {
-	postService service.PostService
+	postService    service.PostService
+	errorResponder ErrorResponder
 }
 
 // NewPostHandler 创建前端公开说说处理器。
-func NewPostHandler(postService service.PostService) *PostHandler {
-	return &PostHandler{postService: postService}
+func NewPostHandler(postService service.PostService, errorResponder ErrorResponder) *PostHandler {
+	return &PostHandler{postService: postService, errorResponder: ensureErrorResponder(errorResponder)}
 }
 
 // Get 查询公开说说详情。
@@ -45,7 +46,7 @@ func (h *PostHandler) Get(c *gin.Context) {
 
 	result, err := h.postService.Get(c.Request.Context(), req.ID)
 	if err != nil {
-		c.JSON(mapPostErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 	if result.Hide && !canViewHiddenPost(c) {
@@ -92,7 +93,7 @@ func (h *PostHandler) List(c *gin.Context) {
 
 	result, err := h.postService.List(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(mapPostErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 

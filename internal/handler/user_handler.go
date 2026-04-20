@@ -1,12 +1,10 @@
 package handler
 
 import (
-	"errors"
 	"net/http"
 
 	"easydrop/internal/dto"
 	"easydrop/internal/middleware"
-	"easydrop/internal/pkg/validator"
 	"easydrop/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -14,12 +12,13 @@ import (
 
 // UserHandler 处理当前登录用户的自助接口。
 type UserHandler struct {
-	userService service.UserService
+	userService    service.UserService
+	errorResponder ErrorResponder
 }
 
 // NewUserHandler 创建用户处理器。
-func NewUserHandler(userService service.UserService) *UserHandler {
-	return &UserHandler{userService: userService}
+func NewUserHandler(userService service.UserService, errorResponder ErrorResponder) *UserHandler {
+	return &UserHandler{userService: userService, errorResponder: ensureErrorResponder(errorResponder)}
 }
 
 // GetProfile 获取当前用户资料。
@@ -45,7 +44,7 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 
 	result, err := h.userService.Get(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(mapUserErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -85,7 +84,7 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 
 	result, err := h.userService.UpdateProfile(c.Request.Context(), input)
 	if err != nil {
-		c.JSON(mapUserErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -125,7 +124,7 @@ func (h *UserHandler) ChangePassword(c *gin.Context) {
 
 	err := h.userService.ChangePassword(c.Request.Context(), input)
 	if err != nil {
-		c.JSON(mapUserErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -166,7 +165,7 @@ func (h *UserHandler) RequestEmailChange(c *gin.Context) {
 
 	err := h.userService.RequestEmailChange(c.Request.Context(), input)
 	if err != nil {
-		c.JSON(mapUserErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -226,7 +225,7 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 		ContentSample:    sample,
 	})
 	if err != nil {
-		c.JSON(mapUserErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -255,40 +254,9 @@ func (h *UserHandler) DeleteAvatar(c *gin.Context) {
 	}
 
 	if err := h.userService.DeleteAvatar(c.Request.Context(), userID); err != nil {
-		c.JSON(mapUserErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, dto.ErrorResponse{Message: "ok"})
-}
-
-func mapUserErrorStatus(err error) int {
-	switch {
-	case errors.Is(err, validator.ErrEmptyPassword),
-		errors.Is(err, validator.ErrPasswordTooShort),
-		errors.Is(err, validator.ErrPasswordContainsSpace),
-		errors.Is(err, validator.ErrPasswordMissingLetter),
-		errors.Is(err, validator.ErrPasswordMissingNumber),
-		errors.Is(err, validator.ErrEmptyEmail),
-		errors.Is(err, validator.ErrInvalidEmailFormat),
-		errors.Is(err, service.ErrInvalidPassword),
-		errors.Is(err, service.ErrInvalidEmailChange),
-		errors.Is(err, service.ErrEmptyAvatarContent),
-		errors.Is(err, service.ErrEmptyAvatarFilename),
-		errors.Is(err, service.ErrAvatarExtensionNotAllowed),
-		errors.Is(err, service.ErrAvatarMIMETypeNotAllowed):
-		return http.StatusBadRequest
-	case errors.Is(err, service.ErrUserNotFound):
-		return http.StatusUnauthorized
-	case errors.Is(err, service.ErrUserDisabled),
-		errors.Is(err, service.ErrStorageQuotaExceeded):
-		return http.StatusForbidden
-	case errors.Is(err, service.ErrEmailExists),
-		errors.Is(err, service.ErrUsernameExists):
-		return http.StatusConflict
-	case errors.Is(err, service.ErrInternal):
-		return http.StatusInternalServerError
-	default:
-		return http.StatusInternalServerError
-	}
 }

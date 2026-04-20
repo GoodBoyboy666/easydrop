@@ -97,7 +97,7 @@ func TestUserHandlerGetProfileSuccess(t *testing.T) {
 			}
 			return &dto.UserDTO{ID: 7, Username: "neo"}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/users/me")
 	c.Set(middleware.ContextUserIDKey, uint(7))
@@ -110,7 +110,7 @@ func TestUserHandlerGetProfileSuccess(t *testing.T) {
 }
 
 func TestUserHandlerGetProfileUnauthorized(t *testing.T) {
-	h := NewUserHandler(&mockUserServiceForHandler{})
+	h := NewUserHandler(&mockUserServiceForHandler{}, nil)
 	c, w := newTestContext(http.MethodGet, "/api/v1/users/me")
 
 	h.GetProfile(c)
@@ -131,7 +131,7 @@ func TestUserHandlerUpdateProfileSuccess(t *testing.T) {
 			}
 			return &dto.UserDTO{ID: 9, Nickname: "Neo"}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContextWithBody(http.MethodPatch, "/api/v1/users/me/profile", `{"nickname":"Neo"}`)
 	c.Set(middleware.ContextUserIDKey, uint(9))
@@ -148,7 +148,7 @@ func TestUserHandlerChangePasswordInvalidPassword(t *testing.T) {
 		changePasswordFn: func(_ context.Context, _ dto.UserChangePasswordInput) error {
 			return service.ErrInvalidPassword
 		},
-	})
+	}, nil)
 
 	c, w := newTestContextWithBody(http.MethodPatch, "/api/v1/users/me/password", `{"old_password":"bad","new_password":"NewPass123"}`)
 	c.Set(middleware.ContextUserIDKey, uint(11))
@@ -165,7 +165,7 @@ func TestUserHandlerRequestEmailChangeInvalidPassword(t *testing.T) {
 		requestEmailChangeFn: func(_ context.Context, _ dto.UserChangeEmailInput) error {
 			return service.ErrInvalidPassword
 		},
-	})
+	}, nil)
 
 	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/users/me/email-change", `{"current_password":"bad","new_email":"new@example.com"}`)
 	c.Set(middleware.ContextUserIDKey, uint(12))
@@ -191,7 +191,7 @@ func TestUserHandlerRequestEmailChangeSuccess(t *testing.T) {
 			}
 			return nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/users/me/email-change", `{"current_password":"OldPass123","new_email":"new@example.com"}`)
 	c.Set(middleware.ContextUserIDKey, uint(12))
@@ -227,7 +227,7 @@ func TestUserHandlerUploadAvatarSuccess(t *testing.T) {
 			}
 			return &dto.UserDTO{ID: 18}, nil
 		},
-	})
+	}, nil)
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -256,7 +256,7 @@ func TestUserHandlerUploadAvatarSuccess(t *testing.T) {
 }
 
 func TestUserHandlerUploadAvatarMissingFile(t *testing.T) {
-	h := NewUserHandler(&mockUserServiceForHandler{})
+	h := NewUserHandler(&mockUserServiceForHandler{}, nil)
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 	if err := writer.Close(); err != nil {
@@ -284,7 +284,7 @@ func TestUserHandlerDeleteAvatarSuccess(t *testing.T) {
 			}
 			return nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodDelete, "/api/v1/users/me/avatar")
 	c.Set(middleware.ContextUserIDKey, uint(21))
@@ -297,7 +297,7 @@ func TestUserHandlerDeleteAvatarSuccess(t *testing.T) {
 }
 
 func TestUserHandlerDeleteAvatarUnauthorized(t *testing.T) {
-	h := NewUserHandler(&mockUserServiceForHandler{})
+	h := NewUserHandler(&mockUserServiceForHandler{}, nil)
 	c, w := newTestContext(http.MethodDelete, "/api/v1/users/me/avatar")
 
 	h.DeleteAvatar(c)
@@ -307,24 +307,12 @@ func TestUserHandlerDeleteAvatarUnauthorized(t *testing.T) {
 	}
 }
 
-func TestMapUserErrorStatus(t *testing.T) {
-	if got := mapUserErrorStatus(service.ErrEmailExists); got != http.StatusConflict {
-		t.Fatalf("expected 409, got %d", got)
-	}
-	if got := mapUserErrorStatus(service.ErrStorageQuotaExceeded); got != http.StatusForbidden {
-		t.Fatalf("expected 403, got %d", got)
-	}
-	if got := mapUserErrorStatus(service.ErrInvalidPassword); got != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", got)
-	}
-}
-
 func TestUserHandlerResponseBodyFormat(t *testing.T) {
 	h := NewUserHandler(&mockUserServiceForHandler{
 		requestEmailChangeFn: func(_ context.Context, _ dto.UserChangeEmailInput) error {
 			return nil
 		},
-	})
+	}, nil)
 	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/users/me/email-change", `{"current_password":"OldPass123","new_email":"new@example.com"}`)
 	c.Set(middleware.ContextUserIDKey, uint(30))
 
@@ -347,7 +335,7 @@ func TestUserHandlerUploadAvatarValidationError(t *testing.T) {
 		uploadAvatarFn: func(_ context.Context, input dto.UserAvatarUploadInput) (*dto.UserDTO, error) {
 			return nil, service.ErrAvatarExtensionNotAllowed
 		},
-	})
+	}, nil)
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
