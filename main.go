@@ -256,7 +256,7 @@ func buildValueOrDefault(value string, fallback string) string {
 func ensureDefaultConfigOnStartup(configDir string, logger *log.Logger) error {
 	configDir = strings.TrimSpace(configDir)
 	if configDir == "" {
-		return errors.New("config dir is required")
+		return errors.New("配置目录不能为空")
 	}
 	if logger == nil {
 		logger = log.Default()

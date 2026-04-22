@@ -144,7 +144,7 @@ func unmarshalStaticConfig(v *viper.Viper) (*StaticConfig, error) {
 func WriteDefaultConfigFile(configDir string) error {
 	configDir = strings.TrimSpace(configDir)
 	if configDir == "" {
-		return errors.New("config dir is required")
+		return errors.New("配置目录不能为空")
 	}
 
 	if err := os.MkdirAll(configDir, 0o755); err != nil {
@@ -177,7 +177,7 @@ func Load(configDir string, strict bool) (*StaticConfig, error) {
 	configDir = strings.TrimSpace(configDir)
 	GlobalConfigDir = configDir
 	if configDir == "" && strict {
-		return nil, errors.New("config dir is required")
+		return nil, errors.New("配置目录不能为空")
 	}
 
 	v := newStaticConfigViper(configDir, true)
