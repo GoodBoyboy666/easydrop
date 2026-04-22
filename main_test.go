@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"easydrop/internal/config"
 	"easydrop/internal/di"
 	"easydrop/internal/dto"
 	"easydrop/internal/pkg/initsecret"
@@ -270,6 +271,76 @@ func TestEnsureJWTKeysOnStartupReturnsErrorWhenPartiallyMissing(t *testing.T) {
 	}
 	if _, statErr := os.Stat(publicPath); !errors.Is(statErr, os.ErrNotExist) {
 		t.Fatalf("expected public key to remain missing, err=%v", statErr)
+	}
+}
+
+func TestEnsureDefaultConfigOnStartupCreatesWhenMissing(t *testing.T) {
+	configDir := filepath.Join(t.TempDir(), "runtime")
+
+	var buf bytes.Buffer
+	if err := ensureDefaultConfigOnStartup(configDir, log.New(&buf, "", 0)); err != nil {
+		t.Fatalf("ensureDefaultConfigOnStartup error: %v", err)
+	}
+
+	configPath := filepath.Join(configDir, "config.yaml")
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("read generated config failed: %v", err)
+	}
+	if !strings.Contains(string(content), "server:") {
+		t.Fatal("expected generated config to contain server section")
+	}
+
+	cfg, err := config.Load(configDir, false)
+	if err != nil {
+		t.Fatalf("load generated config failed: %v", err)
+	}
+	if cfg.Server.Mode != config.ServerModeDevelopment {
+		t.Fatalf("expected default mode %q, got %q", config.ServerModeDevelopment, cfg.Server.Mode)
+	}
+	if cfg.Server.Addr != ":8080" {
+		t.Fatalf("expected default addr :8080, got %q", cfg.Server.Addr)
+	}
+	if !strings.Contains(buf.String(), "已自动创建") {
+		t.Fatalf("expected log to contain auto-create message, got %q", buf.String())
+	}
+}
+
+func TestEnsureDefaultConfigOnStartupSkipsWhenExists(t *testing.T) {
+	configDir := t.TempDir()
+	configPath := filepath.Join(configDir, "config.yaml")
+	existing := []byte("server:\n  addr: \":9090\"\n")
+	if err := os.WriteFile(configPath, existing, 0o644); err != nil {
+		t.Fatalf("write existing config failed: %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := ensureDefaultConfigOnStartup(configDir, log.New(&buf, "", 0)); err != nil {
+		t.Fatalf("ensureDefaultConfigOnStartup error: %v", err)
+	}
+
+	after, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("read existing config failed: %v", err)
+	}
+	if !bytes.Equal(after, existing) {
+		t.Fatal("expected existing config to remain unchanged")
+	}
+	if !strings.Contains(buf.String(), "跳过自动生成") {
+		t.Fatalf("expected log to contain skip message, got %q", buf.String())
+	}
+}
+
+func TestEnsureDefaultConfigOnStartupReturnsErrorWhenConfigPathIsDir(t *testing.T) {
+	configDir := t.TempDir()
+	configPath := filepath.Join(configDir, "config.yaml")
+	if err := os.Mkdir(configPath, 0o755); err != nil {
+		t.Fatalf("create config dir path failed: %v", err)
+	}
+
+	err := ensureDefaultConfigOnStartup(configDir, log.New(&bytes.Buffer{}, "", 0))
+	if err == nil || !strings.Contains(err.Error(), "是目录") {
+		t.Fatalf("expected directory-path error, got %v", err)
 	}
 }
 

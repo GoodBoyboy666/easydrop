@@ -1,10 +1,14 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
+
+	"go.yaml.in/yaml/v3"
 )
 
 func TestLoadDefaultsWithoutConfigFile(t *testing.T) {
@@ -155,5 +159,90 @@ func TestLoadAvatarGravatarBaseURLOverride(t *testing.T) {
 
 	if cfg.Avatar.GravatarBaseURL != "https://gravatar.example.com/avatar" {
 		t.Fatalf("expected gravatar base url override, got %q", cfg.Avatar.GravatarBaseURL)
+	}
+}
+
+func TestWriteDefaultConfigFileCreatesConfig(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "runtime")
+
+	if err := WriteDefaultConfigFile(dir); err != nil {
+		t.Fatalf("WriteDefaultConfigFile returned error: %v", err)
+	}
+
+	configPath := filepath.Join(dir, "config.yaml")
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("read generated config failed: %v", err)
+	}
+	text := string(content)
+	if !strings.Contains(text, "server:") {
+		t.Fatalf("expected generated config to contain server section, got %q", text)
+	}
+	if !strings.Contains(text, "read_timeout: 10s") {
+		t.Fatalf("expected generated config to contain read_timeout default, got %q", text)
+	}
+
+	cfg, err := Load(dir, false)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if cfg.Server.Mode != ServerModeDevelopment {
+		t.Fatalf("expected mode %q, got %q", ServerModeDevelopment, cfg.Server.Mode)
+	}
+	if cfg.JWT.Expire != 24*time.Hour {
+		t.Fatalf("expected jwt.expire 24h, got %s", cfg.JWT.Expire)
+	}
+}
+
+func TestWriteDefaultConfigFileReturnsErrExistWhenAlreadyExists(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(configPath, []byte("server:\n  addr: \":9090\"\n"), 0o644); err != nil {
+		t.Fatalf("write existing config failed: %v", err)
+	}
+
+	err := WriteDefaultConfigFile(dir)
+	if !errors.Is(err, os.ErrExist) {
+		t.Fatalf("expected os.ErrExist, got %v", err)
+	}
+}
+
+func TestWriteDefaultConfigFileIgnoresEnvOverride(t *testing.T) {
+	t.Setenv("EASYDROP_SERVER_ADDR", ":9090")
+
+	dir := t.TempDir()
+	if err := WriteDefaultConfigFile(dir); err != nil {
+		t.Fatalf("WriteDefaultConfigFile returned error: %v", err)
+	}
+
+	content, err := os.ReadFile(filepath.Join(dir, "config.yaml"))
+	if err != nil {
+		t.Fatalf("read generated config failed: %v", err)
+	}
+
+	parsed := map[string]any{}
+	if err := yaml.Unmarshal(content, &parsed); err != nil {
+		t.Fatalf("unmarshal generated yaml failed: %v", err)
+	}
+
+	serverRaw, ok := parsed["server"]
+	if !ok {
+		t.Fatalf("expected server section, got %v", parsed)
+	}
+	serverMap, ok := serverRaw.(map[string]any)
+	if !ok {
+		t.Fatalf("expected server section to be map, got %T", serverRaw)
+	}
+
+	addrRaw, ok := serverMap["addr"]
+	if !ok {
+		t.Fatalf("expected server.addr, got %v", serverMap)
+	}
+	addr, ok := addrRaw.(string)
+	if !ok {
+		t.Fatalf("expected server.addr to be string, got %T", addrRaw)
+	}
+	if addr != ":8080" {
+		t.Fatalf("expected generated default server.addr :8080, got %q", addr)
 	}
 }
