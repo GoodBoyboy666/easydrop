@@ -160,12 +160,12 @@ func WriteDefaultConfigFile(configDir string) error {
 	configPath := filepath.Join(configDir, "config.yaml")
 	f, err := os.OpenFile(configPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
-		return fmt.Errorf("创建配置文件失败: %w", err)
+		return fmt.Errorf("创建配置文件失败 (%s): %w", configPath, err)
 	}
 	defer f.Close()
 
 	if _, err := f.Write(content); err != nil {
-		return fmt.Errorf("写入默认配置文件失败: %w", err)
+		return fmt.Errorf("写入默认配置文件失败 (%s): %w", configPath, err)
 	}
 
 	return nil
