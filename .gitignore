@@ -1,6 +1,7 @@
 .idea/*
 data/*
 AGENTS.md
+.env
 *.exe
 Caddyfile
 .gocache/*
