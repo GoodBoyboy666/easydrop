@@ -2,7 +2,6 @@ package repo
 
 import (
 	"context"
-	"strings"
 
 	"easydrop/internal/model"
 
@@ -93,7 +92,7 @@ func (r *GormCommentRepo) List(ctx context.Context, filter CommentFilter, opts L
 	}
 
 	var comments []model.Comment
-	db = applyListOptions(db, opts, "created_at asc")
+	db = db.Order(opts.Order).Limit(opts.Limit).Offset(opts.Offset)
 	if err := db.Preload("User").Preload("ReplyToUser").Find(&comments).Error; err != nil {
 		return nil, 0, err
 	}
@@ -112,24 +111,9 @@ func (r *GormCommentRepo) ListPublic(ctx context.Context, includeHidden bool, op
 	}
 
 	var comments []model.Comment
-	db = applyListOptions(db, ListOptions{
-		Limit:  opts.Limit,
-		Offset: opts.Offset,
-		Order:  qualifyCommentOrder(opts.Order),
-	}, "comments.created_at asc")
+	db = db.Order(opts.Order).Limit(opts.Limit).Offset(opts.Offset)
 	if err := db.Preload("User").Preload("ReplyToUser").Find(&comments).Error; err != nil {
 		return nil, 0, err
 	}
 	return comments, total, nil
-}
-
-func qualifyCommentOrder(order string) string {
-	switch strings.TrimSpace(order) {
-	case "created_at asc":
-		return "comments.created_at asc"
-	case "created_at desc":
-		return "comments.created_at desc"
-	default:
-		return order
-	}
 }

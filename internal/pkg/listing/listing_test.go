@@ -45,38 +45,17 @@ func TestBoundsOffsetFromPage(t *testing.T) {
 	}
 }
 
-func TestOrderRulesNormalize(t *testing.T) {
-	rules := OrderRules{
-		Default: "created_at desc",
-		Allowed: map[string]string{
-			"created_at_asc":  "created_at asc",
-			"created_at_desc": "created_at desc",
-			"hot":             "hot_desc",
-			"hot_desc":        "hot_desc",
-		},
+func TestSQLOrderMapResolve(t *testing.T) {
+	orders := SQLOrderMap{
+		"created_at_asc":  "created_at asc",
+		"created_at_desc": "created_at desc",
 	}
 
-	if got := rules.Normalize(""); got != "created_at desc" {
-		t.Fatalf("expected default order, got %q", got)
-	}
-	if got := rules.Normalize("created_at_asc"); got != "created_at asc" {
+	if got := orders.Resolve(" CREATED_AT_ASC ", "created_at_desc"); got != "created_at asc" {
 		t.Fatalf("expected mapped asc order, got %q", got)
 	}
-	if got := rules.Normalize("HOT"); got != "hot_desc" {
-		t.Fatalf("expected alias hot_desc, got %q", got)
-	}
-	if got := rules.Normalize("unknown"); got != "created_at desc" {
-		t.Fatalf("expected default fallback, got %q", got)
-	}
-}
 
-func TestOrderRulesNormalizeWithoutWhitelist(t *testing.T) {
-	rules := OrderRules{Default: "created_at desc"}
-
-	if got := rules.Normalize("  key ASC  "); got != "key asc" {
-		t.Fatalf("expected passthrough normalized order, got %q", got)
-	}
-	if got := rules.Normalize(""); got != "created_at desc" {
-		t.Fatalf("expected default order, got %q", got)
+	if got := orders.Resolve("invalid", "created_at_desc"); got != "created_at desc" {
+		t.Fatalf("expected default mapped desc order, got %q", got)
 	}
 }

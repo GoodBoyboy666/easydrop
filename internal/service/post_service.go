@@ -221,7 +221,7 @@ func (s *postService) Delete(ctx context.Context, id uint) error {
 
 // List 根据用户、标签和分页条件返回说说列表。
 func (s *postService) List(ctx context.Context, input dto.PostListInput) (*dto.PostListResult, error) {
-	page, size := normalizeServiceListPageSize(input.Page, input.Size)
+	page, size := serviceListBounds.NormalizePageSize(input.Page, input.Size)
 
 	posts, total, err := s.postRepo.List(ctx, repo.PostFilter{
 		UserID:  input.UserID,
@@ -230,8 +230,8 @@ func (s *postService) List(ctx context.Context, input dto.PostListInput) (*dto.P
 		Hide:    input.Hide,
 	}, repo.ListOptions{
 		Limit:  size,
-		Offset: pageSizeToOffset(page, size),
-		Order:  normalizePostListOrder(input.Order),
+		Offset: serviceListBounds.OffsetFromPage(page, size),
+		Order:  resolvePostListOrder(input.Order),
 	})
 	if err != nil {
 		log.Printf("查询说说列表失败: %v", err)

@@ -26,14 +26,14 @@ func NewTagService(tagRepo repo.TagRepo) TagService {
 
 // List 返回全站标签列表，支持搜索、分页和热门排序。
 func (s *tagService) List(ctx context.Context, input dto.TagListInput) (*dto.TagListResult, error) {
-	page, size := normalizeServiceListPageSize(input.Page, input.Size)
+	page, size := serviceListBounds.NormalizePageSize(input.Page, input.Size)
 
 	items, total, err := s.tagRepo.List(ctx, repo.TagFilter{
 		Name: strings.TrimSpace(input.Keyword),
 	}, repo.ListOptions{
 		Limit:  size,
-		Offset: pageSizeToOffset(page, size),
-		Order:  normalizeTagListOrder(input.Order),
+		Offset: serviceListBounds.OffsetFromPage(page, size),
+		Order:  resolveTagListOrder(input.Order),
 	})
 	if err != nil {
 		log.Printf("查询标签列表失败: %v", err)

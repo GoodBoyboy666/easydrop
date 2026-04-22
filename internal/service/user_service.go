@@ -638,7 +638,7 @@ func (s *userService) Delete(ctx context.Context, id uint) error {
 
 // List 根据过滤条件和分页参数返回用户列表。
 func (s *userService) List(ctx context.Context, input dto.UserListInput) (*dto.UserListResult, error) {
-	page, size := normalizeServiceListPageSize(input.Page, input.Size)
+	page, size := serviceListBounds.NormalizePageSize(input.Page, input.Size)
 
 	users, total, err := s.userRepo.List(ctx, repo.UserFilter{
 		ID:       input.ID,
@@ -647,8 +647,8 @@ func (s *userService) List(ctx context.Context, input dto.UserListInput) (*dto.U
 		Status:   input.Status,
 	}, repo.ListOptions{
 		Limit:  size,
-		Offset: pageSizeToOffset(page, size),
-		Order:  normalizeUserListOrder(input.Order),
+		Offset: serviceListBounds.OffsetFromPage(page, size),
+		Order:  resolveUserListOrder(input.Order),
 	})
 	if err != nil {
 		log.Printf("查询用户列表失败: %v", err)

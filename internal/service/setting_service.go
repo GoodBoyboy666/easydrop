@@ -88,15 +88,15 @@ func (s *settingService) GetValue(ctx context.Context, key string) (string, bool
 
 // ListItems 按筛选条件查询配置列表。
 func (s *settingService) ListItems(ctx context.Context, input dto.SettingListInput) (*dto.SettingListResult, error) {
-	page, size := normalizeServiceListPageSize(input.Page, input.Size)
+	page, size := serviceListBounds.NormalizePageSize(input.Page, input.Size)
 
 	settings, total, err := s.settingRepo.List(ctx, repo.SettingFilter{
 		Category: strings.TrimSpace(input.Category),
 		Key:      strings.TrimSpace(input.Key),
 	}, repo.ListOptions{
 		Limit:  size,
-		Offset: pageSizeToOffset(page, size),
-		Order:  normalizeSettingListOrder(input.Order),
+		Offset: serviceListBounds.OffsetFromPage(page, size),
+		Order:  resolveSettingListOrder(input.Order),
 	})
 	if err != nil {
 		return nil, ErrInternal
@@ -157,7 +157,7 @@ func (s *settingService) GetPublicItems(ctx context.Context) (*dto.SettingPublic
 	settings, _, err := s.settingRepo.List(ctx, repo.SettingFilter{Public: &public}, repo.ListOptions{
 		Limit:  100,
 		Offset: 0,
-		Order:  "key asc",
+		Order:  resolveSettingListOrder(""),
 	})
 	if err != nil {
 		return nil, ErrInternal

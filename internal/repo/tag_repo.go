@@ -80,20 +80,14 @@ func (r *GormTagRepo) List(ctx context.Context, filter TagFilter, opts ListOptio
 	}
 
 	var tags []model.Tag
-	order := strings.ToLower(strings.TrimSpace(opts.Order))
-	if order == "hot_desc" || order == "hot_asc" {
+	if strings.Contains(strings.ToLower(opts.Order), "count(post_tags.post_id)") {
 		db = db.
 			Select("tags.*").
 			Joins("LEFT JOIN post_tags ON post_tags.tag_id = tags.id").
 			Group("tags.id")
-		opts = normalizeListOptions(opts, "created_at desc")
-		hotOrder := "COUNT(post_tags.post_id) DESC"
-		if order == "hot_asc" {
-			hotOrder = "COUNT(post_tags.post_id) ASC"
-		}
-		db = db.Order(hotOrder).Order("created_at desc").Limit(opts.Limit).Offset(opts.Offset)
+		db = db.Order(opts.Order).Order("created_at desc").Limit(opts.Limit).Offset(opts.Offset)
 	} else {
-		db = applyListOptions(db, opts, "created_at desc")
+		db = db.Order(opts.Order).Limit(opts.Limit).Offset(opts.Offset)
 	}
 	if err := db.Find(&tags).Error; err != nil {
 		return nil, 0, err

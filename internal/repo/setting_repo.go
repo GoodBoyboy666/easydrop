@@ -132,7 +132,7 @@ func (r *GormSettingRepo) List(ctx context.Context, filter SettingFilter, opts L
 	}
 
 	var settings []model.Setting
-	db = applyListOptions(db, opts, "key asc")
+	db = db.Order(opts.Order).Limit(opts.Limit).Offset(opts.Offset)
 	if err := db.Find(&settings).Error; err != nil {
 		return nil, 0, err
 	}

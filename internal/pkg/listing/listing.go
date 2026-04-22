@@ -1,7 +1,5 @@
 package listing
 
-import "strings"
-
 const (
 	defaultPage = 1
 	defaultSize = 20
@@ -12,12 +10,6 @@ type Bounds struct {
 	DefaultPage int
 	DefaultSize int
 	MaxSize     int
-}
-
-// OrderRules 定义排序白名单与默认值。
-type OrderRules struct {
-	Default string
-	Allowed map[string]string
 }
 
 func (b Bounds) NormalizePage(page int) int {
@@ -65,23 +57,6 @@ func (b Bounds) OffsetFromPage(page, size int) int {
 	}
 
 	return int(deltaPage * size64)
-}
-
-func (r OrderRules) Normalize(order string) string {
-	normalizedInput := strings.ToLower(strings.TrimSpace(order))
-	if normalizedInput == "" {
-		return strings.TrimSpace(r.Default)
-	}
-
-	if len(r.Allowed) == 0 {
-		return normalizedInput
-	}
-
-	if normalized, ok := r.Allowed[normalizedInput]; ok {
-		return normalized
-	}
-
-	return strings.TrimSpace(r.Default)
 }
 
 func (b Bounds) defaultPage() int {
