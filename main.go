@@ -120,6 +120,10 @@ func runServer(configDir string, autoGenerateJWT bool) error {
 
 	printBuildInfoBanner(os.Stdout)
 
+	if err := ensureDefaultConfigOnStartup(configDir, log.Default()); err != nil {
+		return fmt.Errorf("启动前检查配置文件失败: %w", err)
+	}
+
 	if err := ensureJWTKeysOnStartup(configDir, autoGenerateJWT, log.Default()); err != nil {
 		return fmt.Errorf("启动前检查 JWT 密钥失败: %w", err)
 	}
@@ -247,6 +251,40 @@ func buildValueOrDefault(value string, fallback string) string {
 	}
 
 	return trimmed
+}
+
+func ensureDefaultConfigOnStartup(configDir string, logger *log.Logger) error {
+	configDir = strings.TrimSpace(configDir)
+	if configDir == "" {
+		return errors.New("config dir is required")
+	}
+	if logger == nil {
+		logger = log.Default()
+	}
+
+	configPath := filepath.Join(configDir, "config.yaml")
+	info, err := os.Stat(configPath)
+	if err == nil {
+		if info.IsDir() {
+			return fmt.Errorf("配置文件路径是目录: %s", configPath)
+		}
+		logger.Printf("检测到配置文件已存在，跳过自动生成: %s", configPath)
+		return nil
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("检查配置文件失败: %w", err)
+	}
+
+	if err := config.WriteDefaultConfigFile(configDir); err != nil {
+		if errors.Is(err, os.ErrExist) {
+			logger.Printf("检测到配置文件已存在，跳过自动生成: %s", configPath)
+			return nil
+		}
+		return fmt.Errorf("自动生成默认配置文件失败: %w", err)
+	}
+
+	logger.Printf("配置文件不存在，已自动创建: %s", configPath)
+	return nil
 }
 
 func ensureJWTKeysOnStartup(configDir string, autoGenerateJWT bool, logger *log.Logger) error {

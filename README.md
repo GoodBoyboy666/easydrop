@@ -111,40 +111,32 @@ curl -X POST http://localhost:8080/api/v1/init \
 
 ## Docker 部署
 
-### 准备运行目录（二选一）
-
-方案 A：使用配置文件（推荐）
+### 准备运行目录
 
 ```bash
 mkdir -p data
+```
+
+Windows PowerShell:
+
+```powershell
+New-Item -ItemType Directory -Force data | Out-Null
+```
+
+容器首次启动时，若 `data/config.yaml` 不存在，会自动生成一份带默认值的配置文件。
+如果你希望先手动调整配置，也可以提前复制模板：
+
+```bash
 cp example/config.example.yaml data/config.yaml
 ```
 
 Windows PowerShell:
 
 ```powershell
-New-Item -ItemType Directory -Force data | Out-Null
 Copy-Item example\config.example.yaml data\config.yaml
 ```
 
-方案 B：使用环境变量文件
-
-```bash
-mkdir -p data
-cp .env.example .env
-# 或：cp .env.example.full .env
-```
-
-Windows PowerShell:
-
-```powershell
-New-Item -ItemType Directory -Force data | Out-Null
-Copy-Item .env.example .env
-# 或：Copy-Item .env.example.full .env
-```
-
-`docker-compose.yml` 通过可选的 `env_file` 读取 `.env`；文件不存在时不会阻止启动。
-当 `.env` 存在且包含 `EASYDROP_` 变量时，会覆盖 `data/config.yaml` 同名项。
+如需覆盖配置，可直接编辑 `data/config.yaml`，或在 `docker-compose.yml` 的 `environment` 中补充 `EASYDROP_` 变量（环境变量优先级更高）。
 
 持久化目录统一挂载到 `./data:/app/data`，常见文件包括：
 
