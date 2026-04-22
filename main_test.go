@@ -5,6 +5,9 @@ import (
 	"context"
 	"errors"
 	"log"
+	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -152,6 +155,135 @@ func TestPrepareInitSecretReturnsStatusError(t *testing.T) {
 	err := prepareInitSecret(context.Background(), app, log.New(&bytes.Buffer{}, "", 0))
 	if err == nil || !strings.Contains(err.Error(), "读取系统初始化状态失败") {
 		t.Fatalf("expected wrapped status error, got %v", err)
+	}
+}
+
+func TestEnsureJWTKeysOnStartupDisabled(t *testing.T) {
+	configDir := t.TempDir()
+	privatePath := filepath.Join(configDir, "jwt", "private.pem")
+	publicPath := filepath.Join(configDir, "jwt", "public.pem")
+	writeMainTestJWTConfig(t, configDir, privatePath, publicPath)
+
+	if err := ensureJWTKeysOnStartup(configDir, false, log.New(&bytes.Buffer{}, "", 0)); err != nil {
+		t.Fatalf("ensureJWTKeysOnStartup error: %v", err)
+	}
+
+	if _, err := os.Stat(privatePath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected private key not to be generated, err=%v", err)
+	}
+	if _, err := os.Stat(publicPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expected public key not to be generated, err=%v", err)
+	}
+}
+
+func TestEnsureJWTKeysOnStartupGeneratesWhenBothMissing(t *testing.T) {
+	configDir := t.TempDir()
+	privatePath := filepath.Join(configDir, "custom", "keys", "server-private.key")
+	publicPath := filepath.Join(configDir, "custom", "keys", "server-public.key")
+	writeMainTestJWTConfig(t, configDir, privatePath, publicPath)
+
+	var buf bytes.Buffer
+	if err := ensureJWTKeysOnStartup(configDir, true, log.New(&buf, "", 0)); err != nil {
+		t.Fatalf("ensureJWTKeysOnStartup error: %v", err)
+	}
+
+	if _, err := os.Stat(privatePath); err != nil {
+		t.Fatalf("expected generated private key, err=%v", err)
+	}
+	if _, err := os.Stat(publicPath); err != nil {
+		t.Fatalf("expected generated public key, err=%v", err)
+	}
+	if !strings.Contains(buf.String(), "已自动生成") {
+		t.Fatalf("expected log to contain auto-generate message, got %q", buf.String())
+	}
+}
+
+func TestEnsureJWTKeysOnStartupSkipsWhenBothExist(t *testing.T) {
+	configDir := t.TempDir()
+	privatePath := filepath.Join(configDir, "jwt", "private.pem")
+	publicPath := filepath.Join(configDir, "jwt", "public.pem")
+	writeMainTestJWTConfig(t, configDir, privatePath, publicPath)
+
+	if err := generateJWTTokenPair(privatePath, publicPath, false); err != nil {
+		t.Fatalf("generateJWTTokenPair error: %v", err)
+	}
+
+	privateBefore, err := os.ReadFile(privatePath)
+	if err != nil {
+		t.Fatalf("read private key before ensure failed: %v", err)
+	}
+	publicBefore, err := os.ReadFile(publicPath)
+	if err != nil {
+		t.Fatalf("read public key before ensure failed: %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := ensureJWTKeysOnStartup(configDir, true, log.New(&buf, "", 0)); err != nil {
+		t.Fatalf("ensureJWTKeysOnStartup error: %v", err)
+	}
+
+	privateAfter, err := os.ReadFile(privatePath)
+	if err != nil {
+		t.Fatalf("read private key after ensure failed: %v", err)
+	}
+	publicAfter, err := os.ReadFile(publicPath)
+	if err != nil {
+		t.Fatalf("read public key after ensure failed: %v", err)
+	}
+
+	if !bytes.Equal(privateBefore, privateAfter) {
+		t.Fatal("expected private key to stay unchanged when both files already exist")
+	}
+	if !bytes.Equal(publicBefore, publicAfter) {
+		t.Fatal("expected public key to stay unchanged when both files already exist")
+	}
+	if !strings.Contains(buf.String(), "跳过自动生成") {
+		t.Fatalf("expected log to contain skip message, got %q", buf.String())
+	}
+}
+
+func TestEnsureJWTKeysOnStartupReturnsErrorWhenPartiallyMissing(t *testing.T) {
+	configDir := t.TempDir()
+	privatePath := filepath.Join(configDir, "jwt", "private.pem")
+	publicPath := filepath.Join(configDir, "jwt", "public.pem")
+	writeMainTestJWTConfig(t, configDir, privatePath, publicPath)
+
+	if err := os.MkdirAll(filepath.Dir(privatePath), 0o755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	privateContent := []byte("partial-private-key")
+	if err := os.WriteFile(privatePath, privateContent, 0o600); err != nil {
+		t.Fatalf("write private key failed: %v", err)
+	}
+
+	err := ensureJWTKeysOnStartup(configDir, true, log.New(&bytes.Buffer{}, "", 0))
+	if err == nil || !strings.Contains(err.Error(), "必须同时存在或同时不存在") {
+		t.Fatalf("expected partial key error, got %v", err)
+	}
+
+	privateAfter, readErr := os.ReadFile(privatePath)
+	if readErr != nil {
+		t.Fatalf("read private key after ensure failed: %v", readErr)
+	}
+	if !bytes.Equal(privateAfter, privateContent) {
+		t.Fatal("expected existing private key to remain unchanged when startup check fails")
+	}
+	if _, statErr := os.Stat(publicPath); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("expected public key to remain missing, err=%v", statErr)
+	}
+}
+
+func writeMainTestJWTConfig(t *testing.T, configDir string, privatePath string, publicPath string) {
+	t.Helper()
+
+	content := strings.Join([]string{
+		"jwt:",
+		"  private_key_path: " + strconv.Quote(filepath.ToSlash(privatePath)),
+		"  public_key_path: " + strconv.Quote(filepath.ToSlash(publicPath)),
+	}, "\n") + "\n"
+
+	if err := os.WriteFile(filepath.Join(configDir, "config.yaml"), []byte(content), 0o644); err != nil {
+		t.Fatalf("write config file failed: %v", err)
 	}
 }
 

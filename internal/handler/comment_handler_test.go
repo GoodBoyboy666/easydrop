@@ -95,7 +95,7 @@ func TestCommentHandlerCreateSetsCurrentUser(t *testing.T) {
 			}
 			return &dto.CommentDTO{ID: 1, Author: dto.CommentAuthorDTO{ID: input.UserID}, PostID: input.PostID}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/posts/9/comments", `{"post_id":7,"user_id":999,"content":"hello"}`)
 	c.Params = gin.Params{{Key: "id", Value: "9"}}
@@ -118,7 +118,7 @@ func TestCommentHandlerCreateAdminCanViewHiddenPost(t *testing.T) {
 			}
 			return &dto.CommentDTO{ID: 1, Author: dto.CommentAuthorDTO{ID: input.UserID}, PostID: input.PostID}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/posts/9/comments", `{"content":"hello"}`)
 	c.Params = gin.Params{{Key: "id", Value: "9"}}
@@ -141,7 +141,7 @@ func TestCommentHandlerCreateInvalidPathID(t *testing.T) {
 			createCalled = true
 			return &dto.CommentDTO{}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/posts/0/comments", `{"content":"hello"}`)
 	c.Params = gin.Params{{Key: "id", Value: "0"}}
@@ -164,7 +164,7 @@ func TestCommentHandlerCreateWhenPostCommentDisabled(t *testing.T) {
 		createFn: func(_ context.Context, _ dto.CommentCreateInput) (*dto.CommentDTO, error) {
 			return nil, service.ErrPostCommentDisabled
 		},
-	})
+	}, nil)
 
 	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/posts/9/comments", `{"content":"hello"}`)
 	c.Params = gin.Params{{Key: "id", Value: "9"}}
@@ -190,7 +190,7 @@ func TestCommentHandlerCreatePassesCaptchaRemoteIP(t *testing.T) {
 			}
 			return &dto.CommentDTO{ID: 1, Author: dto.CommentAuthorDTO{ID: input.UserID}, PostID: input.PostID}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/posts/9/comments", `{"content":"hello","captcha":{"token":"abc"}}`)
 	c.Request.RemoteAddr = "192.0.2.1:1234"
@@ -211,7 +211,7 @@ func TestCommentHandlerCreateCaptchaRequiredReturnsBadRequest(t *testing.T) {
 		createFn: func(_ context.Context, _ dto.CommentCreateInput) (*dto.CommentDTO, error) {
 			return nil, service.ErrCaptchaRequired
 		},
-	})
+	}, nil)
 
 	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/posts/9/comments", `{"content":"hello"}`)
 	c.Params = gin.Params{{Key: "id", Value: "9"}}
@@ -231,7 +231,7 @@ func TestCommentHandlerGetNotOwner(t *testing.T) {
 		getFn: func(_ context.Context, id uint) (*dto.CommentDTO, error) {
 			return &dto.CommentDTO{ID: id, Author: dto.CommentAuthorDTO{ID: 202}}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/comments/7")
 	c.Params = gin.Params{{Key: "id", Value: "7"}}
@@ -256,7 +256,7 @@ func TestCommentHandlerUpdateOnlyOwnComment(t *testing.T) {
 			updateCalled = true
 			return &dto.CommentDTO{}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContextWithBody(http.MethodPatch, "/api/v1/comments/8", `{"content":"updated"}`)
 	c.Params = gin.Params{{Key: "id", Value: "8"}}
@@ -287,7 +287,7 @@ func TestCommentHandlerDeleteSuccess(t *testing.T) {
 			}
 			return nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodDelete, "/api/v1/comments/8")
 	c.Params = gin.Params{{Key: "id", Value: "8"}}
@@ -324,7 +324,7 @@ func TestCommentHandlerListSuccess(t *testing.T) {
 			}
 			return &dto.CommentListResult{Items: []dto.CommentDTO{}, Total: 0}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/users/me/comments?post_id=9&page=3&size=10&order=created_at_asc")
 	c.Set(middleware.ContextUserIDKey, uint(101))
@@ -351,7 +351,7 @@ func TestCommentHandlerListAdminCanViewHiddenPost(t *testing.T) {
 			}
 			return &dto.CommentListResult{Items: []dto.CommentDTO{}, Total: 0}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/users/me/comments?post_id=9")
 	c.Set(middleware.ContextUserIDKey, uint(101))
@@ -382,7 +382,7 @@ func TestCommentHandlerListPublicSuccess(t *testing.T) {
 			}
 			return &dto.CommentListResult{Items: []dto.CommentDTO{}, Total: 0}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/comments?page=3&size=10&order=created_at_desc")
 
@@ -411,7 +411,7 @@ func TestCommentHandlerListPublicRejectsUnknownQuery(t *testing.T) {
 			}
 			return &dto.CommentListResult{Items: []dto.CommentDTO{}, Total: 0}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/comments?post_id=9&user_id=2")
 
@@ -437,7 +437,7 @@ func TestCommentHandlerListPublicAdminCanViewHiddenPosts(t *testing.T) {
 			}
 			return &dto.CommentListResult{Items: []dto.CommentDTO{}, Total: 0}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/comments")
 	c.Set(middleware.ContextUserIDKey, uint(101))
@@ -471,7 +471,7 @@ func TestCommentHandlerListByPostSuccess(t *testing.T) {
 			}
 			return &dto.CommentListResult{Items: []dto.CommentDTO{}, Total: 0}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/posts/9/comments?page=3&size=10&order=created_at_desc")
 	c.Params = gin.Params{{Key: "id", Value: "9"}}
@@ -498,7 +498,7 @@ func TestCommentHandlerListByPostAdminCanViewHiddenPost(t *testing.T) {
 			}
 			return &dto.CommentListResult{Items: []dto.CommentDTO{}, Total: 0}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/posts/9/comments")
 	c.Params = gin.Params{{Key: "id", Value: "9"}}
@@ -518,7 +518,7 @@ func TestCommentHandlerListByPostAdminCanViewHiddenPost(t *testing.T) {
 func TestCommentHandlerListByPostInvalidPathID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewCommentHandler(&mockCommentServiceForHandler{})
+	h := NewCommentHandler(&mockCommentServiceForHandler{}, nil)
 	c, w := newTestContext(http.MethodGet, "/api/v1/posts/0/comments")
 	c.Params = gin.Params{{Key: "id", Value: "0"}}
 
@@ -536,7 +536,7 @@ func TestCommentHandlerListByPostServiceError(t *testing.T) {
 		listByPostFn: func(_ context.Context, _ dto.CommentListInput) (*dto.CommentListResult, error) {
 			return nil, service.ErrPostNotFound
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/posts/9/comments")
 	c.Params = gin.Params{{Key: "id", Value: "9"}}
@@ -551,7 +551,7 @@ func TestCommentHandlerListByPostServiceError(t *testing.T) {
 func TestCommentHandlerUnauthorized(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewCommentHandler(&mockCommentServiceForHandler{})
+	h := NewCommentHandler(&mockCommentServiceForHandler{}, nil)
 	c, w := newTestContext(http.MethodGet, "/api/v1/users/me/comments/1")
 	c.Params = gin.Params{{Key: "id", Value: "1"}}
 
@@ -559,26 +559,5 @@ func TestCommentHandlerUnauthorized(t *testing.T) {
 
 	if w.Code != http.StatusUnauthorized {
 		t.Fatalf("expected status 401, got %d", w.Code)
-	}
-}
-
-func TestMapCommentErrorStatus(t *testing.T) {
-	if got := mapCommentErrorStatus(service.ErrInvalidCommentPost); got != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", got)
-	}
-	if got := mapCommentErrorStatus(service.ErrCaptchaRequired); got != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", got)
-	}
-	if got := mapCommentErrorStatus(service.ErrCaptchaFailed); got != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", got)
-	}
-	if got := mapCommentErrorStatus(service.ErrCommentNotFound); got != http.StatusNotFound {
-		t.Fatalf("expected 404, got %d", got)
-	}
-	if got := mapCommentErrorStatus(service.ErrPostCommentDisabled); got != http.StatusForbidden {
-		t.Fatalf("expected 403, got %d", got)
-	}
-	if got := mapCommentErrorStatus(service.ErrInternal); got != http.StatusInternalServerError {
-		t.Fatalf("expected 500, got %d", got)
 	}
 }

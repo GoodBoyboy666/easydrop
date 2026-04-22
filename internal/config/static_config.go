@@ -9,6 +9,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 
+	"easydrop/internal/pkg/avatar"
 	"easydrop/internal/pkg/captcha"
 	cookiepkg "easydrop/internal/pkg/cookie"
 	"easydrop/internal/pkg/database"
@@ -51,12 +52,13 @@ type StaticConfig struct {
 	Email      email.Config             `mapstructure:"email" yaml:"email"`
 	JWT        jwt.Config               `mapstructure:"jwt" yaml:"jwt"`
 	Captcha    captcha.AllCaptchaConfig `mapstructure:"captcha" yaml:"captcha"`
+	Avatar     avatar.Config            `mapstructure:"avatar" yaml:"avatar"`
 	Storage    storage.Config           `mapstructure:"storage" yaml:"storage"`
 	Token      token.Config             `mapstructure:"token" yaml:"token"`
 }
 
 // StaticProviderSet 提供配置加载的 Wire 注入入口。
-var StaticProviderSet = wire.NewSet(Load, ProvideDBConfig, ProvideRedisConfig, ProvideRateLimitConfig, ProvideEmailConfig, ProvideJWTConfig, ProvideAuthCookieConfig, ProvideCaptchaConfig, ProvideStorageConfig, ProvideTokenConfig)
+var StaticProviderSet = wire.NewSet(Load, ProvideDBConfig, ProvideRedisConfig, ProvideRateLimitConfig, ProvideEmailConfig, ProvideJWTConfig, ProvideAuthCookieConfig, ProvideCaptchaConfig, ProvideAvatarConfig, ProvideStorageConfig, ProvideTokenConfig)
 
 // Load 从 configDir/config.yaml 读取配置，并支持环境变量覆盖。
 // 配置文件缺失时会回退到默认值与环境变量。
@@ -102,6 +104,7 @@ func Load(configDir string, strict bool) (*StaticConfig, error) {
 	v.SetDefault("email.tls_mode", email.TLSModeStartTLS)
 	v.SetDefault("captcha.enabled", false)
 	v.SetDefault("captcha.timeout", 5*time.Second)
+	v.SetDefault("avatar.gravatar_base_url", avatar.DefaultGravatarBaseURL)
 	v.SetDefault("storage.backend", storage.BackendLocal)
 	v.SetDefault("storage.local.base_path", "data/uploads")
 	v.SetDefault("token.key_prefix", "token")
@@ -163,6 +166,11 @@ func ProvideAuthCookieConfig(cfg *StaticConfig) *cookiepkg.Config {
 // ProvideCaptchaConfig 提供验证码配置。
 func ProvideCaptchaConfig(cfg *StaticConfig) *captcha.AllCaptchaConfig {
 	return &cfg.Captcha
+}
+
+// ProvideAvatarConfig 提供头像配置。
+func ProvideAvatarConfig(cfg *StaticConfig) *avatar.Config {
+	return &cfg.Avatar
 }
 
 // ProvideStorageConfig 提供文件存储配置。

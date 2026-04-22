@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"errors"
 	"net/http"
 	"strings"
 
@@ -14,11 +13,12 @@ import (
 // SettingAdminHandler 处理管理端配置请求。
 type SettingAdminHandler struct {
 	settingService service.SettingService
+	errorResponder ErrorResponder
 }
 
 // NewSettingAdminHandler 创建管理端配置处理器。
-func NewSettingAdminHandler(settingService service.SettingService) *SettingAdminHandler {
-	return &SettingAdminHandler{settingService: settingService}
+func NewSettingAdminHandler(settingService service.SettingService, errorResponder ErrorResponder) *SettingAdminHandler {
+	return &SettingAdminHandler{settingService: settingService, errorResponder: ensureErrorResponder(errorResponder)}
 }
 
 // List 查询配置列表（管理端）
@@ -54,7 +54,7 @@ func (h *SettingAdminHandler) List(c *gin.Context) {
 
 	result, err := h.settingService.ListItems(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(mapSettingErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -76,7 +76,7 @@ func (h *SettingAdminHandler) Public(c *gin.Context) {
 
 	result, err := h.settingService.GetPublicItems(c.Request.Context())
 	if err != nil {
-		c.JSON(mapSettingErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -117,20 +117,9 @@ func (h *SettingAdminHandler) Update(c *gin.Context) {
 	req.Key = strings.TrimSpace(uriReq.Key)
 
 	if err := h.settingService.UpdateItem(c.Request.Context(), req); err != nil {
-		c.JSON(mapSettingErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, dto.ErrorResponse{Message: "ok"})
-}
-
-func mapSettingErrorStatus(err error) int {
-	switch {
-	case errors.Is(err, service.ErrSettingKeyRequired):
-		return http.StatusBadRequest
-	case errors.Is(err, service.ErrInternal):
-		return http.StatusInternalServerError
-	default:
-		return http.StatusInternalServerError
-	}
 }

@@ -10,6 +10,7 @@ import (
 
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
+	avatarcfg "easydrop/internal/pkg/avatar"
 	"easydrop/internal/pkg/storage"
 	"easydrop/internal/repo"
 
@@ -39,24 +40,32 @@ type PostService interface {
 }
 
 type postService struct {
-	postRepo       repo.PostRepo
-	commentRepo    repo.CommentRepo
-	tagRepo        repo.TagRepo
-	storageManager storage.Manager
+	postRepo        repo.PostRepo
+	commentRepo     repo.CommentRepo
+	tagRepo         repo.TagRepo
+	storageManager  storage.Manager
+	gravatarBaseURL string
 }
 
 // NewPostService 创建说说服务实例。
-func NewPostService(postRepo repo.PostRepo, commentRepo repo.CommentRepo, tagRepo repo.TagRepo, storageManager storage.Manager) PostService {
+func NewPostService(postRepo repo.PostRepo, commentRepo repo.CommentRepo, tagRepo repo.TagRepo, storageManager storage.Manager, avatarConfig *avatarcfg.Config) PostService {
+	gravatarBaseURL := ""
+	if avatarConfig != nil {
+		gravatarBaseURL = avatarConfig.GravatarBaseURL
+	}
+
 	return &postService{
-		postRepo:       postRepo,
-		commentRepo:    commentRepo,
-		tagRepo:        tagRepo,
-		storageManager: storageManager,
+		postRepo:        postRepo,
+		commentRepo:     commentRepo,
+		tagRepo:         tagRepo,
+		storageManager:  storageManager,
+		gravatarBaseURL: normalizeGravatarBaseURL(gravatarBaseURL),
 	}
 }
 
 // Create 校验输入内容并创建新的说说记录。
 func (s *postService) Create(ctx context.Context, input dto.PostCreateInput) (*dto.PostDTO, error) {
+	// 基础输入校验。
 	if input.UserID == 0 {
 		return nil, ErrInvalidPostUser
 	}
@@ -65,11 +74,13 @@ func (s *postService) Create(ctx context.Context, input dto.PostCreateInput) (*d
 		return nil, ErrEmptyPostContent
 	}
 
+	// 从正文解析并准备标签实体。
 	tags, err := s.buildTagsFromContent(ctx, content)
 	if err != nil {
 		return nil, err
 	}
 
+	// 持久化说说后回查完整信息用于 DTO 转换。
 	post := &model.Post{
 		Content:        content,
 		Hide:           input.Hide,
@@ -88,7 +99,7 @@ func (s *postService) Create(ctx context.Context, input dto.PostCreateInput) (*d
 		log.Printf("查询已创建说说失败: %v", err)
 		return nil, ErrInternal
 	}
-	postDTO, err := toPostDTO(ctx, createdPost, s.storageManager)
+	postDTO, err := toPostDTO(ctx, createdPost, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("解析说说头像失败: %v", err)
 		return nil, ErrInternal
@@ -109,7 +120,7 @@ func (s *postService) Get(ctx context.Context, id uint) (*dto.PostDTO, error) {
 		log.Printf("获取说说失败: %v", err)
 		return nil, ErrInternal
 	}
-	postDTO, err := toPostDTO(ctx, post, s.storageManager)
+	postDTO, err := toPostDTO(ctx, post, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("解析说说头像失败: %v", err)
 		return nil, ErrInternal
@@ -119,6 +130,7 @@ func (s *postService) Get(ctx context.Context, id uint) (*dto.PostDTO, error) {
 
 // Update 更新说说内容，并在内容变化时重建标签关系。
 func (s *postService) Update(ctx context.Context, input dto.PostUpdateInput) (*dto.PostDTO, error) {
+	// 读取待更新说说。
 	if input.ID == 0 {
 		return nil, ErrPostNotFound
 	}
@@ -131,6 +143,7 @@ func (s *postService) Update(ctx context.Context, input dto.PostUpdateInput) (*d
 		return nil, ErrInternal
 	}
 
+	// 应用可选更新字段；正文变化时同步刷新标签关联。
 	var oldTagIDs []uint
 	if input.Content != nil {
 		content := strings.TrimSpace(*input.Content)
@@ -157,6 +170,7 @@ func (s *postService) Update(ctx context.Context, input dto.PostUpdateInput) (*d
 		post.Pin = input.Pin
 	}
 
+	// 持久化更新并在后台清理可能失效的旧标签。
 	if err := s.postRepo.Update(ctx, post); err != nil {
 		log.Printf("更新说说失败: %v", err)
 		return nil, ErrInternal
@@ -164,7 +178,7 @@ func (s *postService) Update(ctx context.Context, input dto.PostUpdateInput) (*d
 	if len(oldTagIDs) > 0 {
 		s.asyncCleanupOrphanTags(oldTagIDs)
 	}
-	postDTO, err := toPostDTO(ctx, post, s.storageManager)
+	postDTO, err := toPostDTO(ctx, post, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("解析说说头像失败: %v", err)
 		return nil, ErrInternal
@@ -174,6 +188,7 @@ func (s *postService) Update(ctx context.Context, input dto.PostUpdateInput) (*d
 
 // Delete 删除说说并在后台尝试清理孤儿标签。
 func (s *postService) Delete(ctx context.Context, id uint) error {
+	// 先确认说说存在，并记录可能需要清理的标签。
 	if id == 0 {
 		return ErrPostNotFound
 	}
@@ -186,6 +201,8 @@ func (s *postService) Delete(ctx context.Context, id uint) error {
 		return ErrInternal
 	}
 	tagIDs := collectTagIDs(post.Tags)
+
+	// 删除关联评论与说说主体。
 	if err := s.commentRepo.DeleteByPostID(ctx, id); err != nil {
 		log.Printf("删除说说评论失败: %v", err)
 		return ErrInternal
@@ -194,6 +211,8 @@ func (s *postService) Delete(ctx context.Context, id uint) error {
 		log.Printf("删除说说失败: %v", err)
 		return ErrInternal
 	}
+
+	// 后台清理不再被引用的标签。
 	if len(tagIDs) > 0 {
 		s.asyncCleanupOrphanTags(tagIDs)
 	}
@@ -219,7 +238,7 @@ func (s *postService) List(ctx context.Context, input dto.PostListInput) (*dto.P
 		return nil, ErrInternal
 	}
 
-	items, err := toPostDTOs(ctx, posts, s.storageManager)
+	items, err := toPostDTOs(ctx, posts, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("解析说说列表头像失败: %v", err)
 		return nil, ErrInternal
@@ -335,12 +354,12 @@ func collectTagIDs(tags []model.Tag) []uint {
 }
 
 // toPostDTO 将说说模型转换为单个 DTO。
-func toPostDTO(ctx context.Context, post *model.Post, storageManager storage.Manager) (*dto.PostDTO, error) {
+func toPostDTO(ctx context.Context, post *model.Post, storageManager storage.Manager, gravatarBaseURL string) (*dto.PostDTO, error) {
 	if post == nil {
 		return nil, nil
 	}
 
-	avatar, err := resolveUserAvatar(ctx, post.User.Avatar, post.User.Email, storageManager)
+	avatar, err := resolveUserAvatar(ctx, post.User.Avatar, post.User.Email, storageManager, gravatarBaseURL)
 	if err != nil {
 		return nil, err
 	}
@@ -364,13 +383,13 @@ func toPostDTO(ctx context.Context, post *model.Post, storageManager storage.Man
 }
 
 // toPostDTOs 将说说模型切片转换为 DTO 列表。
-func toPostDTOs(ctx context.Context, posts []model.Post, storageManager storage.Manager) ([]dto.PostDTO, error) {
+func toPostDTOs(ctx context.Context, posts []model.Post, storageManager storage.Manager, gravatarBaseURL string) ([]dto.PostDTO, error) {
 	if len(posts) == 0 {
 		return nil, nil
 	}
 	items := make([]dto.PostDTO, 0, len(posts))
 	for i := range posts {
-		postDTO, err := toPostDTO(ctx, &posts[i], storageManager)
+		postDTO, err := toPostDTO(ctx, &posts[i], storageManager, gravatarBaseURL)
 		if err != nil {
 			return nil, err
 		}

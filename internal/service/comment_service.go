@@ -8,6 +8,7 @@ import (
 
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
+	avatarcfg "easydrop/internal/pkg/avatar"
 	"easydrop/internal/pkg/captcha"
 	"easydrop/internal/pkg/storage"
 	"easydrop/internal/repo"
@@ -51,10 +52,16 @@ type commentService struct {
 	storageManager   storage.Manager
 	visibilityPolicy PostVisibilityPolicy
 	captcha          captcha.Verifier
+	gravatarBaseURL  string
 }
 
 // NewCommentService 创建评论服务实例。
-func NewCommentService(commentRepo repo.CommentRepo, postRepo repo.PostRepo, userRepo repo.UserRepo, storageManager storage.Manager, visibilityPolicy PostVisibilityPolicy, captchaVerifier captcha.Verifier) CommentService {
+func NewCommentService(commentRepo repo.CommentRepo, postRepo repo.PostRepo, userRepo repo.UserRepo, storageManager storage.Manager, visibilityPolicy PostVisibilityPolicy, captchaVerifier captcha.Verifier, avatarConfig *avatarcfg.Config) CommentService {
+	gravatarBaseURL := ""
+	if avatarConfig != nil {
+		gravatarBaseURL = avatarConfig.GravatarBaseURL
+	}
+
 	return &commentService{
 		commentRepo:      commentRepo,
 		postRepo:         postRepo,
@@ -62,11 +69,13 @@ func NewCommentService(commentRepo repo.CommentRepo, postRepo repo.PostRepo, use
 		storageManager:   storageManager,
 		visibilityPolicy: visibilityPolicy,
 		captcha:          captchaVerifier,
+		gravatarBaseURL:  normalizeGravatarBaseURL(gravatarBaseURL),
 	}
 }
 
 // Create 校验评论输入并创建。
 func (s *commentService) Create(ctx context.Context, input dto.CommentCreateInput) (*dto.CommentDTO, error) {
+	// 先校验验证码与基础输入。
 	if err := s.verifyCaptcha(ctx, input.Captcha); err != nil {
 		return nil, err
 	}
@@ -83,6 +92,7 @@ func (s *commentService) Create(ctx context.Context, input dto.CommentCreateInpu
 		return nil, ErrEmptyCommentContent
 	}
 
+	// 校验说说可见性与评论开关。
 	post, err := s.visibilityPolicy.EnsurePostReadable(ctx, s.postRepo, input.PostID, input.CanViewHidden)
 	if err != nil {
 		return nil, err
@@ -95,6 +105,7 @@ func (s *commentService) Create(ctx context.Context, input dto.CommentCreateInpu
 		return nil, err
 	}
 
+	// 处理 parent/root/replyTo 关系，保证扁平接楼关系正确。
 	var parentID *uint
 	var rootID *uint
 	var replyToUserID *uint
@@ -127,6 +138,7 @@ func (s *commentService) Create(ctx context.Context, input dto.CommentCreateInpu
 		replyToUserID = &replyUID
 	}
 
+	// 写入评论并回查完整数据（含关联用户）用于 DTO 转换。
 	comment := &model.Comment{
 		PostID:        input.PostID,
 		UserID:        input.UserID,
@@ -146,7 +158,7 @@ func (s *commentService) Create(ctx context.Context, input dto.CommentCreateInpu
 		return nil, ErrInternal
 	}
 
-	d, err := toCommentDTO(ctx, createdComment, s.storageManager)
+	d, err := toCommentDTO(ctx, createdComment, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("解析评论头像失败: %v", err)
 		return nil, ErrInternal
@@ -169,7 +181,7 @@ func (s *commentService) Get(ctx context.Context, id uint) (*dto.CommentDTO, err
 		return nil, ErrInternal
 	}
 
-	d, err := toCommentDTO(ctx, comment, s.storageManager)
+	d, err := toCommentDTO(ctx, comment, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("解析评论头像失败: %v", err)
 		return nil, ErrInternal
@@ -205,7 +217,7 @@ func (s *commentService) Update(ctx context.Context, input dto.CommentUpdateInpu
 		return nil, ErrInternal
 	}
 
-	d, err := toCommentDTO(ctx, comment, s.storageManager)
+	d, err := toCommentDTO(ctx, comment, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("解析评论头像失败: %v", err)
 		return nil, ErrInternal
@@ -298,7 +310,7 @@ func (s *commentService) ListPublic(ctx context.Context, input dto.CommentPublic
 		return nil, ErrInternal
 	}
 
-	items, err := toCommentDTOs(ctx, comments, s.storageManager)
+	items, err := toCommentDTOs(ctx, comments, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("解析公开评论列表头像失败: %v", err)
 		return nil, ErrInternal
@@ -310,6 +322,7 @@ func (s *commentService) ListPublic(ctx context.Context, input dto.CommentPublic
 	}, nil
 }
 
+// list 执行评论通用列表查询并转换为 DTO 结果。
 func (s *commentService) list(ctx context.Context, filter repo.CommentFilter, page, size int, order string) (*dto.CommentListResult, error) {
 	normalizedPage, normalizedSize := normalizeServiceListPageSize(page, size)
 
@@ -328,7 +341,7 @@ func (s *commentService) list(ctx context.Context, filter repo.CommentFilter, pa
 		return nil, ErrInternal
 	}
 
-	items, err := toCommentDTOs(ctx, comments, s.storageManager)
+	items, err := toCommentDTOs(ctx, comments, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("解析评论列表头像失败: %v", err)
 		return nil, ErrInternal
@@ -364,6 +377,7 @@ func (s *commentService) ensureUserExists(ctx context.Context, userID uint) erro
 	return nil
 }
 
+// verifyCaptcha 在启用评论验证码时执行人机校验。
 func (s *commentService) verifyCaptcha(ctx context.Context, input *dto.CaptchaInput) error {
 	if s.captcha == nil || !s.captcha.Enabled() {
 		return nil
@@ -389,15 +403,15 @@ func (s *commentService) verifyCaptcha(ctx context.Context, input *dto.CaptchaIn
 }
 
 // toCommentDTO 将评论模型转换为 DTO。
-func toCommentDTO(ctx context.Context, comment *model.Comment, storageManager storage.Manager) (dto.CommentDTO, error) {
-	authorAvatar, err := resolveUserAvatar(ctx, comment.User.Avatar, comment.User.Email, storageManager)
+func toCommentDTO(ctx context.Context, comment *model.Comment, storageManager storage.Manager, gravatarBaseURL string) (dto.CommentDTO, error) {
+	authorAvatar, err := resolveUserAvatar(ctx, comment.User.Avatar, comment.User.Email, storageManager, gravatarBaseURL)
 	if err != nil {
 		return dto.CommentDTO{}, err
 	}
 
 	var replyToUser *dto.CommentAuthorDTO
 	if comment.ReplyToUser != nil {
-		replyAvatar, err := resolveUserAvatar(ctx, comment.ReplyToUser.Avatar, comment.ReplyToUser.Email, storageManager)
+		replyAvatar, err := resolveUserAvatar(ctx, comment.ReplyToUser.Avatar, comment.ReplyToUser.Email, storageManager, gravatarBaseURL)
 		if err != nil {
 			return dto.CommentDTO{}, err
 		}
@@ -429,13 +443,13 @@ func toCommentDTO(ctx context.Context, comment *model.Comment, storageManager st
 }
 
 // toCommentDTOs 将评论模型切片转换为 DTO 列表。
-func toCommentDTOs(ctx context.Context, comments []model.Comment, storageManager storage.Manager) ([]dto.CommentDTO, error) {
+func toCommentDTOs(ctx context.Context, comments []model.Comment, storageManager storage.Manager, gravatarBaseURL string) ([]dto.CommentDTO, error) {
 	if len(comments) == 0 {
 		return nil, nil
 	}
 	items := make([]dto.CommentDTO, 0, len(comments))
 	for i := range comments {
-		commentDTO, err := toCommentDTO(ctx, &comments[i], storageManager)
+		commentDTO, err := toCommentDTO(ctx, &comments[i], storageManager, gravatarBaseURL)
 		if err != nil {
 			return nil, err
 		}

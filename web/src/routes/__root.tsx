@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query'
-import { Link, Outlet, createRootRoute } from '@tanstack/react-router'
+import { Link, Outlet, createRootRoute, useLocation } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { CompassIcon } from 'lucide-react'
@@ -60,8 +60,11 @@ function RootApp() {
 }
 
 function AppShell({ children }: { children: React.ReactNode }) {
+  const location = useLocation()
   const { siteBackgroundImageUrl, siteFaviconUrl } = useSiteSettings()
-  const siteBackgroundStyle = siteBackgroundImageUrl
+  const isAdminRoute =
+    location.pathname === '/admin' || location.pathname.startsWith('/admin/')
+  const siteBackgroundStyle = !isAdminRoute && siteBackgroundImageUrl
     ? { backgroundImage: `url("${siteBackgroundImageUrl}")` }
     : null
 
@@ -94,9 +97,15 @@ function AppShell({ children }: { children: React.ReactNode }) {
       ) : null}
 
       <div className="relative z-10 flex min-h-screen flex-col">
-        <SiteHeader />
-        <main className="flex-1">{children}</main>
-        <SiteFooter />
+        {isAdminRoute ? (
+          <main className="flex-1 bg-background">{children}</main>
+        ) : (
+          <>
+            <SiteHeader />
+            <main className="flex-1">{children}</main>
+            <SiteFooter />
+          </>
+        )}
         <Toaster closeButton richColors position="top-right" />
       </div>
     </div>

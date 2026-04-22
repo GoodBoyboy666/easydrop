@@ -1,6 +1,6 @@
 "use client"
 
-import { Link, useLocation, useNavigate } from '@tanstack/react-router'
+import { Link, useLocation, useNavigate, useRouter } from '@tanstack/react-router'
 import {
   FileTextIcon,
   LaptopMinimalIcon,
@@ -57,6 +57,7 @@ export function SiteHeader() {
   const auth = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
+  const router = useRouter()
   const { allowRegister, siteDescription, siteName } = useSiteSettings()
   const { resolvedTheme, setTheme, theme } = useTheme()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -72,6 +73,16 @@ export function SiteHeader() {
   useEffect(() => {
     setSearchValue(currentSearchContent)
   }, [currentSearchContent])
+
+  useEffect(() => {
+    if (auth.status !== 'authenticated' || !auth.isAdmin) {
+      return
+    }
+
+    void router.preloadRoute({ to: '/admin' }).catch(() => {
+      // 预加载失败不影响正常导航。
+    })
+  }, [auth.isAdmin, auth.status, router])
 
   function closeMobileMenu() {
     setMobileMenuOpen(false)
@@ -228,9 +239,11 @@ export function SiteHeader() {
                     我的评论
                   </DropdownMenuItem>
                   {auth.isAdmin ? (
-                    <DropdownMenuItem onSelect={() => void navigate({ to: '/admin' })}>
-                      <SettingsIcon data-icon="inline-start" />
-                      后台管理
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin">
+                        <SettingsIcon data-icon="inline-start" />
+                        后台管理
+                      </Link>
                     </DropdownMenuItem>
                   ) : null}
                 </DropdownMenuGroup>

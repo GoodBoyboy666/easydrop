@@ -80,6 +80,7 @@ func NewAuthService(userRepo repo.UserRepo, settings SettingService, jwtManager 
 
 // Register 校验注册参数、创建用户并发送邮箱验证邮件。
 func (s *authService) Register(ctx context.Context, input dto.RegisterInput) (*dto.MessageResponse, error) {
+	// 先完成基础输入校验与规范化。
 	username := strings.TrimSpace(input.Username)
 	if err := validator.ValidateUsername(username); err != nil {
 		return nil, err
@@ -100,6 +101,7 @@ func (s *authService) Register(ctx context.Context, input dto.RegisterInput) (*d
 		nickname = username
 	}
 
+	// 检查站点开关并校验验证码。
 	if err := s.ensureRegisterEnabled(ctx); err != nil {
 		if errors.Is(err, ErrRegisterClosed) || errors.Is(err, ErrInvalidSiteSetting) {
 			return nil, err
@@ -112,6 +114,7 @@ func (s *authService) Register(ctx context.Context, input dto.RegisterInput) (*d
 		return nil, err
 	}
 
+	// 校验用户名和邮箱唯一性。
 	if err := s.ensureUserUnique(ctx, username, email); err != nil {
 		if errors.Is(err, ErrUsernameExists) || errors.Is(err, ErrEmailExists) {
 			return nil, err
@@ -120,6 +123,7 @@ func (s *authService) Register(ctx context.Context, input dto.RegisterInput) (*d
 		return nil, ErrInternal
 	}
 
+	// 生成密码哈希并创建用户。
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Printf("生成密码哈希失败: %v", err)
@@ -139,6 +143,7 @@ func (s *authService) Register(ctx context.Context, input dto.RegisterInput) (*d
 		return nil, ErrInternal
 	}
 
+	// 异步发送验证邮件，避免阻塞注册响应。
 	s.sendVerifyEmailAsync(ctx, user)
 
 	return &dto.MessageResponse{Message: "注册成功，请先完成邮箱验证后登录"}, nil
@@ -146,6 +151,7 @@ func (s *authService) Register(ctx context.Context, input dto.RegisterInput) (*d
 
 // RequestPasswordReset 校验请求后发送密码重置邮件。
 func (s *authService) RequestPasswordReset(ctx context.Context, input dto.PasswordResetRequestInput) error {
+	// 先校验邮箱格式与验证码。
 	email := strings.TrimSpace(input.Email)
 	if err := validator.ValidateEmail(email); err != nil {
 		return err
@@ -160,6 +166,7 @@ func (s *authService) RequestPasswordReset(ctx context.Context, input dto.Passwo
 		return nil
 	}
 
+	// 对外隐藏用户存在性：不存在或状态异常都直接返回成功。
 	user, err := s.userRepo.GetByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -172,6 +179,7 @@ func (s *authService) RequestPasswordReset(ctx context.Context, input dto.Passwo
 		return nil
 	}
 
+	// 签发重置 token 并发送邮件。
 	resetToken, err := s.tokenManager.Issue(ctx, user.ID, token.KindResetPassword, passwordResetTokenTTL, strings.TrimSpace(user.Email))
 	if err != nil {
 		log.Printf("签发密码重置 token 失败: %v", err)
@@ -187,6 +195,7 @@ func (s *authService) RequestPasswordReset(ctx context.Context, input dto.Passwo
 
 // ConfirmPasswordReset 校验 token 并重置用户密码，同时更新邮箱验证状态。
 func (s *authService) ConfirmPasswordReset(ctx context.Context, input dto.PasswordResetConfirmInput) error {
+	// 校验依赖与新密码格式。
 	if s.tokenManager == nil {
 		return ErrInternal
 	}
@@ -194,6 +203,7 @@ func (s *authService) ConfirmPasswordReset(ctx context.Context, input dto.Passwo
 		return err
 	}
 
+	// 消费重置 token，并将 token 错误映射为统一业务错误。
 	record, err := s.tokenManager.Consume(ctx, token.KindResetPassword, input.Token)
 	if err != nil {
 		switch {
@@ -208,6 +218,7 @@ func (s *authService) ConfirmPasswordReset(ctx context.Context, input dto.Passwo
 		}
 	}
 
+	// 校验用户与 token 载荷一致性。
 	user, err := s.userRepo.GetByID(ctx, record.UserID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -220,6 +231,7 @@ func (s *authService) ConfirmPasswordReset(ctx context.Context, input dto.Passwo
 		return ErrInvalidPasswordReset
 	}
 
+	// 生成新密码哈希并更新用户。
 	hash, err := bcrypt.GenerateFromPassword([]byte(input.NewPassword), bcrypt.DefaultCost)
 	if err != nil {
 		log.Printf("生成密码哈希失败: %v", err)
@@ -238,6 +250,7 @@ func (s *authService) ConfirmPasswordReset(ctx context.Context, input dto.Passwo
 
 // ConfirmVerifyEmail 校验邮箱验证 token 并更新用户邮箱验证状态。
 func (s *authService) ConfirmVerifyEmail(ctx context.Context, input dto.EmailVerifyConfirmInput) error {
+	// 校验依赖并消费验证 token。
 	if s.tokenManager == nil {
 		return ErrInternal
 	}
@@ -256,6 +269,7 @@ func (s *authService) ConfirmVerifyEmail(ctx context.Context, input dto.EmailVer
 		}
 	}
 
+	// 校验用户存在且 token 载荷与当前邮箱匹配。
 	user, err := s.userRepo.GetByID(ctx, record.UserID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -268,6 +282,7 @@ func (s *authService) ConfirmVerifyEmail(ctx context.Context, input dto.EmailVer
 		return ErrInvalidEmailVerify
 	}
 
+	// 已验证用户幂等返回，否则更新验证状态。
 	if user.EmailVerified {
 		return nil
 	}
@@ -283,6 +298,7 @@ func (s *authService) ConfirmVerifyEmail(ctx context.Context, input dto.EmailVer
 
 // Login 校验账号密码与验证码，并在成功后签发访问令牌。
 func (s *authService) Login(ctx context.Context, input dto.LoginInput) (*dto.AuthResult, error) {
+	// 基础输入校验。
 	account := strings.TrimSpace(input.Account)
 	if account == "" {
 		return nil, ErrEmptyAccount
@@ -295,6 +311,7 @@ func (s *authService) Login(ctx context.Context, input dto.LoginInput) (*dto.Aut
 		return nil, err
 	}
 
+	// 查询用户并统一处理凭证错误。
 	user, err := s.userRepo.GetByUsernameOrEmail(ctx, account)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -312,6 +329,7 @@ func (s *authService) Login(ctx context.Context, input dto.LoginInput) (*dto.Aut
 		return nil, ErrInvalidCredentials
 	}
 
+	// 根据站点配置决定是否强制邮箱已验证。
 	if err := s.ensureLoginEmailVerified(ctx, user); err != nil {
 		return nil, err
 	}
@@ -434,6 +452,7 @@ func (s *authService) verifyCaptcha(ctx context.Context, input *dto.CaptchaInput
 	return nil
 }
 
+// sendVerifyEmailAsync 异步签发并发送注册验证邮件。
 func (s *authService) sendVerifyEmailAsync(ctx context.Context, user *model.User) {
 	if s.tokenManager == nil || s.emailService == nil || user == nil || user.ID == 0 {
 		return
@@ -450,6 +469,7 @@ func (s *authService) sendVerifyEmailAsync(ctx context.Context, user *model.User
 	}
 }
 
+// matchTokenEmailPayload 校验 token 载荷邮箱与当前邮箱是否一致。
 func matchTokenEmailPayload(payload, currentEmail string) bool {
 	payload = strings.TrimSpace(payload)
 	currentEmail = strings.TrimSpace(currentEmail)

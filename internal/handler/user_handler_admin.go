@@ -12,12 +12,13 @@ import (
 
 // UserAdminHandler 处理管理端用户请求。
 type UserAdminHandler struct {
-	userService service.UserService
+	userService    service.UserService
+	errorResponder ErrorResponder
 }
 
 // NewUserAdminHandler 创建管理端用户处理器。
-func NewUserAdminHandler(userService service.UserService) *UserAdminHandler {
-	return &UserAdminHandler{userService: userService}
+func NewUserAdminHandler(userService service.UserService, errorResponder ErrorResponder) *UserAdminHandler {
+	return &UserAdminHandler{userService: userService, errorResponder: ensureErrorResponder(errorResponder)}
 }
 
 // List 查询用户列表（管理端）
@@ -55,7 +56,7 @@ func (h *UserAdminHandler) List(c *gin.Context) {
 
 	result, err := h.userService.List(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(mapUserErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -90,7 +91,7 @@ func (h *UserAdminHandler) Create(c *gin.Context) {
 
 	result, err := h.userService.Create(c.Request.Context(), input)
 	if err != nil {
-		c.JSON(mapUserErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -133,7 +134,7 @@ func (h *UserAdminHandler) Update(c *gin.Context) {
 
 	result, err := h.userService.Update(c.Request.Context(), input)
 	if err != nil {
-		c.JSON(mapUserErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -165,7 +166,7 @@ func (h *UserAdminHandler) Delete(c *gin.Context) {
 	}
 
 	if err := h.userService.Delete(c.Request.Context(), req.ID); err != nil {
-		c.JSON(mapUserErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -226,7 +227,7 @@ func (h *UserAdminHandler) UploadAvatar(c *gin.Context) {
 		ContentSample:    sample,
 	})
 	if err != nil {
-		c.JSON(mapUserErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -258,7 +259,7 @@ func (h *UserAdminHandler) DeleteAvatar(c *gin.Context) {
 	}
 
 	if err := h.userService.DeleteAvatar(c.Request.Context(), req.ID); err != nil {
-		c.JSON(mapUserErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 

@@ -99,7 +99,7 @@ func TestAttachmentHandlerUploadPassesOriginalFilename(t *testing.T) {
 			captured = input
 			return &dto.AttachmentDTO{ID: 1, UserID: input.UserID}, nil
 		},
-	}, nil)
+	}, nil, nil)
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -163,7 +163,7 @@ func TestAttachmentHandlerGetSuccess(t *testing.T) {
 			}
 			return &dto.AttachmentDTO{ID: 12, UserID: 100, CreatedAt: time.Now()}, nil
 		},
-	}, nil)
+	}, nil, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/attachments/12")
 	c.Params = gin.Params{{Key: "id", Value: "12"}}
@@ -187,7 +187,7 @@ func TestAttachmentHandlerGetSuccess(t *testing.T) {
 func TestAttachmentHandlerGetUnauthorized(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewAttachmentHandler(&mockAttachmentService{}, nil)
+	h := NewAttachmentHandler(&mockAttachmentService{}, nil, nil)
 	c, w := newTestContext(http.MethodGet, "/api/v1/attachments/12")
 	c.Params = gin.Params{{Key: "id", Value: "12"}}
 
@@ -201,7 +201,7 @@ func TestAttachmentHandlerGetUnauthorized(t *testing.T) {
 func TestAttachmentHandlerGetInvalidID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewAttachmentHandler(&mockAttachmentService{}, nil)
+	h := NewAttachmentHandler(&mockAttachmentService{}, nil, nil)
 	c, w := newTestContext(http.MethodGet, "/api/v1/attachments/invalid")
 	c.Params = gin.Params{{Key: "id", Value: "invalid"}}
 	c.Set(middleware.ContextUserIDKey, uint(100))
@@ -220,7 +220,7 @@ func TestAttachmentHandlerGetForbiddenByOwnerCheck(t *testing.T) {
 		getFn: func(ctx context.Context, id uint) (*dto.AttachmentDTO, error) {
 			return &dto.AttachmentDTO{ID: id, UserID: 200}, nil
 		},
-	}, nil)
+	}, nil, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/attachments/12")
 	c.Params = gin.Params{{Key: "id", Value: "12"}}
@@ -254,7 +254,7 @@ func TestAttachmentHandlerListSuccess(t *testing.T) {
 			}
 			return &dto.AttachmentListResult{Items: []dto.AttachmentDTO{}, Total: 0}, nil
 		},
-	}, nil)
+	}, nil, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/attachments?id=12&biz_type=2&page=3&size=10&order=created_at%20asc")
 	c.Set(middleware.ContextUserIDKey, uint(100))
@@ -284,7 +284,7 @@ func TestAttachmentHandlerDeleteSuccess(t *testing.T) {
 			}
 			return nil
 		},
-	}, nil)
+	}, nil, nil)
 
 	c, w := newTestContext(http.MethodDelete, "/api/v1/attachments/9")
 	c.Params = gin.Params{{Key: "id", Value: "9"}}
@@ -312,7 +312,7 @@ func TestAttachmentHandlerDeleteNotOwner(t *testing.T) {
 			deleteCalled = true
 			return nil
 		},
-	}, nil)
+	}, nil, nil)
 
 	c, w := newTestContext(http.MethodDelete, "/api/v1/attachments/9")
 	c.Params = gin.Params{{Key: "id", Value: "9"}}
@@ -331,7 +331,7 @@ func TestAttachmentHandlerDeleteNotOwner(t *testing.T) {
 func TestAttachmentHandlerListInvalidBizType(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewAttachmentHandler(&mockAttachmentService{}, nil)
+	h := NewAttachmentHandler(&mockAttachmentService{}, nil, nil)
 	c, w := newTestContext(http.MethodGet, "/api/v1/attachments?biz_type=abc")
 	c.Set(middleware.ContextUserIDKey, uint(100))
 
@@ -345,7 +345,7 @@ func TestAttachmentHandlerListInvalidBizType(t *testing.T) {
 func TestAttachmentHandlerListInvalidID(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewAttachmentHandler(&mockAttachmentService{}, nil)
+	h := NewAttachmentHandler(&mockAttachmentService{}, nil, nil)
 	c, w := newTestContext(http.MethodGet, "/api/v1/attachments?id=0")
 	c.Set(middleware.ContextUserIDKey, uint(100))
 
@@ -366,7 +366,7 @@ func TestAttachmentHandlerDeleteServiceError(t *testing.T) {
 		deleteFn: func(ctx context.Context, id uint) error {
 			return service.ErrInternal
 		},
-	}, nil)
+	}, nil, nil)
 
 	c, w := newTestContext(http.MethodDelete, "/api/v1/attachments/9")
 	c.Params = gin.Params{{Key: "id", Value: "9"}}
@@ -403,7 +403,7 @@ func TestAttachmentHandlerUploadBlockedForNonAdminWhenStorageUploadDisabled(t *t
 			}
 			return "false", true, nil
 		},
-	})
+	}, nil)
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -454,7 +454,7 @@ func TestAttachmentHandlerUploadAllowedForAdminWhenStorageUploadDisabled(t *test
 			}
 			return "false", true, nil
 		},
-	})
+	}, nil)
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -497,7 +497,7 @@ func TestAttachmentHandlerUploadValidationErrorReturnsBadRequest(t *testing.T) {
 		createFn: func(ctx context.Context, input dto.AttachmentCreateInput) (*dto.AttachmentDTO, error) {
 			return nil, service.ErrAttachmentExtensionNotAllowed
 		},
-	}, nil)
+	}, nil, nil)
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)

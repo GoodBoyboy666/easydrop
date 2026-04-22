@@ -4,11 +4,11 @@ import {
   ArrowLeftIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ShieldCheckIcon,
 } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import type { AdminNavItem } from '#/lib/admin'
 import { adminNavItems } from '#/lib/admin'
-import { cn } from '#/lib/utils'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import {
   AlertDialog,
@@ -37,7 +37,24 @@ import {
   EmptyTitle,
 } from '#/components/ui/empty'
 import { Separator } from '#/components/ui/separator'
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarTrigger,
+} from '#/components/ui/sidebar'
 import { Skeleton } from '#/components/ui/skeleton'
+import { TooltipProvider } from '#/components/ui/tooltip'
 
 function getAdminMotionProps(prefersReducedMotion: boolean, delay = 0) {
   if (prefersReducedMotion) {
@@ -118,47 +135,84 @@ export function AdminLayout({
   const prefersReducedMotion = useReducedMotion() ?? false
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="space-y-4">
-          <motion.div {...getAdminMotionProps(prefersReducedMotion)}>
-            <Card className="overflow-hidden border border-border/70 bg-card shadow-sm ring-0 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle>后台管理</CardTitle>
-              </CardHeader>
-              <CardContent className="flex gap-2">
-                <Button asChild size="sm" variant="outline">
+    <TooltipProvider delayDuration={120}>
+      <SidebarProvider>
+        <Sidebar collapsible="icon" variant="inset">
+          <SidebarHeader className="gap-3 border-b border-sidebar-border p-3">
+            <motion.div {...getAdminMotionProps(prefersReducedMotion)}>
+              <div className="flex items-center gap-2 rounded-lg group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:py-2">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
+                  <ShieldCheckIcon className="size-4" />
+                </div>
+                <div className="min-w-0 overflow-hidden group-data-[collapsible=icon]:hidden">
+                  <div className="truncate whitespace-nowrap text-sm font-semibold tracking-tight">
+                    后台管理
+                  </div>
+                  <div className="mt-0.5 truncate whitespace-nowrap text-xs text-sidebar-foreground/70">
+                    管理内容与站点设置
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </SidebarHeader>
+
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarGroupLabel>菜单</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className='gap-1'>
+                  {adminNavItems.map((item) => (
+                    <AdminNavButton
+                      key={item.to}
+                      active={isAdminNavActive(activePath, item.to)}
+                      item={item}
+                    />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+
+          <SidebarFooter className="border-t border-sidebar-border p-2">
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="返回站点">
                   <Link search={{ content: undefined }} to="/">
-                    <ArrowLeftIcon data-icon="inline-start" />
-                    返回站点
+                    <ArrowLeftIcon />
+                    <span>返回站点</span>
                   </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          </motion.div>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarFooter>
+          <SidebarRail />
+        </Sidebar>
 
-          <motion.div {...getAdminMotionProps(prefersReducedMotion, 0.05)}>
-            <Card className="border border-border/70 bg-card shadow-sm backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle>菜单</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-2">
-                {adminNavItems.map((item) => (
-                  <AdminNavButton
-                    key={item.to}
-                    active={activePath === item.to}
-                    item={item}
-                  />
-                ))}
-              </CardContent>
-            </Card>
-          </motion.div>
-        </aside>
-
-        <div className="min-w-0">{children}</div>
-      </div>
-    </div>
+        <SidebarInset className="bg-background">
+          <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+            <motion.div
+              className="min-w-0"
+              {...getAdminMotionProps(prefersReducedMotion, 0.05)}
+            >
+              {children}
+            </motion.div>
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+    </TooltipProvider>
   )
+}
+
+function isAdminNavActive(activePath: string, navPath: AdminNavItem['to']) {
+  if (activePath === navPath) {
+    return true
+  }
+
+  if (navPath === '/admin') {
+    return false
+  }
+
+  return activePath.startsWith(`${navPath}/`)
 }
 
 function AdminNavButton({
@@ -171,31 +225,14 @@ function AdminNavButton({
   const Icon = item.icon
 
   return (
-    <Link
-      to={item.to}
-      className={cn(
-        'rounded-xl px-3 py-3 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        active
-          ? 'bg-primary/6 text-foreground'
-          : 'bg-transparent hover:bg-muted/25',
-      )}
-    >
-      <div className="flex items-center gap-3">
-        <div
-          className={cn(
-            'flex size-10 items-center justify-center rounded-xl',
-            active
-              ? 'bg-primary/12 text-primary'
-              : 'bg-transparent text-muted-foreground',
-          )}
-        >
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
+        <Link to={item.to}>
           <Icon />
-        </div>
-        <div className="min-w-0">
-          <div className="font-medium">{item.label}</div>
-        </div>
-      </div>
-    </Link>
+          <span>{item.label}</span>
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
   )
 }
 
@@ -210,13 +247,16 @@ export function AdminPageHeader({
 }) {
   return (
     <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-      <div>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">
-          {title}
-        </h1>
-        {description ? (
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-        ) : null}
+      <div className="flex items-start gap-2">
+        <SidebarTrigger className="mt-0.5" />
+        <div>
+          <h1 className="font-heading text-2xl font-semibold tracking-tight">
+            {title}
+          </h1>
+          {description ? (
+            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          ) : null}
+        </div>
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
     </div>

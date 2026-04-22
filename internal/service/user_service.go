@@ -10,6 +10,7 @@ import (
 
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
+	avatarcfg "easydrop/internal/pkg/avatar"
 	"easydrop/internal/pkg/storage"
 	"easydrop/internal/pkg/token"
 	"easydrop/internal/pkg/validator"
@@ -62,26 +63,34 @@ type emailChangeTokenPayload struct {
 }
 
 type userService struct {
-	userRepo       repo.UserRepo
-	storageManager storage.Manager
-	settings       SettingService
-	tokenManager   token.Manager
-	emailService   EmailService
+	userRepo        repo.UserRepo
+	storageManager  storage.Manager
+	settings        SettingService
+	tokenManager    token.Manager
+	emailService    EmailService
+	gravatarBaseURL string
 }
 
 // NewUserService 创建用户服务实例。
-func NewUserService(userRepo repo.UserRepo, storageManager storage.Manager, settings SettingService, tokenManager token.Manager, emailService EmailService) UserService {
+func NewUserService(userRepo repo.UserRepo, storageManager storage.Manager, settings SettingService, tokenManager token.Manager, emailService EmailService, avatarConfig *avatarcfg.Config) UserService {
+	gravatarBaseURL := ""
+	if avatarConfig != nil {
+		gravatarBaseURL = avatarConfig.GravatarBaseURL
+	}
+
 	return &userService{
-		userRepo:       userRepo,
-		storageManager: storageManager,
-		settings:       settings,
-		tokenManager:   tokenManager,
-		emailService:   emailService,
+		userRepo:        userRepo,
+		storageManager:  storageManager,
+		settings:        settings,
+		tokenManager:    tokenManager,
+		emailService:    emailService,
+		gravatarBaseURL: normalizeGravatarBaseURL(gravatarBaseURL),
 	}
 }
 
 // Create 校验输入后创建新用户，并对密码进行哈希。
 func (s *userService) Create(ctx context.Context, input dto.UserCreateInput) (*dto.UserDTO, error) {
+	// 先完成基础字段校验和规范化。
 	username := strings.TrimSpace(input.Username)
 	if err := validator.ValidateUsername(username); err != nil {
 		return nil, err
@@ -116,6 +125,7 @@ func (s *userService) Create(ctx context.Context, input dto.UserCreateInput) (*d
 
 	avatar := normalizeOptionalString(input.Avatar)
 
+	// 校验用户名与邮箱唯一性。
 	if err := s.ensureUsernameAvailable(ctx, username, 0); err != nil {
 		return nil, err
 	}
@@ -123,6 +133,7 @@ func (s *userService) Create(ctx context.Context, input dto.UserCreateInput) (*d
 		return nil, err
 	}
 
+	// 生成密码哈希并写入用户记录。
 	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Printf("生成密码哈希失败: %v", err)
@@ -146,7 +157,8 @@ func (s *userService) Create(ctx context.Context, input dto.UserCreateInput) (*d
 		return nil, ErrInternal
 	}
 
-	userDTO, err := toUserDTO(ctx, user, s.storageManager)
+	// 转换为对外 DTO。
+	userDTO, err := toUserDTO(ctx, user, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("构建用户 DTO 失败: %v", err)
 		return nil, ErrInternal
@@ -169,7 +181,7 @@ func (s *userService) Get(ctx context.Context, id uint) (*dto.UserDTO, error) {
 		return nil, ErrInternal
 	}
 
-	userDTO, err := toUserDTO(ctx, user, s.storageManager)
+	userDTO, err := toUserDTO(ctx, user, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("构建用户 DTO 失败: %v", err)
 		return nil, ErrInternal
@@ -205,7 +217,7 @@ func (s *userService) UpdateProfile(ctx context.Context, input dto.UserProfileUp
 		}
 	}
 
-	userDTO, err := toUserDTO(ctx, user, s.storageManager)
+	userDTO, err := toUserDTO(ctx, user, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("构建用户 DTO 失败: %v", err)
 		return nil, ErrInternal
@@ -256,6 +268,7 @@ func (s *userService) ChangePassword(ctx context.Context, input dto.UserChangePa
 
 // RequestEmailChange 签发邮箱变更 token，并发送确认邮件。
 func (s *userService) RequestEmailChange(ctx context.Context, input dto.UserChangeEmailInput) error {
+	// 校验关键依赖与用户存在性。
 	if input.UserID == 0 {
 		return ErrUserNotFound
 	}
@@ -272,6 +285,7 @@ func (s *userService) RequestEmailChange(ctx context.Context, input dto.UserChan
 		return ErrInternal
 	}
 
+	// 校验当前密码与新邮箱合法性。
 	currentPassword := strings.TrimSpace(input.CurrentPassword)
 	if currentPassword == "" {
 		return validator.ErrEmptyPassword
@@ -288,6 +302,7 @@ func (s *userService) RequestEmailChange(ctx context.Context, input dto.UserChan
 		return err
 	}
 
+	// 组装 payload、签发 token 并发送确认邮件。
 	payload, err := marshalEmailChangePayload(strings.TrimSpace(user.Email), newEmail)
 	if err != nil {
 		log.Printf("构建邮箱变更 payload 失败: %v", err)
@@ -310,6 +325,7 @@ func (s *userService) RequestEmailChange(ctx context.Context, input dto.UserChan
 
 // ConfirmEmailChange 校验邮箱变更 token 后更新邮箱。
 func (s *userService) ConfirmEmailChange(ctx context.Context, input dto.UserChangeEmailConfirmInput) (*dto.UserDTO, error) {
+	// 消费邮箱变更 token，并映射为统一业务错误。
 	if s.tokenManager == nil {
 		return nil, ErrInternal
 	}
@@ -329,6 +345,7 @@ func (s *userService) ConfirmEmailChange(ctx context.Context, input dto.UserChan
 		}
 	}
 
+	// 解析 token 载荷并读取目标用户。
 	payload, err := unmarshalEmailChangePayload(record.Payload)
 	if err != nil {
 		return nil, err
@@ -343,6 +360,7 @@ func (s *userService) ConfirmEmailChange(ctx context.Context, input dto.UserChan
 		return nil, ErrInternal
 	}
 
+	// 校验旧邮箱一致性与新邮箱可用性。
 	if !strings.EqualFold(strings.TrimSpace(user.Email), payload.OldEmail) {
 		return nil, ErrEmailChanged
 	}
@@ -358,7 +376,8 @@ func (s *userService) ConfirmEmailChange(ctx context.Context, input dto.UserChan
 		return nil, ErrInternal
 	}
 
-	userDTO, err := toUserDTO(ctx, user, s.storageManager)
+	// 返回更新后的用户 DTO。
+	userDTO, err := toUserDTO(ctx, user, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("构建用户 DTO 失败: %v", err)
 		return nil, ErrInternal
@@ -369,6 +388,7 @@ func (s *userService) ConfirmEmailChange(ctx context.Context, input dto.UserChan
 
 // Update 更新用户资料，并在需要时重做唯一性校验和密码哈希。
 func (s *userService) Update(ctx context.Context, input dto.UserUpdateInput) (*dto.UserDTO, error) {
+	// 先读取用户实体，后续按可选字段增量更新。
 	if input.ID == 0 {
 		return nil, ErrUserNotFound
 	}
@@ -382,6 +402,7 @@ func (s *userService) Update(ctx context.Context, input dto.UserUpdateInput) (*d
 		return nil, ErrInternal
 	}
 
+	// 逐项应用更新字段，并做对应的业务校验。
 	if input.Username != nil {
 		username := strings.TrimSpace(*input.Username)
 		if err := validator.ValidateUsername(username); err != nil {
@@ -453,12 +474,13 @@ func (s *userService) Update(ctx context.Context, input dto.UserUpdateInput) (*d
 		user.StorageQuota = storageQuota
 	}
 
+	// 持久化并返回 DTO。
 	if err := s.userRepo.Update(ctx, user); err != nil {
 		log.Printf("更新用户失败: %v", err)
 		return nil, ErrInternal
 	}
 
-	userDTO, err := toUserDTO(ctx, user, s.storageManager)
+	userDTO, err := toUserDTO(ctx, user, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("构建用户 DTO 失败: %v", err)
 		return nil, ErrInternal
@@ -468,6 +490,7 @@ func (s *userService) Update(ctx context.Context, input dto.UserUpdateInput) (*d
 
 // UploadAvatar 上传并替换用户头像，同时维护用户存储占用。
 func (s *userService) UploadAvatar(ctx context.Context, input dto.UserAvatarUploadInput) (*dto.UserDTO, error) {
+	// 校验上传输入与依赖。
 	if input.UserID == 0 {
 		return nil, ErrUserNotFound
 	}
@@ -484,6 +507,7 @@ func (s *userService) UploadAvatar(ctx context.Context, input dto.UserAvatarUplo
 		return nil, err
 	}
 
+	// 读取用户与旧头像占用。
 	user, err := s.userRepo.GetByID(ctx, input.UserID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -505,6 +529,7 @@ func (s *userService) UploadAvatar(ctx context.Context, input dto.UserAvatarUplo
 		return nil, err
 	}
 
+	// 上传新头像对象。
 	newAvatarKey, err := s.storageManager.NewObjectKey(storage.CategoryAvatar, input.UserID, input.OriginalFilename)
 	if err != nil {
 		log.Printf("生成头像 key 失败: %v", err)
@@ -516,6 +541,7 @@ func (s *userService) UploadAvatar(ctx context.Context, input dto.UserAvatarUplo
 		return nil, ErrInternal
 	}
 
+	// 事务更新头像与存储占用，失败时回滚新对象。
 	newAvatarValue := newAvatarKey
 	updatedUser, err := s.userRepo.UpdateAvatarWithStorageUsedTx(ctx, input.UserID, &newAvatarValue, input.FileSize-oldAvatarSize, defaultQuota)
 	if err != nil {
@@ -533,7 +559,8 @@ func (s *userService) UploadAvatar(ctx context.Context, input dto.UserAvatarUplo
 		}
 	}
 
-	userDTO, err := toUserDTO(ctx, updatedUser, s.storageManager)
+	// 转换 DTO，并异步清理旧头像对象。
+	userDTO, err := toUserDTO(ctx, updatedUser, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("构建用户 DTO 失败: %v", err)
 		return nil, ErrInternal
@@ -628,7 +655,7 @@ func (s *userService) List(ctx context.Context, input dto.UserListInput) (*dto.U
 		return nil, ErrInternal
 	}
 
-	items, err := toUserDTOs(ctx, users, s.storageManager)
+	items, err := toUserDTOs(ctx, users, s.storageManager, s.gravatarBaseURL)
 	if err != nil {
 		log.Printf("构建用户列表 DTO 失败: %v", err)
 		return nil, ErrInternal
@@ -706,6 +733,7 @@ func normalizeOptionalString(value *string) *string {
 	return &trimmed
 }
 
+// managedAvatarKey 提取并返回系统托管头像对象键，非托管值返回空串。
 func managedAvatarKey(avatar *string) string {
 	if avatar == nil {
 		return ""
@@ -719,6 +747,7 @@ func managedAvatarKey(avatar *string) string {
 	return trimmed
 }
 
+// getManagedObjectSize 获取托管对象大小；空键返回 0。
 func (s *userService) getManagedObjectSize(ctx context.Context, objectKey string) (int64, error) {
 	if objectKey == "" {
 		return 0, nil
@@ -730,6 +759,7 @@ func (s *userService) getManagedObjectSize(ctx context.Context, objectKey string
 	return s.storageManager.GetSize(ctx, objectKey)
 }
 
+// marshalEmailChangePayload 序列化邮箱变更 token 载荷。
 func marshalEmailChangePayload(oldEmail, newEmail string) (string, error) {
 	oldEmail = strings.TrimSpace(oldEmail)
 	newEmail = strings.TrimSpace(newEmail)
@@ -748,6 +778,7 @@ func marshalEmailChangePayload(oldEmail, newEmail string) (string, error) {
 	return string(payload), nil
 }
 
+// unmarshalEmailChangePayload 反序列化并校验邮箱变更 token 载荷。
 func unmarshalEmailChangePayload(value string) (*emailChangeTokenPayload, error) {
 	value = strings.TrimSpace(value)
 	if value == "" {

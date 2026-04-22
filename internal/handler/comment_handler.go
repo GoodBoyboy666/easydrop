@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"errors"
 	"net/http"
 	"strings"
 
@@ -15,11 +14,12 @@ import (
 // CommentHandler 处理用户端评论请求。
 type CommentHandler struct {
 	commentService service.CommentService
+	errorResponder ErrorResponder
 }
 
 // NewCommentHandler 创建用户端评论处理器。
-func NewCommentHandler(commentService service.CommentService) *CommentHandler {
-	return &CommentHandler{commentService: commentService}
+func NewCommentHandler(commentService service.CommentService, errorResponder ErrorResponder) *CommentHandler {
+	return &CommentHandler{commentService: commentService, errorResponder: ensureErrorResponder(errorResponder)}
 }
 
 // Create 创建评论。
@@ -68,7 +68,7 @@ func (h *CommentHandler) Create(c *gin.Context) {
 
 	result, err := h.commentService.Create(c.Request.Context(), input)
 	if err != nil {
-		c.JSON(mapCommentErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -107,7 +107,7 @@ func (h *CommentHandler) Get(c *gin.Context) {
 
 	result, err := h.commentService.Get(c.Request.Context(), req.ID)
 	if err != nil {
-		c.JSON(mapCommentErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 	if result.Author.ID != userID {
@@ -152,7 +152,7 @@ func (h *CommentHandler) Update(c *gin.Context) {
 
 	comment, err := h.commentService.Get(c.Request.Context(), uriReq.ID)
 	if err != nil {
-		c.JSON(mapCommentErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 	if comment.Author.ID != userID {
@@ -169,7 +169,7 @@ func (h *CommentHandler) Update(c *gin.Context) {
 
 	result, err := h.commentService.Update(c.Request.Context(), input)
 	if err != nil {
-		c.JSON(mapCommentErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -208,7 +208,7 @@ func (h *CommentHandler) Delete(c *gin.Context) {
 
 	comment, err := h.commentService.Get(c.Request.Context(), req.ID)
 	if err != nil {
-		c.JSON(mapCommentErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 	if comment.Author.ID != userID {
@@ -217,7 +217,7 @@ func (h *CommentHandler) Delete(c *gin.Context) {
 	}
 
 	if err := h.commentService.Delete(c.Request.Context(), req.ID); err != nil {
-		c.JSON(mapCommentErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -262,7 +262,7 @@ func (h *CommentHandler) List(c *gin.Context) {
 
 	result, err := h.commentService.ListByUser(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(mapCommentErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -300,7 +300,7 @@ func (h *CommentHandler) ListPublic(c *gin.Context) {
 		Order:         req.Order,
 	})
 	if err != nil {
-		c.JSON(mapCommentErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
@@ -346,31 +346,9 @@ func (h *CommentHandler) ListByPost(c *gin.Context) {
 		Order:         strings.TrimSpace(queryReq.Order),
 	})
 	if err != nil {
-		c.JSON(mapCommentErrorStatus(err), dto.ErrorResponse{Message: err.Error()})
+		h.errorResponder.Respond(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, result)
-}
-
-func mapCommentErrorStatus(err error) int {
-	switch {
-	case errors.Is(err, service.ErrEmptyCommentContent),
-		errors.Is(err, service.ErrInvalidCommentPost),
-		errors.Is(err, service.ErrInvalidCommentUser),
-		errors.Is(err, service.ErrInvalidCommentParent),
-		errors.Is(err, service.ErrCaptchaRequired),
-		errors.Is(err, service.ErrCaptchaFailed):
-		return http.StatusBadRequest
-	case errors.Is(err, service.ErrCommentNotFound),
-		errors.Is(err, service.ErrPostNotFound),
-		errors.Is(err, service.ErrUserNotFound):
-		return http.StatusNotFound
-	case errors.Is(err, service.ErrPostCommentDisabled):
-		return http.StatusForbidden
-	case errors.Is(err, service.ErrInternal):
-		return http.StatusInternalServerError
-	default:
-		return http.StatusInternalServerError
-	}
 }

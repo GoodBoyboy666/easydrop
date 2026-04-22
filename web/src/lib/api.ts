@@ -39,6 +39,8 @@ import type {
 } from '#/lib/types'
 
 const DEFAULT_API_BASE_URL = '/api/v1'
+const CSRF_COOKIE_NAME = 'easydrop_csrf_token'
+const CSRF_HEADER_NAME = 'X-CSRF-Token'
 
 export const API_BASE_URL = normalizeBaseUrl(
   import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL,
@@ -162,6 +164,40 @@ function buildUrl(path: string, query?: object) {
   return `${url.pathname}${url.search}`
 }
 
+function isUnsafeHttpMethod(method: string | undefined) {
+  if (!method) {
+    return false
+  }
+
+  switch (method.toUpperCase()) {
+    case 'POST':
+    case 'PUT':
+    case 'PATCH':
+    case 'DELETE':
+      return true
+    default:
+      return false
+  }
+}
+
+function readCookieValue(name: string) {
+  if (typeof document === 'undefined') {
+    return ''
+  }
+
+  const cookieName = `${name}=`
+  const parts = document.cookie.split(';')
+  for (const part of parts) {
+    const trimmed = part.trim()
+    if (!trimmed.startsWith(cookieName)) {
+      continue
+    }
+    return decodeURIComponent(trimmed.slice(cookieName.length))
+  }
+
+  return ''
+}
+
 async function parseResponse<T>(response: Response) {
   const contentType = response.headers.get('content-type') ?? ''
   const isJson = contentType.includes('application/json')
@@ -188,13 +224,19 @@ async function request<T>(
   },
 ) {
   const { query, token, headers, ...rest } = init ?? {}
+  const method = (rest.method ?? 'GET').toUpperCase()
   const isFormData =
     typeof FormData !== 'undefined' && rest.body instanceof FormData
+  const csrfToken = isUnsafeHttpMethod(method)
+    ? readCookieValue(CSRF_COOKIE_NAME)
+    : ''
   const response = await fetch(buildUrl(path, query), {
     credentials: rest.credentials ?? 'include',
     ...rest,
+    method,
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(csrfToken ? { [CSRF_HEADER_NAME]: csrfToken } : {}),
       ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...headers,
     },

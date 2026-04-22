@@ -38,7 +38,7 @@ func TestInitHandlerStatusSuccess(t *testing.T) {
 		statusFn: func(context.Context) (*dto.InitStatusResult, error) {
 			return &dto.InitStatusResult{Initialized: true}, nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContext(http.MethodGet, "/api/v1/init/status")
 	h.Status(c)
@@ -60,7 +60,7 @@ func TestInitHandlerInitializeSuccess(t *testing.T) {
 			}
 			return nil
 		},
-	})
+	}, nil)
 
 	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/init", `{"secret":"secret-123","username":"admin","email":"admin@example.com","password":"Pass1234","site_name":"EasyDrop","site_url":"http://localhost:8080"}`)
 	h.Initialize(c)
@@ -80,7 +80,7 @@ func TestInitHandlerInitializeAlreadyInitialized(t *testing.T) {
 		initFn: func(context.Context, dto.InitInput) error {
 			return service.ErrAlreadyInitialized
 		},
-	})
+	}, nil)
 
 	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/init", `{"username":"admin"}`)
 	h.Initialize(c)
@@ -97,7 +97,7 @@ func TestInitHandlerInitializeSecretRequired(t *testing.T) {
 		initFn: func(context.Context, dto.InitInput) error {
 			return initsecret.ErrRequired
 		},
-	})
+	}, nil)
 
 	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/init", `{"username":"admin"}`)
 	h.Initialize(c)
@@ -114,7 +114,7 @@ func TestInitHandlerInitializeInvalidSecret(t *testing.T) {
 		initFn: func(context.Context, dto.InitInput) error {
 			return initsecret.ErrInvalid
 		},
-	})
+	}, nil)
 
 	c, w := newTestContextWithBody(http.MethodPost, "/api/v1/init", `{"secret":"wrong-secret","username":"admin"}`)
 	h.Initialize(c)
@@ -127,7 +127,7 @@ func TestInitHandlerInitializeInvalidSecret(t *testing.T) {
 func TestInitHandlerNilService(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	h := NewInitHandler(nil)
+	h := NewInitHandler(nil, nil)
 	c, w := newTestContext(http.MethodGet, "/api/v1/init/status")
 	h.Status(c)
 
