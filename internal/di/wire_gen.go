@@ -66,7 +66,8 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	auth := middleware.NewAuth(manager, userRepo, authCookie)
 	csrf := middleware.NewCSRF(staticConfig)
 	allCaptchaConfig := config.ProvideCaptchaConfig(staticConfig)
-	securityHeaders := middleware.NewSecurityHeaders(allCaptchaConfig)
+	cspConfig := config.ProvideCSPConfig(staticConfig)
+	securityHeaders := middleware.NewSecurityHeaders(allCaptchaConfig, cspConfig)
 	ratelimitConfig := config.ProvideRateLimitConfig(staticConfig)
 	limiter, err := ratelimit.NewLimiter(ratelimitConfig, client)
 	if err != nil {

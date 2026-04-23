@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"easydrop/internal/config"
 	"easydrop/internal/pkg/captcha"
 
 	"github.com/gin-gonic/gin"
@@ -14,7 +15,7 @@ import (
 func TestSecurityHeadersApplySetsSecurityHeadersAndDefaultCSP(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	securityHeaders := NewSecurityHeaders(nil)
+	securityHeaders := NewSecurityHeaders(nil, nil)
 	router := gin.New()
 	router.GET("/health", securityHeaders.Apply, func(c *gin.Context) {
 		c.Status(http.StatusNoContent)
@@ -28,7 +29,7 @@ func TestSecurityHeadersApplySetsSecurityHeadersAndDefaultCSP(t *testing.T) {
 	}
 	assertBaseSecurityHeaders(t, recorder)
 
-	expectedCSP := "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self'; frame-src 'self'; connect-src 'self'"
+	expectedCSP := defaultExpectedCSP()
 	if got := recorder.Header().Get(headerContentSecurityPolicy); got != expectedCSP {
 		t.Fatalf("expected Content-Security-Policy %q, got %q", expectedCSP, got)
 	}
@@ -82,7 +83,7 @@ func TestSecurityHeadersApplyAddsCaptchaProviderSourcesToCSP(t *testing.T) {
 			securityHeaders := NewSecurityHeaders(&captcha.AllCaptchaConfig{
 				Enabled:  true,
 				Provider: tc.provider,
-			})
+			}, nil)
 			router := gin.New()
 			router.GET("/health", securityHeaders.Apply, func(c *gin.Context) {
 				c.Status(http.StatusNoContent)
@@ -100,8 +101,10 @@ func TestSecurityHeadersApplyAddsCaptchaProviderSourcesToCSP(t *testing.T) {
 				t.Fatalf("expected Content-Security-Policy to be set")
 			}
 			for _, source := range tc.expectedSources {
-				if !strings.Contains(csp, source) {
-					t.Fatalf("expected Content-Security-Policy to contain %q, got %q", source, csp)
+				for _, directive := range []string{"script-src", "frame-src", "connect-src", "img-src"} {
+					if !directiveContainsSource(csp, directive, source) {
+						t.Fatalf("expected %s to contain %q, got %q", directive, source, csp)
+					}
 				}
 			}
 		})
@@ -114,6 +117,34 @@ func TestSecurityHeadersApplyIgnoresUnknownCaptchaProviderInCSP(t *testing.T) {
 	securityHeaders := NewSecurityHeaders(&captcha.AllCaptchaConfig{
 		Enabled:  true,
 		Provider: captcha.Provider("custom_provider"),
+	}, nil)
+	router := gin.New()
+	router.GET("/health", securityHeaders.Apply, func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
+
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/health", nil))
+
+	expectedCSP := defaultExpectedCSP()
+	if got := recorder.Header().Get(headerContentSecurityPolicy); got != expectedCSP {
+		t.Fatalf("expected Content-Security-Policy %q, got %q", expectedCSP, got)
+	}
+}
+
+func TestSecurityHeadersApplyAddsCustomSourcesToConfiguredDirectives(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	securityHeaders := NewSecurityHeaders(&captcha.AllCaptchaConfig{
+		Enabled:  true,
+		Provider: captcha.ProviderTurnstile,
+	}, &config.CSPConfig{
+		Enabled: true,
+		AllowedSources: []string{
+			" https://cdn.example.com ",
+			"https://static.example.com",
+			"https://cdn.example.com",
+		},
 	})
 	router := gin.New()
 	router.GET("/health", securityHeaders.Apply, func(c *gin.Context) {
@@ -123,9 +154,39 @@ func TestSecurityHeadersApplyIgnoresUnknownCaptchaProviderInCSP(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/health", nil))
 
-	expectedCSP := "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self'; frame-src 'self'; connect-src 'self'"
-	if got := recorder.Header().Get(headerContentSecurityPolicy); got != expectedCSP {
-		t.Fatalf("expected Content-Security-Policy %q, got %q", expectedCSP, got)
+	csp := recorder.Header().Get(headerContentSecurityPolicy)
+	for _, source := range []string{"https://cdn.example.com", "https://static.example.com", "https://challenges.cloudflare.com"} {
+		for _, directive := range []string{"script-src", "frame-src", "connect-src", "img-src"} {
+			if !directiveContainsSource(csp, directive, source) {
+				t.Fatalf("expected %s to contain %q, got %q", directive, source, csp)
+			}
+		}
+	}
+	if strings.Count(csp, "https://cdn.example.com") != 4 {
+		t.Fatalf("expected custom source to appear once per configured directive, got %q", csp)
+	}
+}
+
+func TestSecurityHeadersApplySkipsCSPWhenDisabledByConfig(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	securityHeaders := NewSecurityHeaders(nil, &config.CSPConfig{
+		Enabled: false,
+	})
+	router := gin.New()
+	router.GET("/health", securityHeaders.Apply, func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
+
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/health", nil))
+
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d", recorder.Code)
+	}
+	assertBaseSecurityHeaders(t, recorder)
+	if got := recorder.Header().Get(headerContentSecurityPolicy); got != "" {
+		t.Fatalf("expected Content-Security-Policy to be empty when disabled, got %q", got)
 	}
 }
 
@@ -135,7 +196,7 @@ func TestSecurityHeadersApplySkipsCSPForSwaggerRoute(t *testing.T) {
 	securityHeaders := NewSecurityHeaders(&captcha.AllCaptchaConfig{
 		Enabled:  true,
 		Provider: captcha.ProviderTurnstile,
-	})
+	}, nil)
 	router := gin.New()
 	router.GET("/api/swagger/index.html", securityHeaders.Apply, func(c *gin.Context) {
 		c.Status(http.StatusOK)
@@ -156,7 +217,7 @@ func TestSecurityHeadersApplySkipsCSPForSwaggerRoute(t *testing.T) {
 func TestSecurityHeadersApplyPreservesResponseBody(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	securityHeaders := NewSecurityHeaders(nil)
+	securityHeaders := NewSecurityHeaders(nil, nil)
 	router := gin.New()
 	router.GET("/payload", securityHeaders.Apply, func(c *gin.Context) {
 		c.String(http.StatusOK, "ok")
@@ -174,6 +235,30 @@ func TestSecurityHeadersApplyPreservesResponseBody(t *testing.T) {
 	if got := recorder.Header().Get(headerContentSecurityPolicy); got == "" {
 		t.Fatalf("expected Content-Security-Policy to be set")
 	}
+}
+
+func defaultExpectedCSP() string {
+	return "default-src 'self'; style-src 'self' 'unsafe-inline'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline'; frame-src 'self'; connect-src 'self'; img-src 'self'"
+}
+
+func directiveContainsSource(csp string, directive string, source string) bool {
+	directives := strings.Split(csp, ";")
+	prefix := directive + " "
+	for _, item := range directives {
+		current := strings.TrimSpace(item)
+		if !strings.HasPrefix(current, prefix) {
+			continue
+		}
+
+		values := strings.Fields(strings.TrimPrefix(current, prefix))
+		for _, value := range values {
+			if value == source {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func assertBaseSecurityHeaders(t *testing.T, recorder *httptest.ResponseRecorder) {

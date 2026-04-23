@@ -44,6 +44,13 @@ type ServerConfig struct {
 	ReadTimeout     time.Duration `mapstructure:"read_timeout" yaml:"read_timeout"`
 	WriteTimeout    time.Duration `mapstructure:"write_timeout" yaml:"write_timeout"`
 	ShutdownTimeout time.Duration `mapstructure:"shutdown_timeout" yaml:"shutdown_timeout"`
+	CSP             CSPConfig     `mapstructure:"csp" yaml:"csp"`
+}
+
+// CSPConfig 是 Content-Security-Policy 配置。
+type CSPConfig struct {
+	Enabled        bool     `mapstructure:"enabled" yaml:"enabled"`
+	AllowedSources []string `mapstructure:"allowed_sources" yaml:"allowed_sources"`
 }
 
 // StaticConfig 是应用的根配置结构。
@@ -62,7 +69,7 @@ type StaticConfig struct {
 }
 
 // StaticProviderSet 提供配置加载的 Wire 注入入口。
-var StaticProviderSet = wire.NewSet(Load, ProvideDBConfig, ProvideRedisConfig, ProvideRateLimitConfig, ProvideEmailConfig, ProvideJWTConfig, ProvideAuthCookieConfig, ProvideCaptchaConfig, ProvideAvatarConfig, ProvideStorageConfig, ProvideTokenConfig)
+var StaticProviderSet = wire.NewSet(Load, ProvideDBConfig, ProvideRedisConfig, ProvideRateLimitConfig, ProvideEmailConfig, ProvideJWTConfig, ProvideAuthCookieConfig, ProvideCaptchaConfig, ProvideAvatarConfig, ProvideStorageConfig, ProvideTokenConfig, ProvideCSPConfig)
 
 func newStaticConfigViper(configDir string, enableEnv bool) *viper.Viper {
 	v := viper.New()
@@ -97,6 +104,8 @@ func setStaticConfigDefaults(v *viper.Viper) {
 	v.SetDefault("server.read_timeout", "10s")
 	v.SetDefault("server.write_timeout", "15s")
 	v.SetDefault("server.shutdown_timeout", "5s")
+	v.SetDefault("server.csp.enabled", true)
+	v.SetDefault("server.csp.allowed_sources", []string{})
 	v.SetDefault("auth_cookie.name", "easydrop_access_token")
 	v.SetDefault("auth_cookie.path", "/")
 	v.SetDefault("auth_cookie.domain", "")
@@ -246,4 +255,9 @@ func ProvideStorageConfig(cfg *StaticConfig) *storage.Config {
 // ProvideTokenConfig 提供 token 配置。
 func ProvideTokenConfig(cfg *StaticConfig) *token.Config {
 	return &cfg.Token
+}
+
+// ProvideCSPConfig 提供 CSP 配置。
+func ProvideCSPConfig(cfg *StaticConfig) *CSPConfig {
+	return &cfg.Server.CSP
 }
