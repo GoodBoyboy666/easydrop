@@ -9,6 +9,7 @@ import { PhotoProvider } from 'react-photo-view'
 import { useEffect } from 'react'
 import { AuthProvider } from '#/lib/auth'
 import { getQueryClient } from '#/lib/query-client'
+import { syncSiteMetadata } from '#/lib/site-metadata'
 import { SiteSettingsProvider, useSiteSettings } from '#/lib/site-settings'
 import { ThemeProvider } from '#/lib/theme'
 import { SiteFooter } from '#/components/site/site-footer'
@@ -61,7 +62,8 @@ function RootApp() {
 
 function AppShell({ children }: { children: React.ReactNode }) {
   const location = useLocation()
-  const { siteBackgroundImageUrl, siteFaviconUrl } = useSiteSettings()
+  const { siteBackgroundImageUrl, siteDescription, siteFaviconUrl, siteName } =
+    useSiteSettings()
   const isAdminRoute =
     location.pathname === '/admin' || location.pathname.startsWith('/admin/')
   const siteBackgroundStyle = !isAdminRoute && siteBackgroundImageUrl
@@ -69,17 +71,12 @@ function AppShell({ children }: { children: React.ReactNode }) {
     : null
 
   useEffect(() => {
-    const selector = 'link[rel="icon"]'
-    let iconLink = document.head.querySelector<HTMLLinkElement>(selector)
-
-    if (!iconLink) {
-      iconLink = document.createElement('link')
-      iconLink.rel = 'icon'
-      document.head.appendChild(iconLink)
-    }
-
-    iconLink.href = siteFaviconUrl
-  }, [siteFaviconUrl])
+    syncSiteMetadata({
+      siteDescription,
+      siteFaviconUrl,
+      siteName,
+    })
+  }, [siteDescription, siteFaviconUrl, siteName])
 
   return (
     <div className="relative min-h-screen bg-background text-foreground">

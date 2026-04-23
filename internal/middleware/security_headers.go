@@ -80,7 +80,7 @@ func (m *securityHeaders) Apply(c *gin.Context) {
 }
 
 func (m *securityHeaders) buildCSPPolicy() string {
-	scriptSrc := []string{"'self'", "'unsafe-inline'"}
+	scriptSrc := []string{"'self'"}
 	frameSrc := []string{"'self'"}
 	connectSrc := []string{"'self'"}
 	imgSrc := []string{"'self'"}
