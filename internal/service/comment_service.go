@@ -298,12 +298,12 @@ func (s *commentService) List(ctx context.Context, input dto.CommentAdminListInp
 
 // ListPublic 查询公开评论列表。
 func (s *commentService) ListPublic(ctx context.Context, input dto.CommentPublicListInput) (*dto.CommentListResult, error) {
-	page, size := normalizeServiceListPageSize(input.Page, input.Size)
+	page, size := serviceListBounds.NormalizePageSize(input.Page, input.Size)
 
 	comments, total, err := s.commentRepo.ListPublic(ctx, s.visibilityPolicy.IncludeHiddenPosts(input.CanViewHidden), repo.ListOptions{
 		Limit:  size,
-		Offset: pageSizeToOffset(page, size),
-		Order:  normalizeCommentListOrder(input.Order),
+		Offset: serviceListBounds.OffsetFromPage(page, size),
+		Order:  resolvePublicCommentListOrder(input.Order),
 	})
 	if err != nil {
 		log.Printf("查询公开评论列表失败: %v", err)
@@ -324,7 +324,7 @@ func (s *commentService) ListPublic(ctx context.Context, input dto.CommentPublic
 
 // list 执行评论通用列表查询并转换为 DTO 结果。
 func (s *commentService) list(ctx context.Context, filter repo.CommentFilter, page, size int, order string) (*dto.CommentListResult, error) {
-	normalizedPage, normalizedSize := normalizeServiceListPageSize(page, size)
+	normalizedPage, normalizedSize := serviceListBounds.NormalizePageSize(page, size)
 
 	comments, total, err := s.commentRepo.List(ctx, repo.CommentFilter{
 		PostID:   filter.PostID,
@@ -333,8 +333,8 @@ func (s *commentService) list(ctx context.Context, filter repo.CommentFilter, pa
 		ParentID: filter.ParentID,
 	}, repo.ListOptions{
 		Limit:  normalizedSize,
-		Offset: pageSizeToOffset(normalizedPage, normalizedSize),
-		Order:  normalizeCommentListOrder(order),
+		Offset: serviceListBounds.OffsetFromPage(normalizedPage, normalizedSize),
+		Order:  resolveCommentListOrder(order),
 	})
 	if err != nil {
 		log.Printf("查询评论列表失败: %v", err)

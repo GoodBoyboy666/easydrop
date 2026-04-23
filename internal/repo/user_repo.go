@@ -152,7 +152,7 @@ func (r *GormUserRepo) List(ctx context.Context, filter UserFilter, opts ListOpt
 	}
 
 	var users []model.User
-	db = applyListOptions(db, opts, "created_at asc")
+	db = db.Order(opts.Order).Limit(opts.Limit).Offset(opts.Offset)
 	if err := db.Find(&users).Error; err != nil {
 		return nil, 0, err
 	}

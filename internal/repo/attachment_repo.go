@@ -154,7 +154,7 @@ func (r *GormAttachmentRepo) List(ctx context.Context, filter AttachmentFilter, 
 	}
 
 	var attachments []model.Attachment
-	db = applyListOptions(db, opts, "created_at desc")
+	db = db.Order(opts.Order).Limit(opts.Limit).Offset(opts.Offset)
 	if err := db.Find(&attachments).Error; err != nil {
 		return nil, 0, err
 	}
