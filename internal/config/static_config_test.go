@@ -38,6 +38,12 @@ func TestLoadDefaultsWithoutConfigFile(t *testing.T) {
 	if cfg.Server.ShutdownTimeout != 5*time.Second {
 		t.Fatalf("expected default shutdown timeout 5s, got %s", cfg.Server.ShutdownTimeout)
 	}
+	if !cfg.Server.CSP.Enabled {
+		t.Fatalf("expected server.csp.enabled default true, got false")
+	}
+	if len(cfg.Server.CSP.AllowedSources) != 0 {
+		t.Fatalf("expected default server.csp.allowed_sources empty, got %v", cfg.Server.CSP.AllowedSources)
+	}
 	if cfg.Email.Enable {
 		t.Fatalf("expected email.enable default false, got true")
 	}
@@ -162,6 +168,39 @@ func TestLoadAvatarGravatarBaseURLOverride(t *testing.T) {
 	}
 }
 
+func TestLoadServerCSPOverride(t *testing.T) {
+	dir := t.TempDir()
+	content := []byte(
+		"server:\n" +
+			"  csp:\n" +
+			"    enabled: false\n" +
+			"    allowed_sources:\n" +
+			"      - https://cdn.example.com\n" +
+			"      - https://*.example.com\n",
+	)
+	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), content, 0o644); err != nil {
+		t.Fatalf("write config file failed: %v", err)
+	}
+
+	cfg, err := Load(dir, false)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	if cfg.Server.CSP.Enabled {
+		t.Fatalf("expected server.csp.enabled false, got true")
+	}
+	if len(cfg.Server.CSP.AllowedSources) != 2 {
+		t.Fatalf("expected 2 allowed_sources, got %v", cfg.Server.CSP.AllowedSources)
+	}
+	if cfg.Server.CSP.AllowedSources[0] != "https://cdn.example.com" {
+		t.Fatalf("expected first allowed source https://cdn.example.com, got %q", cfg.Server.CSP.AllowedSources[0])
+	}
+	if cfg.Server.CSP.AllowedSources[1] != "https://*.example.com" {
+		t.Fatalf("expected second allowed source https://*.example.com, got %q", cfg.Server.CSP.AllowedSources[1])
+	}
+}
+
 func TestWriteDefaultConfigFileCreatesConfig(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "runtime")
 
@@ -177,6 +216,12 @@ func TestWriteDefaultConfigFileCreatesConfig(t *testing.T) {
 	text := string(content)
 	if !strings.Contains(text, "server:") {
 		t.Fatalf("expected generated config to contain server section, got %q", text)
+	}
+	if !strings.Contains(text, "csp:") {
+		t.Fatalf("expected generated config to contain csp section, got %q", text)
+	}
+	if !strings.Contains(text, "enabled: true") {
+		t.Fatalf("expected generated config to contain csp enabled default, got %q", text)
 	}
 	if !strings.Contains(text, "read_timeout: 10s") {
 		t.Fatalf("expected generated config to contain read_timeout default, got %q", text)

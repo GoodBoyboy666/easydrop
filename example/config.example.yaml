@@ -15,6 +15,10 @@ server:
   read_timeout: 10s
   write_timeout: 15s
   shutdown_timeout: 5s
+  csp:
+    enabled: true
+    # 追加允许的 CSP source，需填写完整 source 值，如 https://cdn.example.com 或 https://*.example.com
+    allowed_sources: []
 
 auth_cookie:
   # 认证 Cookie 名称
