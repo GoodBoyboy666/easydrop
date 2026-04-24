@@ -32,7 +32,7 @@ func newFrontendTestApp(mode string) *di.App {
 			Server: config.ServerConfig{Mode: mode},
 		},
 		Middleware:             frontendAllowAuth{},
-		SecurityHeaders:        middleware.NewSecurityHeaders(&captcha.AllCaptchaConfig{}),
+		SecurityHeaders:        middleware.NewSecurityHeaders(&captcha.AllCaptchaConfig{}, &config.CSPConfig{Enabled: true}),
 		RequestBodyLimit:       middleware.NewRequestBodyLimit(nil),
 		AuthHandler:            handler.NewAuthHandler(nil, nil, cookiepkg.NewAuthCookie(nil), nil),
 		CaptchaHandler:         handler.NewCaptchaHandler(nil),

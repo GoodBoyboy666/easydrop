@@ -14,7 +14,7 @@ type Attachment struct {
 	UserID      uint      `gorm:"index;not null" json:"user_id"`
 	StorageType string    `gorm:"size:20;not null" json:"storage_type"`
 	FileKey     string    `gorm:"size:500;not null;uniqueIndex" json:"file_key"`
-	BizType     int       `gorm:"type:tinyint;not null" json:"biz_type"`
+	BizType     int       `gorm:"not null" json:"biz_type"`
 	FileSize    int64     `gorm:"not null" json:"file_size"`
 	CreatedAt   time.Time `json:"created_at"`
 }

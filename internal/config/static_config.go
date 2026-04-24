@@ -2,12 +2,16 @@ package config
 
 import (
 	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/google/wire"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
+	"go.yaml.in/yaml/v3"
 
 	"easydrop/internal/pkg/avatar"
 	"easydrop/internal/pkg/captcha"
@@ -40,6 +44,13 @@ type ServerConfig struct {
 	ReadTimeout     time.Duration `mapstructure:"read_timeout" yaml:"read_timeout"`
 	WriteTimeout    time.Duration `mapstructure:"write_timeout" yaml:"write_timeout"`
 	ShutdownTimeout time.Duration `mapstructure:"shutdown_timeout" yaml:"shutdown_timeout"`
+	CSP             CSPConfig     `mapstructure:"csp" yaml:"csp"`
+}
+
+// CSPConfig 是 Content-Security-Policy 配置。
+type CSPConfig struct {
+	Enabled        bool     `mapstructure:"enabled" yaml:"enabled"`
+	AllowedSources []string `mapstructure:"allowed_sources" yaml:"allowed_sources"`
 }
 
 // StaticConfig 是应用的根配置结构。
@@ -58,36 +69,43 @@ type StaticConfig struct {
 }
 
 // StaticProviderSet 提供配置加载的 Wire 注入入口。
-var StaticProviderSet = wire.NewSet(Load, ProvideDBConfig, ProvideRedisConfig, ProvideRateLimitConfig, ProvideEmailConfig, ProvideJWTConfig, ProvideAuthCookieConfig, ProvideCaptchaConfig, ProvideAvatarConfig, ProvideStorageConfig, ProvideTokenConfig)
+var StaticProviderSet = wire.NewSet(Load, ProvideDBConfig, ProvideRedisConfig, ProvideRateLimitConfig, ProvideEmailConfig, ProvideJWTConfig, ProvideAuthCookieConfig, ProvideCaptchaConfig, ProvideAvatarConfig, ProvideStorageConfig, ProvideTokenConfig, ProvideCSPConfig)
 
-// Load 从 configDir/config.yaml 读取配置，并支持环境变量覆盖。
-// 配置文件缺失时会回退到默认值与环境变量。
-func Load(configDir string, strict bool) (*StaticConfig, error) {
-	configDir = strings.TrimSpace(configDir)
-	GlobalConfigDir = configDir
-	if configDir == "" && strict {
-		return nil, errors.New("config dir is required")
-	}
-
+func newStaticConfigViper(configDir string, enableEnv bool) *viper.Viper {
 	v := viper.New()
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")
+
+	configDir = strings.TrimSpace(configDir)
 	if configDir != "" {
 		v.AddConfigPath(configDir)
 	}
 
-	v.SetEnvPrefix("EASYDROP")
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	v.AutomaticEnv()
+	if enableEnv {
+		v.SetEnvPrefix("EASYDROP")
+		v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+		v.AutomaticEnv()
+	}
+
+	setStaticConfigDefaults(v)
+	return v
+}
+
+func setStaticConfigDefaults(v *viper.Viper) {
+	if v == nil {
+		return
+	}
 
 	// 本地开发默认值。
 	v.SetDefault("server.mode", ServerModeDevelopment)
 	v.SetDefault("server.addr", ":8080")
 	v.SetDefault("server.trusted_proxies", []string{})
 	v.SetDefault("server.remote_ip_headers", []string{"X-Forwarded-For", "X-Real-IP"})
-	v.SetDefault("server.read_timeout", 10*time.Second)
-	v.SetDefault("server.write_timeout", 15*time.Second)
-	v.SetDefault("server.shutdown_timeout", 5*time.Second)
+	v.SetDefault("server.read_timeout", "10s")
+	v.SetDefault("server.write_timeout", "15s")
+	v.SetDefault("server.shutdown_timeout", "5s")
+	v.SetDefault("server.csp.enabled", true)
+	v.SetDefault("server.csp.allowed_sources", []string{})
 	v.SetDefault("auth_cookie.name", "easydrop_access_token")
 	v.SetDefault("auth_cookie.path", "/")
 	v.SetDefault("auth_cookie.domain", "")
@@ -99,29 +117,85 @@ func Load(configDir string, strict bool) (*StaticConfig, error) {
 	v.SetDefault("jwt.private_key_path", "data/jwt/private.pem")
 	v.SetDefault("jwt.public_key_path", "data/jwt/public.pem")
 	v.SetDefault("jwt.issuer", "easydrop")
-	v.SetDefault("jwt.expire", 24*time.Hour)
+	v.SetDefault("jwt.expire", "24h")
 	v.SetDefault("email.enable", false)
 	v.SetDefault("email.tls_mode", email.TLSModeStartTLS)
 	v.SetDefault("captcha.enabled", false)
-	v.SetDefault("captcha.timeout", 5*time.Second)
+	v.SetDefault("captcha.timeout", "5s")
 	v.SetDefault("avatar.gravatar_base_url", avatar.DefaultGravatarBaseURL)
 	v.SetDefault("storage.backend", storage.BackendLocal)
 	v.SetDefault("storage.local.base_path", "data/uploads")
 	v.SetDefault("token.key_prefix", "token")
+}
 
+func readStaticConfig(v *viper.Viper) error {
 	if err := v.ReadInConfig(); err != nil {
 		var notFoundErr viper.ConfigFileNotFoundError
 		if !errors.As(err, &notFoundErr) {
-			return nil, err
+			return err
 		}
 	}
 
+	return nil
+}
+
+func unmarshalStaticConfig(v *viper.Viper) (*StaticConfig, error) {
 	cfg := &StaticConfig{}
 	if err := v.Unmarshal(cfg, viper.DecodeHook(mapstructure.StringToTimeDurationHookFunc())); err != nil {
 		return nil, err
 	}
 
 	return cfg, nil
+}
+
+// WriteDefaultConfigFile 将默认配置写入 configDir/config.yaml。
+// 若目标文件已存在，将返回包含 os.ErrExist 的错误。
+func WriteDefaultConfigFile(configDir string) error {
+	configDir = strings.TrimSpace(configDir)
+	if configDir == "" {
+		return errors.New("配置目录不能为空")
+	}
+
+	if err := os.MkdirAll(configDir, 0o755); err != nil {
+		return fmt.Errorf("创建配置目录失败 (%s): %w", configDir, err)
+	}
+
+	v := newStaticConfigViper("", false)
+	content, err := yaml.Marshal(v.AllSettings())
+	if err != nil {
+		return fmt.Errorf("序列化默认配置失败: %w", err)
+	}
+
+	configPath := filepath.Join(configDir, "config.yaml")
+	f, err := os.OpenFile(configPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return fmt.Errorf("创建配置文件失败 (%s): %w", configPath, err)
+	}
+	defer f.Close()
+
+	if _, err := f.Write(content); err != nil {
+		return fmt.Errorf("写入默认配置文件失败 (%s): %w", configPath, err)
+	}
+
+	return nil
+}
+
+// Load 从 configDir/config.yaml 读取配置，并支持环境变量覆盖。
+// 配置文件缺失时会回退到默认值与环境变量。
+func Load(configDir string, strict bool) (*StaticConfig, error) {
+	configDir = strings.TrimSpace(configDir)
+	GlobalConfigDir = configDir
+	if configDir == "" && strict {
+		return nil, errors.New("配置目录不能为空")
+	}
+
+	v := newStaticConfigViper(configDir, true)
+
+	if err := readStaticConfig(v); err != nil {
+		return nil, err
+	}
+
+	return unmarshalStaticConfig(v)
 }
 
 // ProvideDBConfig 提供数据库配置。
@@ -181,4 +255,9 @@ func ProvideStorageConfig(cfg *StaticConfig) *storage.Config {
 // ProvideTokenConfig 提供 token 配置。
 func ProvideTokenConfig(cfg *StaticConfig) *token.Config {
 	return &cfg.Token
+}
+
+// ProvideCSPConfig 提供 CSP 配置。
+func ProvideCSPConfig(cfg *StaticConfig) *CSPConfig {
+	return &cfg.Server.CSP
 }

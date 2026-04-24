@@ -96,7 +96,7 @@ func (r *GormPostRepo) List(ctx context.Context, filter PostFilter, opts ListOpt
 	}
 
 	var posts []model.Post
-	db = applyListOptions(db, opts, "created_at desc")
+	db = db.Order(opts.Order).Limit(opts.Limit).Offset(opts.Offset)
 	if filter.TagID != nil {
 		db = db.Distinct("posts.id")
 	}

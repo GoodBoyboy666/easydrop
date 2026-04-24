@@ -3,6 +3,7 @@ package middleware
 import (
 	"strings"
 
+	"easydrop/internal/config"
 	"easydrop/internal/pkg/captcha"
 
 	"github.com/gin-gonic/gin"
@@ -49,11 +50,15 @@ type SecurityHeaders interface {
 
 type securityHeaders struct {
 	captchaCfg *captcha.AllCaptchaConfig
+	cspCfg     *config.CSPConfig
 }
 
 // NewSecurityHeaders 创建安全头中间件。
-func NewSecurityHeaders(captchaCfg *captcha.AllCaptchaConfig) SecurityHeaders {
-	return &securityHeaders{captchaCfg: captchaCfg}
+func NewSecurityHeaders(captchaCfg *captcha.AllCaptchaConfig, cspCfg *config.CSPConfig) SecurityHeaders {
+	return &securityHeaders{
+		captchaCfg: captchaCfg,
+		cspCfg:     cspCfg,
+	}
 }
 
 // Apply 为响应写入基础安全头。
@@ -67,7 +72,7 @@ func (m *securityHeaders) Apply(c *gin.Context) {
 	headers.Set(headerXFrameOptions, headerValueFrameDeny)
 	headers.Set(headerReferrerPolicy, headerValueStrictOriginWhenCrossOrigin)
 	headers.Set(headerPermissionsPolicy, headerValueDefaultPermissionsPolicy)
-	if !shouldSkipCSP(c) {
+	if m.isCSPEnabled() && !shouldSkipCSP(c) {
 		headers.Set(headerContentSecurityPolicy, m.buildCSPPolicy())
 	}
 
@@ -78,14 +83,27 @@ func (m *securityHeaders) buildCSPPolicy() string {
 	scriptSrc := []string{"'self'"}
 	frameSrc := []string{"'self'"}
 	connectSrc := []string{"'self'"}
+	imgSrc := []string{"'self'"}
 
-	for _, source := range m.resolveCaptchaCSPSources() {
+	for _, source := range m.resolveAdditionalCSPSources() {
 		scriptSrc = appendUniqueSource(scriptSrc, source)
 		frameSrc = appendUniqueSource(frameSrc, source)
 		connectSrc = appendUniqueSource(connectSrc, source)
+		imgSrc = appendUniqueSource(imgSrc, source)
 	}
 
-	return "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src " + strings.Join(scriptSrc, " ") + "; frame-src " + strings.Join(frameSrc, " ") + "; connect-src " + strings.Join(connectSrc, " ")
+	return "default-src 'self'; style-src 'self' 'unsafe-inline'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src " + strings.Join(scriptSrc, " ") + "; frame-src " + strings.Join(frameSrc, " ") + "; connect-src " + strings.Join(connectSrc, " ") + "; img-src " + strings.Join(imgSrc, " ")
+}
+
+func (m *securityHeaders) resolveAdditionalCSPSources() []string {
+	result := make([]string, 0)
+	for _, source := range m.resolveCaptchaCSPSources() {
+		result = appendUniqueSource(result, source)
+	}
+	for _, source := range m.resolveCustomCSPSources() {
+		result = appendUniqueSource(result, source)
+	}
+	return result
 }
 
 func (m *securityHeaders) resolveCaptchaCSPSources() []string {
@@ -104,6 +122,22 @@ func (m *securityHeaders) resolveCaptchaCSPSources() []string {
 		result = appendUniqueSource(result, source)
 	}
 	return result
+}
+
+func (m *securityHeaders) resolveCustomCSPSources() []string {
+	if m == nil || m.cspCfg == nil {
+		return nil
+	}
+
+	result := make([]string, 0, len(m.cspCfg.AllowedSources))
+	for _, source := range m.cspCfg.AllowedSources {
+		result = appendUniqueSource(result, source)
+	}
+	return result
+}
+
+func (m *securityHeaders) isCSPEnabled() bool {
+	return m == nil || m.cspCfg == nil || m.cspCfg.Enabled
 }
 
 func appendUniqueSource(sources []string, source string) []string {
