@@ -113,7 +113,7 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	commentRepo := repo.NewCommentRepo(db)
 	postRepo := repo.NewPostRepo(db)
 	postVisibilityPolicy := service.NewPostVisibilityPolicy()
-	commentService := service.NewCommentService(commentRepo, postRepo, userRepo, storageManager, postVisibilityPolicy, verifier, avatarConfig)
+	commentService := service.NewCommentService(commentRepo, postRepo, userRepo, storageManager, postVisibilityPolicy, verifier, avatarConfig, emailService)
 	commentHandler := handler.NewCommentHandler(commentService, errorResponder)
 	commentAdminHandler := handler.NewCommentAdminHandler(commentService, errorResponder)
 	overviewRepo := repo.NewOverviewRepo(db)

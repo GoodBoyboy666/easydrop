@@ -29,6 +29,11 @@ const (
 	passwordResetSubject = "重置密码确认"
 	emailVerifySubject   = "邮箱验证"
 	emailChangeSubject   = "邮箱修改确认"
+
+	commentNotificationTemplateFile = "comment_reply.html"
+	commentNotifySubject            = "你的说说收到新评论"
+	commentReplySubject             = "你的评论收到回复"
+	commentNotifyContentMaxLen      = 200
 )
 
 var (
@@ -102,6 +107,38 @@ const emailChangeFallbackTemplate = `<!doctype html>
 </body>
 </html>`
 
+// commentNotificationEmailData 评论通知邮件模板渲染数据。
+type commentNotificationEmailData struct {
+	CommentContent string
+	AuthorNickname string
+	PostURL        string
+	SiteURL        string
+	IsReply        bool
+}
+
+const commentNotificationFallbackTemplate = `<!doctype html>
+<html lang="zh-CN">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>评论通知</title>
+</head>
+<body>
+	{{if .IsReply}}
+	<p>用户 <strong>{{.AuthorNickname}}</strong> 回复了你的评论：</p>
+	{{else}}
+	<p>用户 <strong>{{.AuthorNickname}}</strong> 评论了你的说说：</p>
+	{{end}}
+	<p style="border-left:3px solid #d9e4ff;padding-left:12px;color:#42526e;">{{.CommentContent}}</p>
+	{{if .PostURL}}
+	<p><a href="{{.PostURL}}">点击查看详情</a></p>
+	{{end}}
+	{{if .SiteURL}}
+	<p style="color:#6f7b95;">来源站点：{{.SiteURL}}</p>
+	{{end}}
+</body>
+</html>`
+
 // EmailService 负责渲染邮件模板并发送业务邮件。
 type EmailService interface {
 	// SendPasswordResetEmail 发送重置密码邮件。
@@ -110,6 +147,8 @@ type EmailService interface {
 	SendVerifyEmail(ctx context.Context, to, tokenValue string, ttl time.Duration) error
 	// SendChangeEmailEmail 发送邮箱变更确认邮件。
 	SendChangeEmailEmail(ctx context.Context, to, newEmail, tokenValue string, ttl time.Duration) error
+	// SendCommentNotification 发送评论回复通知邮件。
+	SendCommentNotification(ctx context.Context, to, commentContent, authorNickname string, postID uint, isReply bool) error
 }
 
 type emailService struct {
@@ -178,6 +217,37 @@ func (s *emailService) SendChangeEmailEmail(ctx context.Context, to, newEmail, t
 	return s.send(ctx, to, emailChangeSubject, body)
 }
 
+// SendCommentNotification 发送评论回复通知邮件。
+func (s *emailService) SendCommentNotification(ctx context.Context, to, commentContent, authorNickname string, postID uint, isReply bool) error {
+	subject := commentNotifySubject
+	if isReply {
+		subject = commentReplySubject
+	}
+
+	siteURL := s.getSiteURL(ctx)
+	postURL := buildPostURL(siteURL, postID)
+
+	content := strings.TrimSpace(commentContent)
+	if r := []rune(content); len(r) > commentNotifyContentMaxLen {
+		content = string(r[:commentNotifyContentMaxLen]) + "..."
+	}
+
+	data := &commentNotificationEmailData{
+		CommentContent: content,
+		AuthorNickname: strings.TrimSpace(authorNickname),
+		PostURL:        postURL,
+		SiteURL:        siteURL,
+		IsReply:        isReply,
+	}
+
+	body, err := s.renderCommentNotificationTemplate(commentNotificationTemplateFile, data)
+	if err != nil {
+		return err
+	}
+
+	return s.send(ctx, to, subject, body)
+}
+
 // send 执行底层邮件发送并统一参数校验。
 func (s *emailService) send(ctx context.Context, to, subject, body string) error {
 	if s.sender == nil {
@@ -232,6 +302,29 @@ func (s *emailService) getSiteURL(ctx context.Context) string {
 	}
 
 	return strings.TrimSpace(value)
+}
+
+// renderCommentNotificationTemplate 读取并渲染评论通知邮件模板。
+func (s *emailService) renderCommentNotificationTemplate(templateFile string, data *commentNotificationEmailData) (string, error) {
+	content, found, err := loadTemplateContent(templateFile)
+	if err != nil {
+		return "", err
+	}
+	if !found {
+		content = commentNotificationFallbackTemplate
+	}
+
+	tpl, err := template.New(templateFile).Parse(content)
+	if err != nil {
+		return "", fmt.Errorf("解析评论通知邮件模板失败: %w", err)
+	}
+
+	var builder strings.Builder
+	if err := tpl.Execute(&builder, data); err != nil {
+		return "", fmt.Errorf("渲染评论通知邮件模板失败: %w", err)
+	}
+
+	return builder.String(), nil
 }
 
 // renderTemplate 读取模板内容并渲染为 HTML 字符串。
@@ -319,5 +412,22 @@ func buildActionURL(siteURL, actionPath, tokenValue string) string {
 	}
 
 	relative := &url.URL{Path: "/" + actionPath, RawQuery: query.Encode()}
+	return base.ResolveReference(relative).String()
+}
+
+// buildPostURL 基于站点地址和说说 ID 生成说说链接。
+func buildPostURL(siteURL string, postID uint) string {
+	trimmedSiteURL := strings.TrimSpace(siteURL)
+	path := fmt.Sprintf("/posts/%d", postID)
+	if trimmedSiteURL == "" {
+		return path
+	}
+
+	base, err := url.Parse(trimmedSiteURL)
+	if err != nil || base.Scheme == "" || base.Host == "" {
+		return path
+	}
+
+	relative := &url.URL{Path: path}
 	return base.ResolveReference(relative).String()
 }
