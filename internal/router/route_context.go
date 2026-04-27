@@ -28,6 +28,7 @@ type routeContext struct {
 	overviewAdminHandler   *handler.OverviewAdminHandler
 	postAdminHandler       *handler.PostAdminHandler
 	postHandler            *handler.PostHandler
+	feedHandler            *handler.FeedHandler
 	settingAdminHandler    *handler.SettingAdminHandler
 	tagHandler             *handler.TagHandler
 
@@ -64,6 +65,7 @@ func newRouteContext(r *gin.Engine, app *di.App) *routeContext {
 		overviewAdminHandler:     app.OverviewAdminHandler,
 		postAdminHandler:         app.PostAdminHandler,
 		postHandler:              app.PostHandler,
+		feedHandler:              app.FeedHandler,
 		settingAdminHandler:      app.SettingAdminHandler,
 		tagHandler:               app.TagHandler,
 		requireLogin:             fallbackMiddleware(http.StatusInternalServerError, "认证中间件未正确初始化"),
@@ -197,6 +199,18 @@ func (ctx *routeContext) publicDeps() *publicRouteDeps {
 		tagHandler:          ctx.tagHandler,
 		ordinaryLimit:       ctx.ordinaryLimit,
 		initWriteLimit:      ctx.initWriteLimit,
+	}
+}
+
+func (ctx *routeContext) feedDeps() *feedRouteDeps {
+	if ctx == nil || ctx.v1 == nil {
+		return nil
+	}
+
+	return &feedRouteDeps{
+		v1:            ctx.v1,
+		feedHandler:   ctx.feedHandler,
+		ordinaryLimit: ctx.ordinaryLimit,
 	}
 }
 

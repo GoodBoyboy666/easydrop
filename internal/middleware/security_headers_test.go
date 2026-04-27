@@ -238,7 +238,7 @@ func TestSecurityHeadersApplyPreservesResponseBody(t *testing.T) {
 }
 
 func defaultExpectedCSP() string {
-	return "default-src 'self'; style-src 'self' 'unsafe-inline'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline'; frame-src 'self'; connect-src 'self'; img-src 'self'"
+	return "default-src 'self'; style-src 'self' 'unsafe-inline'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self'; frame-src 'self'; connect-src 'self'; img-src 'self'"
 }
 
 func directiveContainsSource(csp string, directive string, source string) bool {

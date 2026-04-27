@@ -30,6 +30,7 @@ type App struct {
 	OverviewAdminHandler   *handler.OverviewAdminHandler
 	PostAdminHandler       *handler.PostAdminHandler
 	PostHandler            *handler.PostHandler
+	FeedHandler            *handler.FeedHandler
 	SettingAdminHandler    *handler.SettingAdminHandler
 	TagHandler             *handler.TagHandler
 }
@@ -56,6 +57,7 @@ func NewApp(
 	overviewAdminHandler *handler.OverviewAdminHandler,
 	postAdminHandler *handler.PostAdminHandler,
 	postHandler *handler.PostHandler,
+	feedHandler *handler.FeedHandler,
 	settingAdminHandler *handler.SettingAdminHandler,
 	tagHandler *handler.TagHandler,
 
@@ -81,6 +83,7 @@ func NewApp(
 		OverviewAdminHandler:   overviewAdminHandler,
 		PostAdminHandler:       postAdminHandler,
 		PostHandler:            postHandler,
+		FeedHandler:            feedHandler,
 		SettingAdminHandler:    settingAdminHandler,
 		TagHandler:             tagHandler,
 	}
