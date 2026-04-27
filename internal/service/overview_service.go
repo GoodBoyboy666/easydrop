@@ -86,10 +86,10 @@ func toOverviewDailyMap(items []repo.OverviewDailyCount) map[string]int64 {
 
 	result := make(map[string]int64, len(items))
 	for _, item := range items {
-		if item.Day == "" {
+		if item.Day.IsZero() {
 			continue
 		}
-		result[item.Day] = item.Total
+		result[item.Day.Format(time.DateOnly)] = item.Total
 	}
 	return result
 }

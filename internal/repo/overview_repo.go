@@ -26,8 +26,8 @@ type OverviewSnapshot struct {
 
 // OverviewDailyCount 表示单日聚合计数。
 type OverviewDailyCount struct {
-	Day   string `gorm:"column:day"`
-	Total int64  `gorm:"column:total"`
+	Day   time.Time `gorm:"column:day"`
+	Total int64     `gorm:"column:total"`
 }
 
 // GormOverviewRepo 基于 Gorm 的后台概览仓储实现。
