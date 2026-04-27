@@ -1878,6 +1878,40 @@ paths:
       summary: 前端查询评论列表
       tags:
       - comment
+  /feed/atom:
+    get:
+      description: 返回站点最新20条公开说说的Atom订阅源
+      produces:
+      - text/xml
+      responses:
+        "200":
+          description: Atom XML
+          schema:
+            type: string
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Atom订阅
+      tags:
+      - feed
+  /feed/rss:
+    get:
+      description: 返回站点最新20条公开说说的RSS 2.0订阅源
+      produces:
+      - text/xml
+      responses:
+        "200":
+          description: RSS XML
+          schema:
+            type: string
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: RSS订阅
+      tags:
+      - feed
   /init:
     post:
       consumes:

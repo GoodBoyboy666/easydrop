@@ -8,11 +8,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// FeedHandler 处理RSS/Atom Feed订阅请求。
 type FeedHandler struct {
 	feedService    service.FeedService
 	errorResponder ErrorResponder
 }
 
+// NewFeedHandler 创建Feed订阅处理器。
 func NewFeedHandler(feedService service.FeedService, errorResponder ErrorResponder) *FeedHandler {
 	return &FeedHandler{
 		feedService:    feedService,
@@ -20,6 +22,14 @@ func NewFeedHandler(feedService service.FeedService, errorResponder ErrorRespond
 	}
 }
 
+// GetRSS 生成RSS Feed
+// @Summary RSS订阅
+// @Description 返回站点最新20条公开说说的RSS 2.0订阅源
+// @Tags feed
+// @Produce xml
+// @Success 200 {string} string "RSS XML"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
+// @Router /feed/rss [get]
 func (h *FeedHandler) GetRSS(c *gin.Context) {
 	if !ensureServiceReady(c, h.feedService) {
 		return
@@ -32,6 +42,14 @@ func (h *FeedHandler) GetRSS(c *gin.Context) {
 	c.Data(http.StatusOK, "application/rss+xml; charset=utf-8", []byte(rss))
 }
 
+// GetAtom 生成Atom Feed
+// @Summary Atom订阅
+// @Description 返回站点最新20条公开说说的Atom订阅源
+// @Tags feed
+// @Produce xml
+// @Success 200 {string} string "Atom XML"
+// @Failure 500 {object} dto.ErrorResponse "服务内部错误"
+// @Router /feed/atom [get]
 func (h *FeedHandler) GetAtom(c *gin.Context) {
 	if !ensureServiceReady(c, h.feedService) {
 		return
