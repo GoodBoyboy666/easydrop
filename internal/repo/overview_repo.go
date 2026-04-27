@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"easydrop/internal/model"
@@ -24,10 +25,31 @@ type OverviewSnapshot struct {
 	CommentDaily    []OverviewDailyCount
 }
 
+// DateString 可同时从 time.Time（PostgreSQL/MySQL）和 string（SQLite）扫描的日期字符串类型。
+type DateString string
+
+func (d *DateString) Scan(value any) error {
+	if value == nil {
+		*d = ""
+		return nil
+	}
+	switch v := value.(type) {
+	case time.Time:
+		*d = DateString(v.Format(time.DateOnly))
+	case string:
+		*d = DateString(v)
+	case []byte:
+		*d = DateString(string(v))
+	default:
+		return fmt.Errorf("DateString.Scan: unsupported type %T", value)
+	}
+	return nil
+}
+
 // OverviewDailyCount 表示单日聚合计数。
 type OverviewDailyCount struct {
-	Day   string `gorm:"column:day"`
-	Total int64  `gorm:"column:total"`
+	Day   DateString `gorm:"column:day"`
+	Total int64      `gorm:"column:total"`
 }
 
 // GormOverviewRepo 基于 Gorm 的后台概览仓储实现。

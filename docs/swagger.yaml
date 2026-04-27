@@ -1882,7 +1882,8 @@ paths:
     get:
       description: 返回站点最新20条公开说说的Atom订阅源
       produces:
-      - text/xml
+      - application/atom+xml
+      - application/json
       responses:
         "200":
           description: Atom XML
@@ -1899,7 +1900,8 @@ paths:
     get:
       description: 返回站点最新20条公开说说的RSS 2.0订阅源
       produces:
-      - text/xml
+      - application/rss+xml
+      - application/json
       responses:
         "200":
           description: RSS XML

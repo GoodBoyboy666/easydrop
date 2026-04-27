@@ -26,7 +26,8 @@ func NewFeedHandler(feedService service.FeedService, errorResponder ErrorRespond
 // @Summary RSS订阅
 // @Description 返回站点最新20条公开说说的RSS 2.0订阅源
 // @Tags feed
-// @Produce xml
+// @Produce application/rss+xml
+// @Produce json
 // @Success 200 {string} string "RSS XML"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /feed/rss [get]
@@ -46,7 +47,8 @@ func (h *FeedHandler) GetRSS(c *gin.Context) {
 // @Summary Atom订阅
 // @Description 返回站点最新20条公开说说的Atom订阅源
 // @Tags feed
-// @Produce xml
+// @Produce application/atom+xml
+// @Produce json
 // @Success 200 {string} string "Atom XML"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
 // @Router /feed/atom [get]

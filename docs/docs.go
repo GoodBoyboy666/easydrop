@@ -2163,7 +2163,8 @@ const docTemplate = `{
             "get": {
                 "description": "返回站点最新20条公开说说的Atom订阅源",
                 "produces": [
-                    "text/xml"
+                    "application/atom+xml",
+                    "application/json"
                 ],
                 "tags": [
                     "feed"
@@ -2189,7 +2190,8 @@ const docTemplate = `{
             "get": {
                 "description": "返回站点最新20条公开说说的RSS 2.0订阅源",
                 "produces": [
-                    "text/xml"
+                    "application/rss+xml",
+                    "application/json"
                 ],
                 "tags": [
                     "feed"

@@ -89,7 +89,7 @@ func toOverviewDailyMap(items []repo.OverviewDailyCount) map[string]int64 {
 		if item.Day == "" {
 			continue
 		}
-		result[item.Day] = item.Total
+		result[string(item.Day)] = item.Total
 	}
 	return result
 }

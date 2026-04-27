@@ -35,15 +35,15 @@ func TestAdminOverviewServiceGetBuildsRecentActivity(t *testing.T) {
 					PostTotal:       34,
 					CommentTotal:    56,
 					AttachmentTotal: 78,
-					PostDaily: []repo.OverviewDailyCount{
-						{Day: "2026-03-21", Total: 2},
-						{Day: "2026-03-24", Total: 5},
-						{Day: "2026-03-27", Total: 1},
-					},
-					CommentDaily: []repo.OverviewDailyCount{
-						{Day: "2026-03-22", Total: 3},
-						{Day: "2026-03-24", Total: 7},
-					},
+				PostDaily: []repo.OverviewDailyCount{
+					{Day: "2026-03-21", Total: 2},
+					{Day: "2026-03-24", Total: 5},
+					{Day: "2026-03-27", Total: 1},
+				},
+				CommentDaily: []repo.OverviewDailyCount{
+					{Day: "2026-03-22", Total: 3},
+					{Day: "2026-03-24", Total: 7},
+				},
 				}, nil
 			},
 		},
