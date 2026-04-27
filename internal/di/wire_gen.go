@@ -123,9 +123,11 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	postService := service.NewPostService(postRepo, commentRepo, tagRepo, storageManager, avatarConfig)
 	postAdminHandler := handler.NewPostAdminHandler(postService, errorResponder)
 	postHandler := handler.NewPostHandler(postService, errorResponder)
+	feedService := service.NewFeedService(postRepo, settingService)
+	feedHandler := handler.NewFeedHandler(feedService, errorResponder)
 	settingAdminHandler := handler.NewSettingAdminHandler(settingService, errorResponder)
 	tagService := service.NewTagService(tagRepo)
 	tagHandler := handler.NewTagHandler(tagService)
-	app := NewApp(staticConfig, initService, guard, auth, csrf, securityHeaders, rateLimit, requestBodyLimit, authHandler, captchaHandler, initHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, overviewAdminHandler, postAdminHandler, postHandler, settingAdminHandler, tagHandler)
+	app := NewApp(staticConfig, initService, guard, auth, csrf, securityHeaders, rateLimit, requestBodyLimit, authHandler, captchaHandler, initHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, overviewAdminHandler, postAdminHandler, postHandler, feedHandler, settingAdminHandler, tagHandler)
 	return app, nil
 }

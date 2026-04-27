@@ -65,6 +65,7 @@ func BuildEngine(app *di.App) *gin.Engine {
 	registerCommentRoutes(routeCtx.commentDeps())
 	registerAttachmentRoutes(routeCtx.attachmentDeps())
 	registerPublicRoutes(routeCtx.publicDeps())
+	registerFeedRoutes(routeCtx.feedDeps())
 	registerAdminRoutes(routeCtx.adminDeps())
 
 	return r
