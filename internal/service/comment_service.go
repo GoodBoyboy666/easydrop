@@ -427,21 +427,23 @@ func (s *commentService) sendCommentNotifications(comment *model.Comment, post *
 
 	go func() {
 		bgCtx := context.Background()
-
-		// 1. 通知说说作者（评论者不是作者本人）。
 		postAuthor := post.User
-		if postAuthor.ID != commenterID && postAuthor.Email != "" && postAuthor.Status == 1 {
-			if err := s.emailService.SendCommentNotification(bgCtx, postAuthor.Email, commentContent, commenterNickname, postID, false); err != nil {
-				log.Printf("发送说说评论通知邮件失败 (to=%s): %v", postAuthor.Email, err)
-			}
-		}
 
-		// 2. 通知被回复用户（该评论为回复，且评论者不是被回复用户本人）。
+		// 通知被回复用户（该评论为回复，且评论者不是被回复用户本人）。
 		if parentComment != nil {
 			replyTarget := parentComment.User
 			if replyTarget.ID != commenterID && replyTarget.Email != "" && replyTarget.Status == 1 {
 				if err := s.emailService.SendCommentNotification(bgCtx, replyTarget.Email, commentContent, commenterNickname, postID, true); err != nil {
 					log.Printf("发送评论回复通知邮件失败 (to=%s): %v", replyTarget.Email, err)
+				}
+			}
+		}
+
+		// 通知说说作者（评论者不是作者，且被回复者不是作者本人时）。
+		if postAuthor.ID != commenterID && postAuthor.Email != "" && postAuthor.Status == 1 {
+			if parentComment == nil || parentComment.UserID != postAuthor.ID {
+				if err := s.emailService.SendCommentNotification(bgCtx, postAuthor.Email, commentContent, commenterNickname, postID, false); err != nil {
+					log.Printf("发送说说评论通知邮件失败 (to=%s): %v", postAuthor.Email, err)
 				}
 			}
 		}
