@@ -2159,6 +2159,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/feed/atom": {
+            "get": {
+                "description": "返回站点最新20条公开说说的Atom订阅源",
+                "produces": [
+                    "text/xml"
+                ],
+                "tags": [
+                    "feed"
+                ],
+                "summary": "Atom订阅",
+                "responses": {
+                    "200": {
+                        "description": "Atom XML",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "服务内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/feed/rss": {
+            "get": {
+                "description": "返回站点最新20条公开说说的RSS 2.0订阅源",
+                "produces": [
+                    "text/xml"
+                ],
+                "tags": [
+                    "feed"
+                ],
+                "summary": "RSS订阅",
+                "responses": {
+                    "200": {
+                        "description": "RSS XML",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "服务内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/init": {
             "post": {
                 "description": "仅在未初始化时创建首个管理员并设置站点配置",
