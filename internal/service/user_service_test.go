@@ -128,6 +128,21 @@ func (m *mockEmailService) SendChangeEmailEmail(ctx context.Context, to, newEmai
 	return m.sender.SendHTML(ctx, []string{to}, "邮箱修改确认", body)
 }
 
+func (m *mockEmailService) SendCommentNotification(ctx context.Context, to, commentContent, authorNickname string, postID uint, isReply bool) error {
+	if m.err != nil {
+		return m.err
+	}
+	if m.sender == nil {
+		return nil
+	}
+	subject := "你的说说收到新评论"
+	if isReply {
+		subject = "你的评论收到回复"
+	}
+	body := "comment:" + commentContent
+	return m.sender.SendHTML(ctx, []string{to}, subject, body)
+}
+
 func (m *mockUserRepo) Create(_ context.Context, user *model.User) error {
 	if m.users == nil {
 		m.users = make(map[uint]*model.User)

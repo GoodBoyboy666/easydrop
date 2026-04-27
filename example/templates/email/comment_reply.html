@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>评论通知</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f6ff;font-family:'Segoe UI',Helvetica,Arial,sans-serif;color:#17223b;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:radial-gradient(circle at 10% 20%, #e7eeff 0%, #f3f6ff 48%, #eef6ff 100%);padding:28px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="620" cellspacing="0" cellpadding="0" style="max-width:620px;width:100%;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #d9e4ff;box-shadow:0 18px 60px rgba(23,34,59,0.12);">
+          <tr>
+            <td style="padding:24px 28px;background:linear-gradient(135deg, #1f3cff 0%, #00a6ff 100%);color:#ffffff;">
+              <p style="margin:0;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;opacity:0.9;">EasyDrop Notification</p>
+              {{if .IsReply}}
+              <h1 style="margin:10px 0 0 0;font-size:26px;line-height:1.25;">你的评论收到回复</h1>
+              {{else}}
+              <h1 style="margin:10px 0 0 0;font-size:26px;line-height:1.25;">你的说说收到新评论</h1>
+              {{end}}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px;">
+              {{if .IsReply}}
+              <p style="margin:0 0 14px 0;font-size:15px;line-height:1.8;">用户 <strong>{{.AuthorNickname}}</strong> 回复了你的评论：</p>
+              {{else}}
+              <p style="margin:0 0 14px 0;font-size:15px;line-height:1.8;">用户 <strong>{{.AuthorNickname}}</strong> 评论了你的说说：</p>
+              {{end}}
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f7f9ff;border:1px solid #dce5ff;border-radius:12px;">
+                <tr>
+                  <td style="padding:14px 16px;">
+                    <p style="margin:0;font-size:14px;line-height:1.8;color:#42526e;">{{.CommentContent}}</p>
+                  </td>
+                </tr>
+              </table>
+
+              {{if .PostURL}}
+              <p style="margin:18px 0 0 0;">
+                <a href="{{.PostURL}}" style="display:inline-block;padding:13px 22px;border-radius:10px;text-decoration:none;font-weight:700;background:linear-gradient(135deg, #1f3cff 0%, #00a6ff 100%);color:#ffffff;">点击查看详情</a>
+              </p>
+              {{end}}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 28px;border-top:1px solid #edf1ff;background:#fbfcff;">
+              <p style="margin:0;font-size:12px;line-height:1.7;color:#6f7b95;">来源站点：{{.SiteURL}}</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
