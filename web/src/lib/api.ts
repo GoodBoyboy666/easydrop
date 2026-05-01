@@ -1,3 +1,4 @@
+import axios from 'axios'
 import type {
   AdminAttachmentListQuery,
   AdminCommentListQuery,
@@ -141,45 +142,6 @@ function normalizeBaseUrl(baseUrl: string) {
   return baseUrl.replace(/\/+$/, '')
 }
 
-function isQueryParamValue(value: unknown): value is string | number | boolean {
-  return (
-    typeof value === 'string' ||
-    typeof value === 'number' ||
-    typeof value === 'boolean'
-  )
-}
-
-function buildUrl(path: string, query?: object) {
-  const pathname = path.startsWith('/') ? path : `/${path}`
-  const url = new URL(`${API_BASE_URL}${pathname}`, 'http://localhost')
-
-  if (query) {
-    for (const [key, value] of Object.entries(query)) {
-      if (value !== undefined && value !== '' && isQueryParamValue(value)) {
-        url.searchParams.set(key, String(value))
-      }
-    }
-  }
-
-  return `${url.pathname}${url.search}`
-}
-
-function isUnsafeHttpMethod(method: string | undefined) {
-  if (!method) {
-    return false
-  }
-
-  switch (method.toUpperCase()) {
-    case 'POST':
-    case 'PUT':
-    case 'PATCH':
-    case 'DELETE':
-      return true
-    default:
-      return false
-  }
-}
-
 function readCookieValue(name: string) {
   if (typeof document === 'undefined') {
     return ''
@@ -198,58 +160,65 @@ function readCookieValue(name: string) {
   return ''
 }
 
-async function parseResponse<T>(response: Response) {
-  const contentType = response.headers.get('content-type') ?? ''
-  const isJson = contentType.includes('application/json')
-  const payload = isJson
-    ? ((await response.json()) as T | { message?: string })
-    : null
+export const axiosInstance = axios.create({
+  adapter: 'fetch',
+  baseURL: API_BASE_URL,
+  withCredentials: true,
+})
 
-  if (!response.ok) {
-    const message =
-      typeof payload === 'object' && payload && 'message' in payload
-        ? payload.message || '请求失败'
-        : response.statusText || '请求失败'
-    throw new ApiError(message, response.status)
+axiosInstance.interceptors.request.use((config) => {
+  const method = (config.method ?? 'get').toUpperCase()
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    const csrfToken = readCookieValue(CSRF_COOKIE_NAME)
+    if (csrfToken) {
+      config.headers[CSRF_HEADER_NAME] = csrfToken
+    }
   }
-
-  return payload as T
-}
+  return config
+})
 
 async function request<T>(
   path: string,
-  init?: RequestInit & {
+  options?: {
+    method?: string
+    data?: unknown
     query?: object
     token?: string | null
   },
 ) {
-  const { query, token, headers, ...rest } = init ?? {}
-  const method = (rest.method ?? 'GET').toUpperCase()
-  const isFormData =
-    typeof FormData !== 'undefined' && rest.body instanceof FormData
-  const csrfToken = isUnsafeHttpMethod(method)
-    ? readCookieValue(CSRF_COOKIE_NAME)
-    : ''
-  const response = await fetch(buildUrl(path, query), {
-    credentials: rest.credentials ?? 'include',
-    ...rest,
-    method,
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(csrfToken ? { [CSRF_HEADER_NAME]: csrfToken } : {}),
-      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-      ...headers,
-    },
-  })
+  const { query, token, method = 'GET', data } = options ?? {}
 
-  return parseResponse<T>(response)
+  const headers: Record<string, string> = {}
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  try {
+    const response = await axiosInstance.request<T>({
+      url: path,
+      method,
+      params: query,
+      data,
+      headers,
+    })
+    return response.data
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      const message =
+        error.response.data?.message ||
+        error.response.statusText ||
+        '请求失败'
+      throw new ApiError(message, error.response.status)
+    }
+    throw error
+  }
 }
 
 export const api = {
   login(input: LoginInput) {
     return request<AuthResult>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify(input),
+      data: input,
     })
   },
   getInitStatus() {
@@ -258,37 +227,37 @@ export const api = {
   initializeSystem(input: InitInput) {
     return request<{ message?: string }>('/init', {
       method: 'POST',
-      body: JSON.stringify(input),
+      data: input,
     })
   },
   register(input: RegisterInput) {
     return request<{ message?: string }>('/auth/register', {
       method: 'POST',
-      body: JSON.stringify(input),
+      data: input,
     })
   },
   requestPasswordReset(input: PasswordResetRequestInput) {
     return request<{ message?: string }>('/auth/password-reset/request', {
       method: 'POST',
-      body: JSON.stringify(input),
+      data: input,
     })
   },
   confirmPasswordReset(input: PasswordResetConfirmInput) {
     return request<{ message?: string }>('/auth/password-reset/confirm', {
       method: 'POST',
-      body: JSON.stringify(input),
+      data: input,
     })
   },
   confirmVerifyEmail(input: EmailVerifyConfirmInput) {
     return request<{ message?: string }>('/auth/verify-email/confirm', {
       method: 'POST',
-      body: JSON.stringify(input),
+      data: input,
     })
   },
   confirmEmailChange(input: EmailChangeConfirmInput) {
     return request<UserDTO>('/auth/email-change/confirm', {
       method: 'POST',
-      body: JSON.stringify(input),
+      data: input,
     })
   },
   getCaptchaConfig() {
@@ -305,21 +274,21 @@ export const api = {
   updateMyProfile(input: UpdateMyProfileInput, token?: string | null) {
     return request<UserDTO>('/users/me/profile', {
       method: 'PATCH',
-      body: JSON.stringify(input),
+      data: input,
       token,
     })
   },
   changeMyPassword(input: ChangeMyPasswordInput, token?: string | null) {
     return request<{ message?: string }>('/users/me/password', {
       method: 'PATCH',
-      body: JSON.stringify(input),
+      data: input,
       token,
     })
   },
   requestMyEmailChange(input: ChangeMyEmailInput, token?: string | null) {
     return request<{ message?: string }>('/users/me/email-change', {
       method: 'POST',
-      body: JSON.stringify(input),
+      data: input,
       token,
     })
   },
@@ -372,14 +341,14 @@ export const api = {
   ) {
     return request<CommentDTO>(`/posts/${postId}/comments`, {
       method: 'POST',
-      body: JSON.stringify(input),
+      data: input,
       token,
     })
   },
   createAdminPost(input: CreatePostInput, token?: string | null) {
     return request<PostDTO>('/admin/posts', {
       method: 'POST',
-      body: JSON.stringify(input),
+      data: input,
       token,
     })
   },
@@ -390,7 +359,7 @@ export const api = {
   ) {
     return request<PostDTO>(`/admin/posts/${postId}`, {
       method: 'PATCH',
-      body: JSON.stringify(input),
+      data: input,
       token,
     })
   },
@@ -413,11 +382,11 @@ export const api = {
     })
   },
   uploadAttachment(file: File, token?: string | null) {
-    const body = new FormData()
-    body.set('file', file)
+    const formData = new FormData()
+    formData.set('file', file)
     return request<AttachmentDTO>('/attachments', {
       method: 'POST',
-      body,
+      data: formData,
       token,
     })
   },
@@ -428,7 +397,7 @@ export const api = {
   ) {
     return request<CommentDTO>(`/admin/comments/${commentId}`, {
       method: 'PATCH',
-      body: JSON.stringify(input),
+      data: input,
       token,
     })
   },
@@ -439,7 +408,7 @@ export const api = {
   ) {
     return request<CommentDTO>(`/users/me/comments/${commentId}`, {
       method: 'PATCH',
-      body: JSON.stringify(input),
+      data: input,
       token,
     })
   },
@@ -466,7 +435,7 @@ export const api = {
   createAdminUser(input: CreateUserInput, token?: string | null) {
     return request<UserDTO>('/admin/users', {
       method: 'POST',
-      body: JSON.stringify(input),
+      data: input,
       token,
     })
   },
@@ -477,7 +446,7 @@ export const api = {
   ) {
     return request<UserDTO>(`/admin/users/${userId}`, {
       method: 'PATCH',
-      body: JSON.stringify(input),
+      data: input,
       token,
     })
   },
@@ -488,11 +457,11 @@ export const api = {
     })
   },
   uploadAdminUserAvatar(userId: number, file: File, token?: string | null) {
-    const body = new FormData()
-    body.set('avatar', file)
+    const formData = new FormData()
+    formData.set('avatar', file)
     return request<UserDTO>(`/admin/users/${userId}/avatar`, {
       method: 'POST',
-      body,
+      data: formData,
       token,
     })
   },
@@ -539,7 +508,7 @@ export const api = {
       '/admin/attachments/batch-delete',
       {
         method: 'POST',
-        body: JSON.stringify({ ids }),
+        data: { ids },
         token,
       },
     )
@@ -559,7 +528,7 @@ export const api = {
       `/admin/settings/${encodeURIComponent(key)}`,
       {
         method: 'PATCH',
-        body: JSON.stringify(input),
+        data: input,
         token,
       },
     )

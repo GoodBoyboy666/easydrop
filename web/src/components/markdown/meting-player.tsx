@@ -1,5 +1,6 @@
 'use client'
 
+import axios from 'axios'
 import { useEffect, useRef, useState } from 'react'
 import { useSiteSettings } from '#/lib/site-settings'
 import { useTheme } from '#/lib/theme'
@@ -50,15 +51,11 @@ async function fetchMetingSongs(
   id: string,
   signal?: AbortSignal,
 ) {
-  const url = new URL(apiUrl)
-  url.searchParams.set('server', server)
-  url.searchParams.set('type', type)
-  url.searchParams.set('id', id)
-  const response = await fetch(url.toString(), { signal })
-  if (!response.ok) {
-    throw new Error(`Meting API ${response.status}`)
-  }
-  const data = (await response.json()) as MetingSong[] | MetingSong
+  const response = await axios.get<MetingSong[] | MetingSong>(apiUrl, {
+    params: { server, type, id },
+    signal,
+  })
+  const data = response.data
   return Array.isArray(data) ? data : [data]
 }
 
