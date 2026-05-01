@@ -26,18 +26,15 @@ import { useTheme } from '#/lib/theme'
 import { cn } from '#/lib/utils'
 
 const DEFAULT_BILIBILI_BVID = 'BV1xx411c7mD'
-const DEFAULT_NETEASE_SONG_ID = '347230'
+const DEFAULT_METING_SONG_ID = '347230'
 const BILIBILI_PREFIX = '<bilibili bvid="'
 const BILIBILI_SUFFIX = '"></bilibili>'
-const NETEASE_PREFIX = '<netease songid="'
-const NETEASE_SUFFIX = '"></netease>'
-
 interface PendingAttachmentInsertion {
   end: number
   start: number
 }
 
-function normalizeNeteaseSongId(value: string) {
+function normalizeSongId(value: string) {
   const trimmedValue = value.trim()
 
   if (/^\d+$/.test(trimmedValue)) {
@@ -73,20 +70,21 @@ const bilibiliCommand: ICommand = {
   },
 }
 
-const neteaseCommand: ICommand = {
+const metingCommand: ICommand = {
   buttonProps: {
-    'aria-label': '插入网易云音乐',
-    title: '插入网易云音乐',
+    'aria-label': '插入音乐',
+    title: '插入音乐',
   },
   icon: <Disc3 className="size-3.5" />,
-  keyCommand: 'netease',
-  name: 'netease',
+  keyCommand: 'meting',
+  name: 'meting',
   execute: (state, editorApi) => {
-    const selectedSongId = normalizeNeteaseSongId(state.selectedText)
-    const songId = selectedSongId || DEFAULT_NETEASE_SONG_ID
-    const template = `${NETEASE_PREFIX}${songId}${NETEASE_SUFFIX}`
+    const selectedSongId = normalizeSongId(state.selectedText)
+    const songId = selectedSongId || DEFAULT_METING_SONG_ID
+    const template = `<meting server="netease" type="song" mid="${songId}"></meting>`
     const nextState = editorApi.replaceSelection(template)
-    const songIdStart = state.selection.start + NETEASE_PREFIX.length
+    const idPrefix = '<meting server="netease" type="song" mid="'
+    const songIdStart = state.selection.start + idPrefix.length
 
     editorApi.setSelectionRange({
       start: songIdStart,
@@ -101,7 +99,7 @@ const editorCommands: ICommand[] = [
   ...mdCommands.getCommands(),
   mdCommands.divider,
   bilibiliCommand,
-  neteaseCommand,
+  metingCommand,
 ]
 
 function escapeMarkdownText(value: string) {
@@ -257,7 +255,7 @@ export function MarkdownEditor({
         mdCommands.divider,
         uploadAttachmentCommand,
         bilibiliCommand,
-        neteaseCommand,
+        metingCommand,
       ]
     : [...editorCommands]
 

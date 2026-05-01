@@ -5,7 +5,7 @@ import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
 import { PhotoView } from 'react-photo-view'
 import remarkGfm from 'remark-gfm'
 import { BilibiliPlayer } from '#/components/markdown/bilibili-player'
-import { NeteasePlayer } from '#/components/markdown/netease-player'
+import { MetingPlayer } from '#/components/markdown/meting-player'
 
 const mediaAttributes = [
   'autoplay',
@@ -27,14 +27,14 @@ const markdownSanitizeSchema = {
     ...(defaultSchema.tagNames ?? []),
     'audio',
     'bilibili',
-    'netease',
+    'meting',
     'video',
   ],
   attributes: {
     ...defaultSchema.attributes,
     audio: [...(defaultSchema.attributes?.audio ?? []), ...mediaAttributes],
     bilibili: ['bvid'],
-    netease: ['id', 'songid'],
+    meting: ['server', 'type', 'mid'],
     video: [
       ...(defaultSchema.attributes?.video ?? []),
       ...mediaAttributes,
@@ -83,7 +83,7 @@ export const markdownComponents = {
       </PhotoView>
     )
   },
-  netease: ({ id, songid }: { id?: string; songid?: string }) => (
-    <NeteasePlayer id={id} songid={songid} />
+  meting: ({ server, type, mid }: { server?: string; type?: string; mid?: string }) => (
+    <MetingPlayer server={server} type={type} mid={mid} />
   ),
 }

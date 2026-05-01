@@ -246,6 +246,13 @@ func initDefaultSettings(settingRepo repo.SettingRepo) error {
 			Public:   true,
 		},
 		{
+			Key:      consts.SiteMetingAPIURLSettingKey,
+			Value:    "",
+			Desc:     "Meting API 地址",
+			Category: "site",
+			Public:   true,
+		},
+		{
 			Key:      consts.AuthRequireEmailVerificationSettingKey,
 			Value:    "false",
 			Desc:     "登录前必须完成邮箱验证",

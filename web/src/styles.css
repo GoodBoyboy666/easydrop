@@ -2,6 +2,7 @@
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 @import '@uiw/react-md-editor/markdown-editor.css';
+@import 'aplayer/dist/APlayer.min.css';
 @import 'react-photo-view/dist/react-photo-view.css';
 @import '@fontsource-variable/noto-sans';
 @import '@fontsource-variable/inter';
@@ -385,5 +386,86 @@
   .markdown-content-compact .markdown-body table {
     margin-top: 0.5rem;
     margin-bottom: 0.5rem;
+  }
+
+  .dark .aplayer {
+    background: var(--card);
+  }
+
+  .dark .aplayer .aplayer-info .aplayer-music .aplayer-title,
+  .dark .aplayer .aplayer-info .aplayer-music .aplayer-author {
+    color: var(--card-foreground);
+  }
+
+  .dark .aplayer .aplayer-lrc p {
+    color: var(--muted-foreground);
+  }
+
+  .dark .aplayer .aplayer-lrc p.aplayer-lrc-current {
+    color: var(--card-foreground);
+  }
+
+  .dark .aplayer .aplayer-lrc::before,
+  .dark .aplayer .aplayer-lrc::after {
+    background: linear-gradient(
+      180deg,
+      var(--card) 0%,
+      color-mix(in oklab, var(--card) 0%, transparent) 100%
+    );
+  }
+
+  .dark .aplayer .aplayer-info .aplayer-controller .aplayer-time .aplayer-icon {
+    color: var(--muted-foreground);
+  }
+
+  .dark .aplayer .aplayer-info .aplayer-controller .aplayer-time .aplayer-icon:hover {
+    color: var(--card-foreground);
+  }
+
+  .dark .aplayer .aplayer-list {
+    background: var(--card);
+  }
+
+  .dark .aplayer .aplayer-list ol {
+    border-color: var(--border);
+  }
+
+  .dark .aplayer .aplayer-list ol li {
+    border-color: var(--border);
+    color: var(--muted-foreground);
+  }
+
+  .dark .aplayer .aplayer-list ol li.aplayer-list-light {
+    background: var(--accent);
+    color: var(--accent-foreground);
+  }
+
+  .dark .aplayer .aplayer-list ol li:hover {
+    background: var(--accent);
+    color: var(--accent-foreground);
+  }
+
+  .dark .aplayer .aplayer-list ol li .aplayer-list-author {
+    color: var(--muted-foreground);
+  }
+
+  .dark .aplayer .aplayer-list ol li .aplayer-list-index {
+    color: var(--muted-foreground);
+  }
+
+  .dark .aplayer .aplayer-info .aplayer-controller .aplayer-bar-wrap .aplayer-bar {
+    background: var(--muted);
+  }
+
+  .dark .aplayer .aplayer-info .aplayer-controller .aplayer-bar-wrap .aplayer-bar .aplayer-loaded {
+    background: var(--muted-foreground);
+  }
+
+  .dark .aplayer .aplayer-info .aplayer-controller .aplayer-time {
+    color: var(--muted-foreground);
+  }
+
+  .dark .aplayer .aplayer-info .aplayer-controller .aplayer-time .aplayer-volume-wrap .aplayer-volume-bar-wrap .aplayer-volume-bar {
+    background: var(--muted);
   }
 }
