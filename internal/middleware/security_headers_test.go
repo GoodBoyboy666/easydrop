@@ -101,7 +101,7 @@ func TestSecurityHeadersApplyAddsCaptchaProviderSourcesToCSP(t *testing.T) {
 				t.Fatalf("expected Content-Security-Policy to be set")
 			}
 			for _, source := range tc.expectedSources {
-				for _, directive := range []string{"script-src", "frame-src", "connect-src", "img-src"} {
+				for _, directive := range []string{"script-src", "frame-src", "connect-src", "img-src", "media-src"} {
 					if !directiveContainsSource(csp, directive, source) {
 						t.Fatalf("expected %s to contain %q, got %q", directive, source, csp)
 					}
@@ -162,7 +162,7 @@ func TestSecurityHeadersApplyAddsCustomSourcesToConfiguredDirectives(t *testing.
 			}
 		}
 	}
-	if strings.Count(csp, "https://cdn.example.com") != 4 {
+	if strings.Count(csp, "https://cdn.example.com") != 5 {
 		t.Fatalf("expected custom source to appear once per configured directive, got %q", csp)
 	}
 }
@@ -238,7 +238,7 @@ func TestSecurityHeadersApplyPreservesResponseBody(t *testing.T) {
 }
 
 func defaultExpectedCSP() string {
-	return "default-src 'self'; style-src 'self' 'unsafe-inline'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self'; frame-src 'self'; connect-src 'self'; img-src 'self'"
+	return "default-src 'self'; style-src 'self' 'unsafe-inline'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self'; frame-src 'self'; connect-src 'self'; img-src 'self'; media-src 'self'"
 }
 
 func directiveContainsSource(csp string, directive string, source string) bool {
