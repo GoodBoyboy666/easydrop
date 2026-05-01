@@ -34,7 +34,7 @@ const markdownSanitizeSchema = {
     ...defaultSchema.attributes,
     audio: [...(defaultSchema.attributes?.audio ?? []), ...mediaAttributes],
     bilibili: ['bvid'],
-    meting: ['server', 'type', 'id'],
+    meting: ['server', 'type', 'mid'],
     video: [
       ...(defaultSchema.attributes?.video ?? []),
       ...mediaAttributes,
@@ -83,7 +83,7 @@ export const markdownComponents = {
       </PhotoView>
     )
   },
-  meting: ({ server, type, id }: { server?: string; type?: string; id?: string }) => (
-    <MetingPlayer server={server} type={type} id={id} />
+  meting: ({ server, type, mid }: { server?: string; type?: string; mid?: string }) => (
+    <MetingPlayer server={server} type={type} mid={mid} />
   ),
 }

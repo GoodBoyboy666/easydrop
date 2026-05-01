@@ -81,9 +81,9 @@ const metingCommand: ICommand = {
   execute: (state, editorApi) => {
     const selectedSongId = normalizeSongId(state.selectedText)
     const songId = selectedSongId || DEFAULT_METING_SONG_ID
-    const template = `<meting server="netease" type="song" id="${songId}"></meting>`
+    const template = `<meting server="netease" type="song" mid="${songId}"></meting>`
     const nextState = editorApi.replaceSelection(template)
-    const idPrefix = '<meting server="netease" type="song" id="'
+    const idPrefix = '<meting server="netease" type="song" mid="'
     const songIdStart = state.selection.start + idPrefix.length
 
     editorApi.setSelectionRange({

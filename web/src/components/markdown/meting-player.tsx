@@ -7,7 +7,7 @@ import { useTheme } from '#/lib/theme'
 interface MetingPlayerProps {
   server?: string
   type?: string
-  id?: string
+  mid?: string
 }
 
 const DEFAULT_METING_API = 'https://api.i-meto.com/meting/api'
@@ -50,8 +50,11 @@ async function fetchMetingSongs(
   id: string,
   signal?: AbortSignal,
 ) {
-  const url = `${apiUrl}?server=${encodeURIComponent(server)}&type=${encodeURIComponent(type)}&id=${encodeURIComponent(id)}`
-  const response = await fetch(url, { signal })
+  const url = new URL(apiUrl)
+  url.searchParams.set('server', server)
+  url.searchParams.set('type', type)
+  url.searchParams.set('id', id)
+  const response = await fetch(url.toString(), { signal })
   if (!response.ok) {
     throw new Error(`Meting API ${response.status}`)
   }
@@ -59,19 +62,21 @@ async function fetchMetingSongs(
   return Array.isArray(data) ? data : [data]
 }
 
-export function MetingPlayer({ server, type, id }: MetingPlayerProps) {
+export function MetingPlayer({ server, type, mid }: MetingPlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const apRef = useRef<import('aplayer').default | null>(null)
   const [error, setError] = useState<string | null>(null)
   const { settingsMap } = useSiteSettings()
   const { isDark } = useTheme()
 
-  const normalizedId = id?.trim()
+  const normalizedMid = mid?.trim()
   const normalizedServer = server?.trim() ?? ''
   const normalizedType = type?.trim() ?? ''
+  const metingApiUrl =
+    settingsMap['site.meting_api_url']?.trim() || DEFAULT_METING_API
 
   useEffect(() => {
-    if (!normalizedId || !containerRef.current) return
+    if (!normalizedMid || !containerRef.current) return
     if (!normalizedServer || !VALID_SERVERS.has(normalizedServer)) return
     if (!normalizedType || !VALID_TYPES.has(normalizedType)) return
 
@@ -82,14 +87,11 @@ export function MetingPlayer({ server, type, id }: MetingPlayerProps) {
         const APlayer = (await import('aplayer')).default
         if (abortController.signal.aborted) return
 
-        const apiUrl =
-          settingsMap['site.meting_api_url']?.trim() || DEFAULT_METING_API
-
         const songs = await fetchMetingSongs(
-          apiUrl,
+          metingApiUrl,
           normalizedServer!,
           normalizedType!,
-          normalizedId!,
+          normalizedMid!,
           abortController.signal,
         )
         if (abortController.signal.aborted) return
@@ -143,7 +145,7 @@ export function MetingPlayer({ server, type, id }: MetingPlayerProps) {
         apRef.current = null
       }
     }
-  }, [normalizedServer, normalizedType, normalizedId, settingsMap])
+  }, [normalizedServer, normalizedType, normalizedMid, metingApiUrl])
 
   useEffect(() => {
     if (!apRef.current) return
@@ -161,7 +163,7 @@ export function MetingPlayer({ server, type, id }: MetingPlayerProps) {
     )
   }
 
-  if (!normalizedId) return null
+  if (!normalizedMid) return null
 
   return (
     <span className="my-4 block overflow-hidden rounded-xl border border-border/70 bg-card/60">

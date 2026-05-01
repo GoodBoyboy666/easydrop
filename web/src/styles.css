@@ -401,7 +401,7 @@
     color: var(--muted-foreground);
   }
 
-  .dark .aplayer .aplayer-lrc.aplayer-lrc-current {
+  .dark .aplayer .aplayer-lrc p.aplayer-lrc-current {
     color: var(--card-foreground);
   }
 
