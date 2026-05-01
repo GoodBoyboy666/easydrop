@@ -10,6 +10,7 @@ const (
 	SiteFaviconSettingKey                  = "site.favicon"
 	SiteAllowRegisterSettingKey            = "site.allow_register"
 	SiteAnnouncementSettingKey             = "site.announcement"
+	SiteMetingAPIURLSettingKey             = "site.meting_api_url"
 	AuthRequireEmailVerificationSettingKey = "auth.require_email_verification"
 	StorageQuotaSettingKey                 = "storage.quota"
 	StorageUploadSettingKey                = "storage.upload"
