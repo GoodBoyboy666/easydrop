@@ -1,3 +1,4 @@
+import axios from 'axios'
 import { queryOptions } from '@tanstack/react-query'
 import { api, toPublicSettingsMap } from '#/lib/api'
 import type {
@@ -69,15 +70,10 @@ function buildHitokotoSource(payload: HitokotoResponse) {
 }
 
 async function getHitokoto() {
-  const response = await fetch(
+  const response = await axios.get<HitokotoResponse>(
     'https://v1.hitokoto.cn/?encode=json&max_length=56',
   )
-
-  if (!response.ok) {
-    throw new Error('Hitokoto request failed')
-  }
-
-  const payload = (await response.json()) as HitokotoResponse
+  const payload = response.data
 
   if (!payload.hitokoto?.trim()) {
     return FALLBACK_HITOKOTO
