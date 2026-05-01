@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSiteSettings } from '#/lib/site-settings'
 import { useTheme } from '#/lib/theme'
 
@@ -48,9 +48,10 @@ async function fetchMetingSongs(
   server: string,
   type: string,
   id: string,
+  signal?: AbortSignal,
 ) {
   const url = `${apiUrl}?server=${encodeURIComponent(server)}&type=${encodeURIComponent(type)}&id=${encodeURIComponent(id)}`
-  const response = await fetch(url)
+  const response = await fetch(url, { signal })
   if (!response.ok) {
     throw new Error(`Meting API ${response.status}`)
   }
@@ -62,7 +63,6 @@ export function MetingPlayer({ server, type, id }: MetingPlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const apRef = useRef<import('aplayer').default | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [ready, setReady] = useState(false)
   const { settingsMap } = useSiteSettings()
   const { isDark } = useTheme()
 
@@ -70,85 +70,80 @@ export function MetingPlayer({ server, type, id }: MetingPlayerProps) {
   const normalizedServer = server?.trim() ?? ''
   const normalizedType = type?.trim() ?? ''
 
-  const initPlayer = useCallback(async () => {
+  useEffect(() => {
     if (!normalizedId || !containerRef.current) return
     if (!normalizedServer || !VALID_SERVERS.has(normalizedServer)) return
     if (!normalizedType || !VALID_TYPES.has(normalizedType)) return
 
-    let cancelled = false
+    const abortController = new AbortController()
 
-    try {
-      const APlayer = (await import('aplayer')).default
+    async function init() {
+      try {
+        const APlayer = (await import('aplayer')).default
+        if (abortController.signal.aborted) return
 
-      const apiUrl =
-        settingsMap['site.meting_api_url']?.trim() || DEFAULT_METING_API
+        const apiUrl =
+          settingsMap['site.meting_api_url']?.trim() || DEFAULT_METING_API
 
-      const songs = await fetchMetingSongs(
-        apiUrl,
-        normalizedServer,
-        normalizedType,
-        normalizedId,
-      )
+        const songs = await fetchMetingSongs(
+          apiUrl,
+          normalizedServer!,
+          normalizedType!,
+          normalizedId!,
+          abortController.signal,
+        )
+        if (abortController.signal.aborted) return
 
-      if (cancelled) return
+        const validSongs = songs.filter((s) => s.url)
+        if (validSongs.length === 0) {
+          if (abortController.signal.aborted) return
+          setError('未找到音乐')
+          return
+        }
 
+        if (apRef.current) {
+          apRef.current.destroy()
+          apRef.current = null
+        }
+
+        if (abortController.signal.aborted) return
+
+        const themeColor = resolveThemeColor()
+
+        apRef.current = new APlayer({
+          container: containerRef.current!,
+          audio: validSongs.map((s) => ({
+            name: s.title || s.name || '',
+            artist: s.author || s.artist || '',
+            url: s.url || '',
+            cover: s.pic || s.cover || '',
+            lrc: s.lrc || '',
+          })),
+          autoplay: false,
+          mutex: true,
+          listFolded: validSongs.length > 1,
+          listMaxHeight: '200px',
+          lrcType: 1,
+          theme: themeColor,
+        })
+
+        setError(null)
+      } catch (err) {
+        if (abortController.signal.aborted) return
+        setError(err instanceof Error ? err.message : '加载失败')
+      }
+    }
+
+    init()
+
+    return () => {
+      abortController.abort()
       if (apRef.current) {
         apRef.current.destroy()
         apRef.current = null
       }
-
-      const validSongs = songs.filter((s) => s.url)
-
-      if (validSongs.length === 0) {
-        setError('未找到音乐')
-        setReady(false)
-        return
-      }
-
-      const themeColor = resolveThemeColor()
-
-      apRef.current = new APlayer({
-        container: containerRef.current,
-        audio: validSongs.map((s) => ({
-          name: s.title || s.name || '',
-          artist: s.author || s.artist || '',
-          url: s.url || '',
-          cover: s.pic || s.cover || '',
-          lrc: s.lrc || '',
-        })),
-        autoplay: false,
-        mutex: true,
-        listFolded: validSongs.length > 1,
-        listMaxHeight: '200px',
-        lrcType: 1,
-        theme: themeColor,
-      })
-
-      setError(null)
-      setReady(true)
-    } catch (err) {
-      if (!cancelled) {
-        setError(err instanceof Error ? err.message : '加载失败')
-        setReady(false)
-      }
-    }
-
-    return () => {
-      cancelled = true
     }
   }, [normalizedServer, normalizedType, normalizedId, settingsMap])
-
-  useEffect(() => {
-    const cleanup = initPlayer()
-
-    return () => {
-      void cleanup?.then((fn) => fn?.())
-      if (apRef.current) {
-        apRef.current.destroy()
-        apRef.current = null
-      }
-    }
-  }, [initPlayer])
 
   useEffect(() => {
     if (!apRef.current) return
@@ -166,7 +161,7 @@ export function MetingPlayer({ server, type, id }: MetingPlayerProps) {
     )
   }
 
-  if (!ready && !normalizedId) return null
+  if (!normalizedId) return null
 
   return (
     <span className="my-4 block overflow-hidden rounded-xl border border-border/70 bg-card/60">
