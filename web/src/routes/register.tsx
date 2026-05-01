@@ -271,7 +271,7 @@ function RegisterPage() {
 
             <motion.div
               animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-5"
               initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
               transition={sectionTransition(0.34)}
             >

@@ -19,6 +19,7 @@ import { getInitials } from '#/lib/format'
 import { useSiteSettings } from '#/lib/site-settings'
 import { useTheme } from '#/lib/theme'
 import { cn } from '#/lib/utils'
+import { Skeleton } from '#/components/ui/skeleton'
 import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar'
 import { Button } from '#/components/ui/button'
 import {
@@ -58,7 +59,7 @@ export function SiteHeader() {
   const location = useLocation()
   const navigate = useNavigate()
   const router = useRouter()
-  const { allowRegister, siteDescription, siteName } = useSiteSettings()
+  const { allowRegister, loading, siteDescription, siteName } = useSiteSettings()
   const { resolvedTheme, setTheme, theme } = useTheme()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
@@ -131,12 +132,21 @@ export function SiteHeader() {
               <FileTextIcon />
             </div>
             <div className="min-w-0">
-              <div className="font-heading text-base font-semibold tracking-tight">
-                {siteName}
-              </div>
-              <div className="truncate text-xs text-muted-foreground">
-                {siteDescription}
-              </div>
+              {loading ? (
+                <>
+                  <Skeleton className="mb-1 h-5 w-24" />
+                  <Skeleton className="h-3.5 w-36" />
+                </>
+              ) : (
+                <>
+                  <div className="font-heading text-base font-semibold tracking-tight">
+                    {siteName}
+                  </div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    {siteDescription}
+                  </div>
+                </>
+              )}
             </div>
           </Link>
 
