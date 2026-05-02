@@ -250,7 +250,10 @@
         return res.json();
       })
       .then(function (data) {
-        renderItems(container, data.items);
+        var pinnedItems = Array.isArray(data && data.pinned_items) ? data.pinned_items : [];
+        var items = Array.isArray(data && data.items) ? data.items : [];
+        var mergedItems = pinnedItems.concat(items).slice(0, COUNT);
+        renderItems(container, mergedItems);
       })
       .catch(function (err) {
         console.error('[EasyDrop Talk] 请求失败:', err);
