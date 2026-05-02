@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { ArrowRightIcon, CheckCircle2Icon, LogInIcon } from 'lucide-react'
+import { ArrowRightIcon, CheckCircle2Icon, FingerprintIcon, LogInIcon } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import type { Transition } from 'motion/react'
 import { useEffect, useState } from 'react'
@@ -30,6 +30,7 @@ import {
   FieldLabel,
 } from '#/components/ui/field'
 import { Input } from '#/components/ui/input'
+import { Separator } from '#/components/ui/separator'
 
 export const Route = createFileRoute('/login')({
   validateSearch: (search: Record<string, unknown>) => {
@@ -63,6 +64,21 @@ function LoginPage() {
   const captchaConfigQuery = useQuery(captchaConfigQueryOptions())
   const loginMutation = useMutation({
     mutationFn: api.login,
+  })
+  const passkeyLoginMutation = useMutation({
+    mutationFn: async () => {
+      if (!isWebAuthnSupported()) {
+        throw new Error('当前浏览器不支持通行密钥，请使用密码登录')
+      }
+      const { options, session_id } = await api.beginPasskeyLogin()
+      const credential = await navigator.credentials.get({
+        publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(options),
+      })
+      if (!(credential instanceof PublicKeyCredential)) {
+        throw new Error('浏览器不支持或取消通行密钥认证')
+      }
+      return api.finishPasskeyLogin(credential, session_id)
+    },
   })
   const pageTransition: Transition = prefersReducedMotion
     ? { duration: 0 }
@@ -110,6 +126,16 @@ function LoginPage() {
         setCaptchaResetSignal((current) => current + 1)
       }
       setError(submitError instanceof Error ? submitError.message : '登录失败')
+    }
+  }
+
+  async function handlePasskeyLogin() {
+    setError(null)
+    try {
+      await passkeyLoginMutation.mutateAsync()
+      await auth.refreshUser()
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : '通行密钥登录失败')
     }
   }
 
@@ -242,9 +268,38 @@ function LoginPage() {
               </div>
             </motion.div>
             </motion.form>
+
+            <motion.div
+              animate={{ opacity: 1, y: 0 }}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+              transition={sectionTransition(0.34)}
+            >
+              <Separator className="my-4" />
+              <Button
+                className="w-full"
+                disabled={passkeyLoginMutation.isPending}
+                onClick={handlePasskeyLogin}
+                variant="outline"
+              >
+                <FingerprintIcon data-icon="inline-start" />
+                {passkeyLoginMutation.isPending
+                  ? '正在验证…'
+                  : '使用通行密钥登录'}
+              </Button>
+            </motion.div>
           </CardContent>
         </Card>
       </motion.div>
     </motion.div>
   )
 }
+
+function isWebAuthnSupported(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.PublicKeyCredential === 'function' &&
+    typeof PublicKeyCredential.parseCreationOptionsFromJSON === 'function' &&
+    typeof PublicKeyCredential.parseRequestOptionsFromJSON === 'function'
+  )
+}
+

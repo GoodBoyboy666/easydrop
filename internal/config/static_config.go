@@ -23,6 +23,7 @@ import (
 	"easydrop/internal/pkg/redis"
 	"easydrop/internal/pkg/storage"
 	"easydrop/internal/pkg/token"
+	"easydrop/internal/pkg/webauthn"
 )
 
 // GlobalConfigDir 保存运行时生效的配置目录，供需要定位配置同级资源的模块复用。
@@ -66,10 +67,11 @@ type StaticConfig struct {
 	Avatar     avatar.Config            `mapstructure:"avatar" yaml:"avatar"`
 	Storage    storage.Config           `mapstructure:"storage" yaml:"storage"`
 	Token      token.Config             `mapstructure:"token" yaml:"token"`
+	WebAuthn   webauthn.Config          `mapstructure:"webauthn" yaml:"webauthn"`
 }
 
 // StaticProviderSet 提供配置加载的 Wire 注入入口。
-var StaticProviderSet = wire.NewSet(Load, ProvideDBConfig, ProvideRedisConfig, ProvideRateLimitConfig, ProvideEmailConfig, ProvideJWTConfig, ProvideAuthCookieConfig, ProvideCaptchaConfig, ProvideAvatarConfig, ProvideStorageConfig, ProvideTokenConfig, ProvideCSPConfig)
+var StaticProviderSet = wire.NewSet(Load, ProvideDBConfig, ProvideRedisConfig, ProvideRateLimitConfig, ProvideEmailConfig, ProvideJWTConfig, ProvideAuthCookieConfig, ProvideCaptchaConfig, ProvideAvatarConfig, ProvideStorageConfig, ProvideTokenConfig, ProvideWebAuthnConfig, ProvideCSPConfig)
 
 func newStaticConfigViper(configDir string, enableEnv bool) *viper.Viper {
 	v := viper.New()
@@ -126,6 +128,10 @@ func setStaticConfigDefaults(v *viper.Viper) {
 	v.SetDefault("storage.backend", storage.BackendLocal)
 	v.SetDefault("storage.local.base_path", "data/uploads")
 	v.SetDefault("token.key_prefix", "token")
+	v.SetDefault("webauthn.rp_display_name", "EasyDrop")
+	v.SetDefault("webauthn.rp_id", "")
+	v.SetDefault("webauthn.rp_origin", []string{})
+	v.SetDefault("webauthn.timeout", "60s")
 }
 
 func readStaticConfig(v *viper.Viper) error {
@@ -255,6 +261,11 @@ func ProvideStorageConfig(cfg *StaticConfig) *storage.Config {
 // ProvideTokenConfig 提供 token 配置。
 func ProvideTokenConfig(cfg *StaticConfig) *token.Config {
 	return &cfg.Token
+}
+
+// ProvideWebAuthnConfig 提供 WebAuthn 配置。
+func ProvideWebAuthnConfig(cfg *StaticConfig) *webauthn.Config {
+	return &cfg.WebAuthn
 }
 
 // ProvideCSPConfig 提供 CSP 配置。

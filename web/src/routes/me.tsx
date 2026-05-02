@@ -3,8 +3,8 @@ import {
   Outlet,
   useLocation,
 } from '@tanstack/react-router'
-import { useMutation } from '@tanstack/react-query'
-import { MailIcon, ShieldCheckIcon, UserCircleIcon } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { FingerprintIcon, MailIcon, PencilIcon, ShieldCheckIcon, Trash2Icon, UserCircleIcon } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import type { HTMLMotionProps, Transition } from 'motion/react'
 import { useEffect, useState } from 'react'
@@ -15,6 +15,7 @@ import {
   useUnauthorizedHandler,
 } from '#/lib/auth-guards'
 import { formatDateTime, getInitials } from '#/lib/format'
+import { myPasskeysQueryOptions, queryKeys } from '#/lib/query-options'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar'
 import { Badge } from '#/components/ui/badge'
@@ -64,6 +65,87 @@ function MePage() {
   const [newEmail, setNewEmail] = useState('')
   const [emailPassword, setEmailPassword] = useState('')
   const [motionReady, setMotionReady] = useState(prefersReducedMotion)
+
+  const queryClient = useQueryClient()
+  const passkeyListQuery = useQuery({
+    ...myPasskeysQueryOptions(),
+    enabled: auth.status === 'authenticated',
+  })
+  const registerPasskeyMutation = useMutation({
+    mutationFn: async () => {
+      if (!isWebAuthnSupported()) {
+        throw new Error('当前浏览器不支持通行密钥')
+      }
+      const { options, session_id } = await api.beginPasskeyRegistration()
+      const credential = await navigator.credentials.create({
+        publicKey: PublicKeyCredential.parseCreationOptionsFromJSON(options),
+      })
+      if (!(credential instanceof PublicKeyCredential)) {
+        throw new Error('浏览器不支持或取消通行密钥注册')
+      }
+      return api.finishPasskeyRegistration(credential, session_id)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.myPasskeys() })
+      toast.success('通行密钥已添加')
+    },
+    onError: (error) => {
+      if (handleUnauthorized(error)) {
+        return
+      }
+      toast.error(error instanceof Error ? error.message : '添加通行密钥失败')
+    },
+  })
+  const renamePasskeyMutation = useMutation({
+    mutationFn: ({ id, name }: { id: number; name: string }) =>
+      api.renamePasskey(id, { name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.myPasskeys() })
+      toast.success('已重命名')
+    },
+    onError: (error) => {
+      if (handleUnauthorized(error)) {
+        return
+      }
+      toast.error(error instanceof Error ? error.message : '重命名失败')
+    },
+  })
+  const deletePasskeyMutation = useMutation({
+    mutationFn: (id: number) => api.deletePasskey(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.myPasskeys() })
+      toast.success('已删除')
+    },
+    onError: (error) => {
+      if (handleUnauthorized(error)) {
+        return
+      }
+      toast.error(error instanceof Error ? error.message : '删除失败')
+    },
+  })
+
+  const [editingPasskeyID, setEditingPasskeyID] = useState<number | null>(null)
+  const [editingPasskeyName, setEditingPasskeyName] = useState('')
+
+  function startRename(id: number, currentName: string) {
+    setEditingPasskeyID(id)
+    setEditingPasskeyName(currentName)
+  }
+
+  function cancelRename() {
+    setEditingPasskeyID(null)
+    setEditingPasskeyName('')
+  }
+
+  function submitRename(id: number) {
+    const name = editingPasskeyName.trim()
+    if (!name || name.length > 15) {
+      toast.error('名称长度应为 1-15 个字符')
+      return
+    }
+    renamePasskeyMutation.mutate({ id, name })
+    cancelRename()
+  }
 
   const updateProfileMutation = useMutation({
     mutationFn: (nextNickname: string) =>
@@ -455,9 +537,152 @@ function MePage() {
                 </CardContent>
               </Card>
             </motion.div>
+
+            <motion.div
+              animate={motionReady ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
+              initial={prefersReducedMotion ? false : SECTION_ENTER_INITIAL}
+              transition={getEntranceTransition(0.24)}
+              {...GPU_ACCELERATED_MOTION_PROPS}
+            >
+              <Card className={FLAT_PROFILE_FORM_CARD_CLASSNAME}>
+                <CardHeader>
+                  <CardTitle className="text-base">通行密钥</CardTitle>
+                  <CardDescription>
+                    使用指纹、面容或安全密钥快速登录，无需输入密码。
+                    最多可添加 10 个通行密钥。
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {passkeyListQuery.data && passkeyListQuery.data.length > 0 ? (
+                    <div className="space-y-2">
+                      {passkeyListQuery.data.map((pk) => (
+                        <div
+                          className="flex items-center gap-3 rounded-lg border border-border/70 bg-muted/20 px-3 py-2"
+                          key={pk.id}
+                        >
+                          <FingerprintIcon className="size-4 text-muted-foreground" />
+                          <div className="min-w-0 flex-1">
+                            {editingPasskeyID === pk.id ? (
+                              <form
+                                className="flex items-center gap-2"
+                                onSubmit={(e) => {
+                                  e.preventDefault()
+                                  submitRename(pk.id)
+                                }}
+                              >
+                                <Input
+                                  autoFocus
+                                  className="h-7 text-sm"
+                                  maxLength={15}
+                                  onChange={(e) =>
+                                    setEditingPasskeyName(e.target.value)
+                                  }
+                                  value={editingPasskeyName}
+                                />
+                                <Button
+                                  disabled={renamePasskeyMutation.isPending}
+                                  size="sm"
+                                  type="submit"
+                                  variant="ghost"
+                                >
+                                  保存
+                                </Button>
+                                <Button
+                                  onClick={cancelRename}
+                                  size="sm"
+                                  type="button"
+                                  variant="ghost"
+                                >
+                                  取消
+                                </Button>
+                              </form>
+                            ) : (
+                              <>
+                                <div className="text-sm font-medium">
+                                  {pk.name}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {formatDateTime(pk.created_at)}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                          {editingPasskeyID !== pk.id && (
+                            <div className="flex items-center gap-1">
+                              <Button
+                                aria-label="重命名"
+                                onClick={() => startRename(pk.id, pk.name)}
+                                size="icon-sm"
+                                variant="ghost"
+                              >
+                                <PencilIcon />
+                              </Button>
+                              <Button
+                                aria-label="删除"
+                                disabled={deletePasskeyMutation.isPending}
+                                onClick={() => {
+                                  if (
+                                    window.confirm(
+                                      `确定要删除通行密钥「${pk.name}」吗？`,
+                                    )
+                                  ) {
+                                    deletePasskeyMutation.mutate(pk.id)
+                                  }
+                                }}
+                                size="icon-sm"
+                                variant="ghost"
+                              >
+                                <Trash2Icon />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      尚未添加通行密钥
+                    </div>
+                  )}
+                  <div className="mt-4">
+                    {isWebAuthnSupported() ? (
+                      <Button
+                        disabled={
+                          registerPasskeyMutation.isPending ||
+                          (passkeyListQuery.data &&
+                            passkeyListQuery.data.length >= 10)
+                        }
+                        onClick={() => registerPasskeyMutation.mutate()}
+                        size="sm"
+                        variant="outline"
+                      >
+                      <FingerprintIcon data-icon="inline-start" />
+                      {registerPasskeyMutation.isPending
+                        ? '正在添加…'
+                        : '添加通行密钥'}
+                    </Button>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">
+                        当前浏览器不支持通行密钥
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
           </CardContent>
         </Card>
       </motion.div>
     </motion.div>
   )
 }
+
+function isWebAuthnSupported(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.PublicKeyCredential === 'function' &&
+    typeof PublicKeyCredential.parseCreationOptionsFromJSON === 'function' &&
+    typeof PublicKeyCredential.parseRequestOptionsFromJSON === 'function'
+  )
+}
+

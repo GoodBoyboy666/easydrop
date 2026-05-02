@@ -13,6 +13,7 @@ import type {
   CommentDTO,
   InitStatusResult,
   PagedResult,
+  PasskeyItem,
   PostDTO,
   PublicPostListResult,
   PublicSettingsMap,
@@ -130,6 +131,8 @@ export const queryKeys = {
   adminSettingsPrefix: () => ['admin-settings'] as const,
   adminSettings: (query?: AdminSettingListQuery) =>
     ['admin-settings', normalizeQuery(query)] as const,
+  myPasskeys: (isAuthenticated?: boolean) =>
+    ['my-passkeys', authScope(isAuthenticated)] as const,
 }
 
 export function captchaConfigQueryOptions() {
@@ -277,5 +280,12 @@ export function hitokotoQueryOptions() {
     queryFn: getHitokoto,
     staleTime: 10 * 60 * 1000,
     retry: 0,
+  })
+}
+
+export function myPasskeysQueryOptions() {
+  return queryOptions<PasskeyItem[]>({
+    queryKey: queryKeys.myPasskeys(),
+    queryFn: () => api.listMyPasskeys().then((r) => r.items),
   })
 }

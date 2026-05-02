@@ -7,6 +7,7 @@ var RepositorySet = wire.NewSet(
 	NewCommentRepo,
 	NewInitRepo,
 	NewOverviewRepo,
+	NewPasskeyRepo,
 	NewPostRepo,
 	NewSettingRepo,
 	NewTagRepo,

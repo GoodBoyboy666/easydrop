@@ -67,6 +67,7 @@ func BuildEngine(app *di.App) *gin.Engine {
 	registerPublicRoutes(routeCtx.publicDeps())
 	registerFeedRoutes(routeCtx.feedDeps())
 	registerAdminRoutes(routeCtx.adminDeps())
+	registerPasskeyRoutes(routeCtx.passkeyDeps())
 
 	return r
 }

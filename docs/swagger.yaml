@@ -216,6 +216,50 @@ definitions:
       message:
         type: string
     type: object
+  dto.PasskeyItem:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  dto.PasskeyLoginBeginResponse:
+    properties:
+      options:
+        additionalProperties: {}
+        type: object
+      session_id:
+        type: string
+    type: object
+  dto.PasskeyLoginFinishRequest:
+    properties:
+      session_id:
+        type: string
+    type: object
+  dto.PasskeyRegisterBeginResponse:
+    properties:
+      options:
+        additionalProperties: {}
+        type: object
+      session_id:
+        type: string
+    type: object
+  dto.PasskeyRegisterFinishRequest:
+    properties:
+      session_id:
+        type: string
+    type: object
+  dto.PasskeyRenameRequest:
+    properties:
+      name:
+        maxLength: 15
+        minLength: 1
+        type: string
+    required:
+    - name
+    type: object
   dto.PasswordResetConfirmInput:
     properties:
       new_password:
@@ -1691,6 +1735,128 @@ paths:
       summary: 用户登出
       tags:
       - auth
+  /auth/passkey/login/begin:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        发起无用户名通行密钥登录流程，返回需传递给浏览器的断言选项和会话 ID。
+        用户将在浏览器中选择要使用的通行密钥进行身份验证。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.PasskeyLoginBeginResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: 开始通行密钥登录
+      tags:
+      - passkey
+  /auth/passkey/login/finish:
+    post:
+      consumes:
+      - application/json
+      description: 验证浏览器返回的断言响应，认证通过后签发 JWT 访问令牌。
+      parameters:
+      - description: 登录完成请求，body 需包含 session_id 及完整的 WebAuthn 断言响应
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.PasskeyLoginFinishRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.AuthResult'
+        "400":
+          description: 参数校验失败或会话无效
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: 通行密钥验证失败
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: 用户状态异常
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: 完成通行密钥登录
+      tags:
+      - passkey
+  /auth/passkey/register/begin:
+    post:
+      consumes:
+      - application/json
+      description: 发起通行密钥注册流程，返回需传递给浏览器的创建选项和会话 ID。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.PasskeyRegisterBeginResponse'
+        "400":
+          description: 数量已达上限
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: 未登录
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: 开始注册通行密钥
+      tags:
+      - passkey
+  /auth/passkey/register/finish:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        验证浏览器返回的认证器响应，保存通行密钥凭证到数据库。
+        新创建的通行密钥将自动命名为 "通行密钥 N"。
+      parameters:
+      - description: 注册完成请求，body 需包含 session_id 及完整的 WebAuthn 响应
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.PasskeyRegisterFinishRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.MessageResponse'
+        "400":
+          description: 参数校验失败、会话无效或数量已达上限
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: 未登录
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: 完成注册通行密钥
+      tags:
+      - passkey
   /auth/password-reset/confirm:
     post:
       consumes:
@@ -2481,6 +2647,113 @@ paths:
       summary: 请求修改当前用户邮箱
       tags:
       - user
+  /users/me/passkeys:
+    get:
+      consumes:
+      - application/json
+      description: 获取当前用户所有已注册的通行密钥列表（仅元数据，不含密钥材料）。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              items:
+                items:
+                  $ref: '#/definitions/dto.PasskeyItem'
+                type: array
+            type: object
+        "401":
+          description: 未登录
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: 列出通行密钥
+      tags:
+      - passkey
+  /users/me/passkeys/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 删除指定的通行密钥，删除后该密钥将无法用于登录。
+      parameters:
+      - description: 通行密钥 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.MessageResponse'
+        "400":
+          description: 参数校验失败
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: 未登录
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: 通行密钥不存在
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: 删除通行密钥
+      tags:
+      - passkey
+    patch:
+      consumes:
+      - application/json
+      description: 修改指定通行密钥的显示名称，名称长度限制为 1-15 个字符。
+      parameters:
+      - description: 通行密钥 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 新名称
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.PasskeyRenameRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.MessageResponse'
+        "400":
+          description: 参数校验失败
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: 未登录
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: 通行密钥不存在
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: 重命名通行密钥
+      tags:
+      - passkey
   /users/me/password:
     patch:
       consumes:

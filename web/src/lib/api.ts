@@ -22,6 +22,12 @@ import type {
   InitStatusResult,
   LoginInput,
   PagedResult,
+  PasskeyItem,
+  PasskeyLoginBeginResponse,
+  PasskeyLoginFinishRequest,
+  PasskeyRegisterBeginResponse,
+  PasskeyRegisterFinishRequest,
+  PasskeyRenameRequest,
   PasswordResetConfirmInput,
   PasswordResetRequestInput,
   PostDTO,
@@ -532,6 +538,76 @@ export const api = {
         token,
       },
     )
+  },
+
+  // === Passkey / WebAuthn ===
+
+  beginPasskeyLogin() {
+    return request<PasskeyLoginBeginResponse>('/auth/passkey/login/begin', {
+      method: 'POST',
+    })
+  },
+
+  finishPasskeyLogin(
+    credential: PublicKeyCredential,
+    sessionID: string,
+  ) {
+    const body: Record<string, unknown> = {
+      session_id: sessionID,
+      ...credential.toJSON(),
+    }
+    return request<AuthResult>('/auth/passkey/login/finish', {
+      method: 'POST',
+      data: body,
+    })
+  },
+
+  beginPasskeyRegistration(token?: string | null) {
+    return request<PasskeyRegisterBeginResponse>(
+      '/auth/passkey/register/begin',
+      {
+        method: 'POST',
+        token,
+      },
+    )
+  },
+
+  finishPasskeyRegistration(
+    credential: PublicKeyCredential,
+    sessionID: string,
+    token?: string | null,
+  ) {
+    const body: Record<string, unknown> = {
+      session_id: sessionID,
+      ...credential.toJSON(),
+    }
+    return request<{ message?: string }>(
+      '/auth/passkey/register/finish',
+      {
+        method: 'POST',
+        data: body,
+        token,
+      },
+    )
+  },
+
+  listMyPasskeys(token?: string | null) {
+    return request<{ items: PasskeyItem[] }>('/users/me/passkeys', { token })
+  },
+
+  renamePasskey(passkeyID: number, input: PasskeyRenameRequest, token?: string | null) {
+    return request<{ message?: string }>(`/users/me/passkeys/${passkeyID}`, {
+      method: 'PATCH',
+      data: input,
+      token,
+    })
+  },
+
+  deletePasskey(passkeyID: number, token?: string | null) {
+    return request<{ message?: string }>(`/users/me/passkeys/${passkeyID}`, {
+      method: 'DELETE',
+      token,
+    })
   },
 }
 

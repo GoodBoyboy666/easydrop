@@ -78,7 +78,10 @@ func statusForError(err error) int {
 		errors.Is(err, service.ErrAttachmentExtensionNotAllowed),
 		errors.Is(err, service.ErrAttachmentMIMETypeNotAllowed),
 		errors.Is(err, initsecret.ErrRequired),
-		errors.Is(err, service.ErrSettingKeyRequired):
+		errors.Is(err, service.ErrSettingKeyRequired),
+		errors.Is(err, service.ErrPasskeyLimitReached),
+		errors.Is(err, service.ErrPasskeyNameEmpty),
+		errors.Is(err, service.ErrPasskeyNameTooLong):
 		return http.StatusBadRequest
 	case errors.Is(err, service.ErrInvalidCredentials):
 		return http.StatusUnauthorized
@@ -97,7 +100,8 @@ func statusForError(err error) int {
 	case errors.Is(err, service.ErrUserNotFound),
 		errors.Is(err, service.ErrPostNotFound),
 		errors.Is(err, service.ErrCommentNotFound),
-		errors.Is(err, service.ErrAttachmentNotFound):
+		errors.Is(err, service.ErrAttachmentNotFound),
+		errors.Is(err, service.ErrPasskeyNotFound):
 		return http.StatusNotFound
 	default:
 		return http.StatusInternalServerError
