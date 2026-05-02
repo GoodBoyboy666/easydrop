@@ -13,7 +13,7 @@
  *         data-container="easydrop-talk">
  * </script>
  *
- * 也可以通过 JS 全局变量配置：
+ * 也可以通过 JS 全局变量配置（PJAX 站点必须使用此方式）：
  * <script>
  * window.EasyDropTalk = {
  *   baseUrl: 'https://your-easydrop.example.com',
@@ -22,6 +22,8 @@
  * };
  * </script>
  *
+ * 注意：PJAX / Turbolinks 等动态加载站点，data-* 属性可能失效，
+ * 请务必使用 window.EasyDropTalk 全局变量方式配置。
  * data-* 属性优先级高于 window.EasyDropTalk。
  *
  * === 配置项 ===
@@ -43,7 +45,8 @@
   var MAX_COUNT = 100;
   var MIN_COUNT = 1;
 
-  var script = document.currentScript;
+  var script = document.currentScript ||
+                document.querySelector('script[data-easydrop-base]');
   var globalConfig = window.EasyDropTalk || {};
 
   function getAttr(name, defaultValue, transform, globalName) {
@@ -61,7 +64,8 @@
 
   var BASE_URL = getAttr('easydrop-base', null, function (v) {
     if (v === null || v === undefined || String(v).trim() === '') {
-      console.error('[EasyDrop Talk] 缺少必填配置 data-easydrop-base（或 window.EasyDropTalk.baseUrl）');
+      console.error('[EasyDrop Talk] 缺少必填配置 data-easydrop-base（或 window.EasyDropTalk.baseUrl）。' +
+                    'PJAX 站点请务必使用 window.EasyDropTalk 全局变量方式配置');
       return null;
     }
 
@@ -248,6 +252,10 @@
     var container = document.getElementById(CONTAINER_ID);
     if (!container) {
       console.warn('[EasyDrop Talk] 未找到容器元素 #' + CONTAINER_ID);
+      return;
+    }
+
+    if (container.classList.contains('easydrop-talk-widget')) {
       return;
     }
 
