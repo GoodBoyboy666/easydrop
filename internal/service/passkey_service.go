@@ -20,12 +20,10 @@ import (
 )
 
 var (
-	// ErrPasskeyLimitReached 表示用户已达到通行密钥数量上限。
 	ErrPasskeyLimitReached = errors.New("每个用户最多创建10个通行密钥")
-	// ErrPasskeyNotFound 表示指定的通行密钥不存在或不属于当前用户。
-	ErrPasskeyNotFound = errors.New("通行密钥不存在")
-	// ErrPasskeyNameTooLong 表示通行密钥名称不符合长度要求。
-	ErrPasskeyNameTooLong = errors.New("通行密钥名称不能超过15个字符")
+	ErrPasskeyNotFound     = errors.New("通行密钥不存在")
+	ErrPasskeyNameEmpty    = errors.New("通行密钥名称不能为空")
+	ErrPasskeyNameTooLong  = errors.New("通行密钥名称不能超过15个字符")
 )
 
 // maxPasskeysPerUser 是每个用户最多可创建的通行密钥数量。
@@ -333,7 +331,7 @@ func (s *passkeyService) List(ctx context.Context, userID uint) ([]dto.PasskeyIt
 func (s *passkeyService) Rename(ctx context.Context, userID uint, passkeyID uint, name string) error {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return ErrPasskeyNameTooLong
+		return ErrPasskeyNameEmpty
 	}
 
 	passkey, err := s.passkeyRepo.FindByID(ctx, passkeyID)

@@ -80,6 +80,7 @@ func statusForError(err error) int {
 		errors.Is(err, initsecret.ErrRequired),
 		errors.Is(err, service.ErrSettingKeyRequired),
 		errors.Is(err, service.ErrPasskeyLimitReached),
+		errors.Is(err, service.ErrPasskeyNameEmpty),
 		errors.Is(err, service.ErrPasskeyNameTooLong):
 		return http.StatusBadRequest
 	case errors.Is(err, service.ErrInvalidCredentials):
