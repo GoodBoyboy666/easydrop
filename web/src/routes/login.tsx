@@ -4,6 +4,7 @@ import { ArrowRightIcon, CheckCircle2Icon, FingerprintIcon, LogInIcon } from 'lu
 import { motion, useReducedMotion } from 'motion/react'
 import type { Transition } from 'motion/react'
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { api } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
 import {
@@ -130,12 +131,11 @@ function LoginPage() {
   }
 
   async function handlePasskeyLogin() {
-    setError(null)
     try {
       await passkeyLoginMutation.mutateAsync()
       await auth.refreshUser()
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : '通行密钥登录失败')
+      toast.error(submitError instanceof Error ? submitError.message : '通行密钥登录失败')
     }
   }
 
