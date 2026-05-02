@@ -141,7 +141,7 @@ func (s *passkeyService) BeginRegistration(ctx context.Context, userID uint) (*d
 	}
 
 	return &dto.PasskeyRegisterBeginResponse{
-		Options:   creationToMap(creation),
+		Options:   creationToMap(creation.Response),
 		SessionID: sessionID,
 	}, nil
 }
@@ -228,7 +228,7 @@ func (s *passkeyService) BeginLogin(ctx context.Context) (*dto.PasskeyLoginBegin
 	}
 
 	return &dto.PasskeyLoginBeginResponse{
-		Options:   assertionToMap(assertion),
+		Options:   assertionToMap(assertion.Response),
 		SessionID: sessionID,
 	}, nil
 }
