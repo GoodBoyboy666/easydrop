@@ -131,7 +131,8 @@ export const queryKeys = {
   adminSettingsPrefix: () => ['admin-settings'] as const,
   adminSettings: (query?: AdminSettingListQuery) =>
     ['admin-settings', normalizeQuery(query)] as const,
-  myPasskeys: () => ['my-passkeys'] as const,
+  myPasskeys: (isAuthenticated?: boolean) =>
+    ['my-passkeys', authScope(isAuthenticated)] as const,
 }
 
 export function captchaConfigQueryOptions() {
