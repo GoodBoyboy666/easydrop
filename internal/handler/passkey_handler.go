@@ -43,6 +43,7 @@ func NewPasskeyHandler(passkeyService service.PasskeyService, jwtManager jwt.Man
 // @Failure 400 {object} dto.ErrorResponse "数量已达上限"
 // @Failure 401 {object} dto.ErrorResponse "未登录"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
+// @Security BearerAuth
 // @Router /auth/passkey/register/begin [post]
 func (h *PasskeyHandler) BeginRegistration(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
