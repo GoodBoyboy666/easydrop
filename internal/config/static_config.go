@@ -129,8 +129,8 @@ func setStaticConfigDefaults(v *viper.Viper) {
 	v.SetDefault("storage.local.base_path", "data/uploads")
 	v.SetDefault("token.key_prefix", "token")
 	v.SetDefault("webauthn.rp_display_name", "EasyDrop")
-	v.SetDefault("webauthn.rp_id", "localhost")
-	v.SetDefault("webauthn.rp_origin", []string{"http://localhost:3000"})
+	v.SetDefault("webauthn.rp_id", "")
+	v.SetDefault("webauthn.rp_origin", []string{})
 	v.SetDefault("webauthn.timeout", "60s")
 }
 
