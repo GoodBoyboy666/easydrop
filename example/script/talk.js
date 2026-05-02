@@ -71,7 +71,7 @@
       return null;
     }
     return v;
-  });
+  }, 'baseUrl');
 
   var CONTAINER_ID = getAttr('container', DEFAULT_CONTAINER_ID);
 
