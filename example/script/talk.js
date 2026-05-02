@@ -209,13 +209,13 @@
 
       html += '<div class="easydrop-talk-item">';
       var postUrl = BASE_URL + '/posts/' + post.id;
-      html += '<div class="easydrop-talk-content"><a href="' + escapeHtml(postUrl) + '" target="_blank" rel="noopener">' + escapeHtml(content) + '</a></div>';
+      html += '<div class="easydrop-talk-content"><a href="' + escapeHtml(postUrl) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(content) + '</a></div>';
       html += '<div class="easydrop-talk-date">' + escapeHtml(date) + '</div>';
       html += '</div>';
     }
 
     html += '<div class="easydrop-talk-powered">';
-    html += 'Powered by <a href="https://github.com/GoodBoyboy666/easydrop" target="_blank" rel="noopener">EasyDrop</a>';
+    html += 'Powered by <a href="https://github.com/GoodBoyboy666/easydrop" target="_blank" rel="noopener noreferrer">EasyDrop</a>';
     html += '</div>';
 
     container.innerHTML = html;
