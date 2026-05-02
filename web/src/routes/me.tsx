@@ -73,6 +73,9 @@ function MePage() {
   })
   const registerPasskeyMutation = useMutation({
     mutationFn: async () => {
+      if (!isWebAuthnSupported()) {
+        throw new Error('当前浏览器不支持通行密钥')
+      }
       const { options, session_id } = await api.beginPasskeyRegistration()
       const credential = await navigator.credentials.create({
         publicKey: PublicKeyCredential.parseCreationOptionsFromJSON(options),
@@ -642,21 +645,27 @@ function MePage() {
                     </div>
                   )}
                   <div className="mt-4">
-                    <Button
-                      disabled={
-                        registerPasskeyMutation.isPending ||
-                        (passkeyListQuery.data &&
-                          passkeyListQuery.data.length >= 10)
-                      }
-                      onClick={() => registerPasskeyMutation.mutate()}
-                      size="sm"
-                      variant="outline"
-                    >
+                    {isWebAuthnSupported() ? (
+                      <Button
+                        disabled={
+                          registerPasskeyMutation.isPending ||
+                          (passkeyListQuery.data &&
+                            passkeyListQuery.data.length >= 10)
+                        }
+                        onClick={() => registerPasskeyMutation.mutate()}
+                        size="sm"
+                        variant="outline"
+                      >
                       <FingerprintIcon data-icon="inline-start" />
                       {registerPasskeyMutation.isPending
                         ? '正在添加…'
                         : '添加通行密钥'}
                     </Button>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">
+                        当前浏览器不支持通行密钥
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -665,6 +674,15 @@ function MePage() {
         </Card>
       </motion.div>
     </motion.div>
+  )
+}
+
+function isWebAuthnSupported(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.PublicKeyCredential === 'function' &&
+    typeof PublicKeyCredential.parseCreationOptionsFromJSON === 'function' &&
+    typeof PublicKeyCredential.parseRequestOptionsFromJSON === 'function'
   )
 }
 

@@ -67,6 +67,9 @@ function LoginPage() {
   })
   const passkeyLoginMutation = useMutation({
     mutationFn: async () => {
+      if (!isWebAuthnSupported()) {
+        throw new Error('当前浏览器不支持通行密钥，请使用密码登录')
+      }
       const { options, session_id } = await api.beginPasskeyLogin()
       const credential = await navigator.credentials.get({
         publicKey: PublicKeyCredential.parseRequestOptionsFromJSON(options),
@@ -288,6 +291,15 @@ function LoginPage() {
         </Card>
       </motion.div>
     </motion.div>
+  )
+}
+
+function isWebAuthnSupported(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.PublicKeyCredential === 'function' &&
+    typeof PublicKeyCredential.parseCreationOptionsFromJSON === 'function' &&
+    typeof PublicKeyCredential.parseRequestOptionsFromJSON === 'function'
   )
 }
 
