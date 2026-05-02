@@ -7,9 +7,9 @@ import (
 	"strconv"
 
 	"easydrop/internal/dto"
+	"easydrop/internal/middleware"
 	cookiepkg "easydrop/internal/pkg/cookie"
 	"easydrop/internal/pkg/jwt"
-	"easydrop/internal/middleware"
 	"easydrop/internal/service"
 
 	"github.com/gin-gonic/gin"
