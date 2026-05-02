@@ -59,8 +59,13 @@
     return transform ? transform(val) : val;
   }
 
-  var BASE_URL = getAttr('easydrop-base', window.location.origin, function (v) {
-    v = v.replace(/\/+$/, '');
+  var BASE_URL = getAttr('easydrop-base', null, function (v) {
+    if (v === null || v === undefined || String(v).trim() === '') {
+      console.error('[EasyDrop Talk] 缺少必填配置 data-easydrop-base（或 window.EasyDropTalk.baseUrl）');
+      return null;
+    }
+
+    v = String(v).trim().replace(/\/+$/, '');
     try {
       var parsed = new URL(v);
       if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
