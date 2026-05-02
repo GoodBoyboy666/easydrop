@@ -21,6 +21,7 @@ import (
 	"easydrop/internal/pkg/redis"
 	"easydrop/internal/pkg/storage"
 	"easydrop/internal/pkg/token"
+	"easydrop/internal/pkg/webauthn"
 	"easydrop/internal/repo"
 	"easydrop/internal/service"
 )
@@ -128,6 +129,14 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	settingAdminHandler := handler.NewSettingAdminHandler(settingService, errorResponder)
 	tagService := service.NewTagService(tagRepo)
 	tagHandler := handler.NewTagHandler(tagService)
-	app := NewApp(staticConfig, initService, guard, auth, csrf, securityHeaders, rateLimit, requestBodyLimit, authHandler, captchaHandler, initHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, overviewAdminHandler, postAdminHandler, postHandler, feedHandler, settingAdminHandler, tagHandler)
+	passkeyRepo := repo.NewPasskeyRepo(db)
+	webauthnConfig := config.ProvideWebAuthnConfig(staticConfig)
+	webauthnManager, err := webauthn.NewManager(webauthnConfig, client)
+	if err != nil {
+		return nil, err
+	}
+	passkeyService := service.NewPasskeyService(passkeyRepo, userRepo, webauthnManager)
+	passkeyHandler := handler.NewPasskeyHandler(passkeyService, manager, authCookie, errorResponder)
+	app := NewApp(staticConfig, initService, guard, auth, csrf, securityHeaders, rateLimit, requestBodyLimit, authHandler, captchaHandler, initHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, overviewAdminHandler, postAdminHandler, postHandler, feedHandler, settingAdminHandler, tagHandler, passkeyHandler)
 	return app, nil
 }

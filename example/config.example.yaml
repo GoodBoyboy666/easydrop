@@ -145,3 +145,10 @@ storage:
 
 token:
   key_prefix: "token"
+
+webauthn:
+  rp_display_name: "EasyDrop"
+  rp_id: "localhost"
+  rp_origin:
+    - "http://localhost:3000"
+  timeout: 60s

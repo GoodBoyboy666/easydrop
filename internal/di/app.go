@@ -33,6 +33,7 @@ type App struct {
 	FeedHandler            *handler.FeedHandler
 	SettingAdminHandler    *handler.SettingAdminHandler
 	TagHandler             *handler.TagHandler
+	PasskeyHandler         *handler.PasskeyHandler
 }
 
 // NewApp 构造 App 聚合对象。
@@ -60,6 +61,7 @@ func NewApp(
 	feedHandler *handler.FeedHandler,
 	settingAdminHandler *handler.SettingAdminHandler,
 	tagHandler *handler.TagHandler,
+	passkeyHandler *handler.PasskeyHandler,
 
 ) *App {
 	return &App{
@@ -86,5 +88,6 @@ func NewApp(
 		FeedHandler:            feedHandler,
 		SettingAdminHandler:    settingAdminHandler,
 		TagHandler:             tagHandler,
+		PasskeyHandler:         passkeyHandler,
 	}
 }
