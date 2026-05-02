@@ -17,8 +17,15 @@ const sessionIDBytes = 32
 
 // BeginRegistration 发起通行密钥注册流程。
 // 调用 go-webauthn 生成凭证创建选项和会话数据，服务端保存会话后将会话 ID 一并返回。
+// 要求创建常驻凭证 (discoverable credential) 并强制用户验证，确保无用户名登录可用。
 func (m *manager) BeginRegistration(user wa.User) (*protocol.CredentialCreation, string, error) {
-	creation, session, err := m.wa.BeginRegistration(user)
+	creation, session, err := m.wa.BeginRegistration(
+		user,
+		wa.WithResidentKeyRequirement(protocol.ResidentKeyRequirementRequired),
+		wa.WithAuthenticatorSelection(protocol.AuthenticatorSelection{
+			UserVerification: protocol.VerificationRequired,
+		}),
+	)
 	if err != nil {
 		return nil, "", fmt.Errorf("开始注册: %w", err)
 	}
@@ -62,8 +69,11 @@ func (m *manager) FinishRegistration(user wa.User, sessionID string, body []byte
 // BeginDiscoverableLogin 发起无用户名通行密钥登录流程。
 // 使用 discoverable credential 方式，无需预先知道用户身份。
 // 返回断言选项和会话 ID，服务端保存会话数据供后续验证使用。
+// 要求用户验证 (PIN/生物特征)，提高安全性。
 func (m *manager) BeginDiscoverableLogin() (*protocol.CredentialAssertion, string, error) {
-	assertion, session, err := m.wa.BeginDiscoverableLogin()
+	assertion, session, err := m.wa.BeginDiscoverableLogin(
+		wa.WithUserVerification(protocol.VerificationRequired),
+	)
 	if err != nil {
 		return nil, "", fmt.Errorf("开始登录: %w", err)
 	}
