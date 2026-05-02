@@ -252,6 +252,7 @@ func (h *PasskeyHandler) Rename(c *gin.Context) {
 // @Failure 401 {object} dto.ErrorResponse "未登录"
 // @Failure 404 {object} dto.ErrorResponse "通行密钥不存在"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
+// @Security BearerAuth
 // @Router /users/me/passkeys/{id} [delete]
 func (h *PasskeyHandler) Delete(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
