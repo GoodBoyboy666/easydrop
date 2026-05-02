@@ -178,6 +178,7 @@ func (h *PasskeyHandler) FinishLogin(c *gin.Context) {
 // @Success 200 {object} object{items=[]dto.PasskeyItem}
 // @Failure 401 {object} dto.ErrorResponse "未登录"
 // @Failure 500 {object} dto.ErrorResponse "服务内部错误"
+// @Security BearerAuth
 // @Router /users/me/passkeys [get]
 func (h *PasskeyHandler) List(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
