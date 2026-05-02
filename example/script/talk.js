@@ -80,6 +80,13 @@
 
   var CONTAINER_ID = getAttr('container', DEFAULT_CONTAINER_ID);
 
+  var COUNT = getAttr('count', DEFAULT_COUNT, function (v) {
+    var n = parseInt(v, 10);
+    if (isNaN(n) || n < MIN_COUNT) return DEFAULT_COUNT;
+    if (n > MAX_COUNT) return MAX_COUNT;
+    return n;
+  });
+
   /* ========== 内联样式 ========== */
   var CSS = [
     '.easydrop-talk-widget {',
