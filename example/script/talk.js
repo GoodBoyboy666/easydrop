@@ -46,16 +46,22 @@
   var script = document.currentScript;
   var globalConfig = window.EasyDropTalk || {};
 
-  function getAttr(name, defaultValue, transform) {
+  function getAttr(name, defaultValue, transform, globalName) {
     var attrVal = script ? script.getAttribute('data-' + name) : null;
-    var globalVal = globalConfig[name];
+    var preferredGlobalName = globalName || name;
+    var globalVal = globalConfig[preferredGlobalName];
+
+    if (globalVal === undefined && preferredGlobalName !== name) {
+      globalVal = globalConfig[name];
+    }
+
     var val = attrVal !== null ? attrVal : (globalVal !== undefined ? globalVal : defaultValue);
     return transform ? transform(val) : val;
   }
 
   var BASE_URL = getAttr('easydrop-base', window.location.origin, function (v) {
     return v.replace(/\/+$/, '');
-  });
+  }, 'baseUrl');
 
   var COUNT = getAttr('count', DEFAULT_COUNT, function (v) {
     var n = parseInt(v, 10);
