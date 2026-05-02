@@ -60,14 +60,17 @@
   }
 
   var BASE_URL = getAttr('easydrop-base', window.location.origin, function (v) {
-    return v.replace(/\/+$/, '');
-  }, 'baseUrl');
-
-  var COUNT = getAttr('count', DEFAULT_COUNT, function (v) {
-    var n = parseInt(v, 10);
-    if (isNaN(n) || n < MIN_COUNT) return DEFAULT_COUNT;
-    if (n > MAX_COUNT) return MAX_COUNT;
-    return n;
+    v = v.replace(/\/+$/, '');
+    try {
+      var parsed = new URL(v);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        throw new Error('仅允许 http/https 协议');
+      }
+    } catch (e) {
+      console.error('[EasyDrop Talk] data-easydrop-base 不合法:', e.message);
+      return null;
+    }
+    return v;
   });
 
   var CONTAINER_ID = getAttr('container', DEFAULT_CONTAINER_ID);
@@ -225,6 +228,11 @@
 
   /* ========== 启动 ========== */
   function boot() {
+    if (!BASE_URL) {
+      console.error('[EasyDrop Talk] 未提供有效的 data-easydrop-base');
+      return;
+    }
+
     var container = document.getElementById(CONTAINER_ID);
     if (!container) {
       console.warn('[EasyDrop Talk] 未找到容器元素 #' + CONTAINER_ID);
