@@ -15,6 +15,7 @@ import {
   useUnauthorizedHandler,
 } from '#/lib/auth-guards'
 import { formatDateTime, getInitials } from '#/lib/format'
+import { myPasskeysQueryOptions, queryKeys } from '#/lib/query-options'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar'
 import { Badge } from '#/components/ui/badge'
@@ -67,8 +68,7 @@ function MePage() {
 
   const queryClient = useQueryClient()
   const passkeyListQuery = useQuery({
-    queryKey: ['my-passkeys'],
-    queryFn: () => api.listMyPasskeys().then((r) => r.items),
+    ...myPasskeysQueryOptions(),
     enabled: auth.status === 'authenticated',
   })
   const registerPasskeyMutation = useMutation({
@@ -83,10 +83,13 @@ function MePage() {
       return api.finishPasskeyRegistration(credential, session_id)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['my-passkeys'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.myPasskeys() })
       toast.success('通行密钥已添加')
     },
     onError: (error) => {
+      if (handleUnauthorized(error)) {
+        return
+      }
       toast.error(error instanceof Error ? error.message : '添加通行密钥失败')
     },
   })
@@ -94,20 +97,26 @@ function MePage() {
     mutationFn: ({ id, name }: { id: number; name: string }) =>
       api.renamePasskey(id, { name }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['my-passkeys'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.myPasskeys() })
       toast.success('已重命名')
     },
     onError: (error) => {
+      if (handleUnauthorized(error)) {
+        return
+      }
       toast.error(error instanceof Error ? error.message : '重命名失败')
     },
   })
   const deletePasskeyMutation = useMutation({
     mutationFn: (id: number) => api.deletePasskey(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['my-passkeys'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.myPasskeys() })
       toast.success('已删除')
     },
     onError: (error) => {
+      if (handleUnauthorized(error)) {
+        return
+      }
       toast.error(error instanceof Error ? error.message : '删除失败')
     },
   })

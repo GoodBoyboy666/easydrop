@@ -149,7 +149,8 @@ func (s *passkeyService) BeginRegistration(ctx context.Context, userID uint) (*d
 }
 
 // FinishRegistration 完成通行密钥注册。
-// 验证客户端响应后，自动命名为 "通行密钥 N"（N 为当前数量 + 1）并保存到数据库。
+// 验证客户端响应后，在事务中原子检查数量上限并创建记录，防止并发突破上限。
+// 自动命名为 "通行密钥 N"（N 为创建前的已有数量 + 1）。
 func (s *passkeyService) FinishRegistration(ctx context.Context, userID uint, sessionID string, body []byte) error {
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
@@ -158,15 +159,6 @@ func (s *passkeyService) FinishRegistration(ctx context.Context, userID uint, se
 		}
 		log.Printf("获取用户失败: %v", err)
 		return ErrInternal
-	}
-
-	count, err := s.passkeyRepo.CountByUserID(ctx, userID)
-	if err != nil {
-		log.Printf("查询通行密钥数量失败: %v", err)
-		return ErrInternal
-	}
-	if count >= maxPasskeysPerUser {
-		return ErrPasskeyLimitReached
 	}
 
 	passkeys, err := s.passkeyRepo.FindByUserID(ctx, userID)
@@ -202,20 +194,27 @@ func (s *passkeyService) FinishRegistration(ctx context.Context, userID uint, se
 		return ErrInternal
 	}
 
-	// 自动命名规则: "通行密钥 1", "通行密钥 2", ...
-	autoName := fmt.Sprintf("通行密钥 %d", count+1)
 	credentialID := base64.RawURLEncoding.EncodeToString(credential.ID)
 
 	passkeyRecord := &model.PasskeyCredential{
-		Name:           autoName,
+		Name:           "", // 占位，CreateWithLimit 返回 count 后再设置
 		UserID:         userID,
 		CredentialID:   credentialID,
 		CredentialJSON: credJSON,
 	}
 
-	if err := s.passkeyRepo.Create(ctx, passkeyRecord); err != nil {
+	count, err := s.passkeyRepo.CreateWithLimit(ctx, passkeyRecord, maxPasskeysPerUser)
+	if err != nil {
+		if errors.Is(err, repo.ErrPasskeyLimitExceeded) {
+			return ErrPasskeyLimitReached
+		}
 		log.Printf("保存通行密钥失败: %v", err)
 		return ErrInternal
+	}
+
+	autoName := fmt.Sprintf("通行密钥 %d", count+1)
+	if err := s.passkeyRepo.UpdateName(ctx, passkeyRecord.ID, autoName); err != nil {
+		log.Printf("设置通行密钥名称失败: %v", err)
 	}
 
 	return nil
