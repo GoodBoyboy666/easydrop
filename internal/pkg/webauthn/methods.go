@@ -21,9 +21,10 @@ const sessionIDBytes = 32
 func (m *manager) BeginRegistration(user wa.User) (*protocol.CredentialCreation, string, error) {
 	creation, session, err := m.wa.BeginRegistration(
 		user,
-		wa.WithResidentKeyRequirement(protocol.ResidentKeyRequirementRequired),
 		wa.WithAuthenticatorSelection(protocol.AuthenticatorSelection{
-			UserVerification: protocol.VerificationRequired,
+			RequireResidentKey: protocol.ResidentKeyRequired(),
+			ResidentKey:        protocol.ResidentKeyRequirementRequired,
+			UserVerification:   protocol.VerificationRequired,
 		}),
 	)
 	if err != nil {
