@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { api } from '#/lib/api'
+import { ApiError, api } from '#/lib/api'
 import { useAuth } from '#/lib/auth'
 import { OAuthLoading } from '#/components/ui/oauth-loading'
 
@@ -53,12 +53,12 @@ function OAuthCallbackPage() {
       void navigate({ to: redirectTo })
     },
     onError: (error) => {
-      const msg = error instanceof Error ? error.message : '登录失败'
-      if (msg.includes('手动绑定')) {
+      if (error instanceof ApiError && error.status === 409) {
         toast.error('该邮箱已注册但未绑定此社交账号，请先使用密码登录后在设置中手动绑定', { duration: 8000 })
         void navigate({ to: '/login' })
         return
       }
+      const msg = error instanceof Error ? error.message : '登录失败'
       toast.error(msg)
       void navigate({ to: '/login' })
     },
