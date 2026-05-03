@@ -304,7 +304,7 @@ function LoginPage() {
                     <Button
                       key={p.provider}
                       onClick={() => {
-                        setOAuthIntent('login')
+                        setOAuthIntent('login', redirectTarget)
                         window.location.href = `/api/v1/auth/oauth/${p.provider}`
                       }}
                       size="sm"

@@ -7,9 +7,13 @@ import { useAuth } from '#/lib/auth'
 import { OAuthLoading } from '#/components/ui/oauth-loading'
 
 const OAUTH_INTENT_KEY = 'easydrop_oauth_intent'
+const OAUTH_REDIRECT_KEY = 'easydrop_oauth_redirect'
 
-export function setOAuthIntent(intent: 'login' | 'bind') {
+export function setOAuthIntent(intent: 'login' | 'bind', redirectTo?: string) {
   sessionStorage.setItem(OAUTH_INTENT_KEY, intent)
+  if (redirectTo) {
+    sessionStorage.setItem(OAUTH_REDIRECT_KEY, redirectTo)
+  }
 }
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -44,7 +48,9 @@ function OAuthCallbackPage() {
     onSuccess: async () => {
       await auth.refreshUser()
       toast.success(`${PROVIDER_LABELS[provider] ?? provider} 登录成功`)
-      void navigate({ to: '/' })
+      const redirectTo = sessionStorage.getItem(OAUTH_REDIRECT_KEY) || '/'
+      sessionStorage.removeItem(OAUTH_REDIRECT_KEY)
+      void navigate({ to: redirectTo })
     },
     onError: (error) => {
       const msg = error instanceof Error ? error.message : '登录失败'
