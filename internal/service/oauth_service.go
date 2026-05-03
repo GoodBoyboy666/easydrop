@@ -7,8 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 
+	"easydrop/internal/consts"
 	"easydrop/internal/dto"
 	"easydrop/internal/model"
 	"easydrop/internal/pkg/jwt"
@@ -167,6 +169,12 @@ func (s *oauthService) HandleCallback(ctx context.Context, provider, code, state
 	}
 
 	// 情况三：新用户 → 静默注册并绑定。
+	// 检查站点是否允许注册。
+
+	if err := s.ensureRegisterEnabled(ctx); err != nil {
+		return nil, err
+	}
+
 	username := generateOAuthUsername(provider)
 	nickname := info.Nickname
 	if nickname == "" {
@@ -305,6 +313,32 @@ func (s *oauthService) buildAuthResult(user *model.User) (*dto.AuthResult, error
 		return nil, ErrInternal
 	}
 	return &dto.AuthResult{AccessToken: token}, nil
+}
+
+// ensureRegisterEnabled 检查站点是否允许新用户注册。
+func (s *oauthService) ensureRegisterEnabled(ctx context.Context) error {
+	if s.settings == nil {
+		return ErrInvalidSiteSetting
+	}
+
+	value, ok, err := s.settings.GetValue(ctx, consts.SiteAllowRegisterSettingKey)
+	if err != nil {
+		log.Printf("读取注册配置失败: %v", err)
+		return ErrInternal
+	}
+	if !ok {
+		return nil
+	}
+
+	allow, err := strconv.ParseBool(strings.TrimSpace(value))
+	if err != nil {
+		log.Printf("解析注册配置失败: %v", err)
+		return ErrInvalidSiteSetting
+	}
+	if !allow {
+		return ErrRegisterClosed
+	}
+	return nil
 }
 
 // generateOAuthUsername 为 OAuth 注册用户生成唯一用户名，格式为 provider_xxxxxxxx。
