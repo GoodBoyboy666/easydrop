@@ -273,11 +273,15 @@ func (s *oauthService) BindManually(ctx context.Context, userID uint, provider, 
 	// 校验该社交账户未被其他用户绑定。
 	if _, err := s.oauthBindRepo.FindByProviderAndUID(ctx, provider, info.ProviderUserID); err == nil {
 		return ErrOAuthBindAlreadyExists
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("检查社交账户绑定关系失败: %w", err)
 	}
 
 	// 校验当前用户未绑定该社交平台。
 	if _, err := s.oauthBindRepo.FindByUserIDAndProvider(ctx, userID, provider); err == nil {
 		return fmt.Errorf("该社交平台已绑定")
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("检查用户社交平台绑定状态失败: %w", err)
 	}
 
 	bind := &model.OAuthBind{
