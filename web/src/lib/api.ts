@@ -21,6 +21,9 @@ import type {
   InitInput,
   InitStatusResult,
   LoginInput,
+  OAuthBindDTO,
+  OAuthCallbackInput,
+  OAuthProviderItem,
   PagedResult,
   PasskeyItem,
   PasskeyLoginBeginResponse,
@@ -606,6 +609,38 @@ export const api = {
   deletePasskey(passkeyID: number, token?: string | null) {
     return request<{ message?: string }>(`/users/me/passkeys/${passkeyID}`, {
       method: 'DELETE',
+      token,
+    })
+  },
+
+  // === OAuth 社交登录 ===
+
+  getOAuthProviders() {
+    return request<{ providers: OAuthProviderItem[] }>('/auth/oauth/providers')
+  },
+
+  oauthCallback(provider: string, input: OAuthCallbackInput) {
+    return request<AuthResult>(`/auth/oauth/${provider}/callback`, {
+      method: 'POST',
+      data: input,
+    })
+  },
+
+  getOAuthBindings(token?: string | null) {
+    return request<{ binds: OAuthBindDTO[] }>('/users/me/oauth-binds', { token })
+  },
+
+  unbindOAuth(bindId: number, token?: string | null) {
+    return request<{ message?: string }>(`/users/me/oauth-binds/${bindId}`, {
+      method: 'DELETE',
+      token,
+    })
+  },
+
+  bindOAuthManually(provider: string, input: OAuthCallbackInput, token?: string | null) {
+    return request<{ message?: string }>(`/users/me/oauth-binds/${provider}`, {
+      method: 'POST',
+      data: input,
       token,
     })
   },

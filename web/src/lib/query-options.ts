@@ -12,6 +12,8 @@ import type {
   CaptchaConfigResult,
   CommentDTO,
   InitStatusResult,
+  OAuthBindDTO,
+  OAuthProviderItem,
   PagedResult,
   PasskeyItem,
   PostDTO,
@@ -133,6 +135,8 @@ export const queryKeys = {
     ['admin-settings', normalizeQuery(query)] as const,
   myPasskeys: (isAuthenticated?: boolean) =>
     ['my-passkeys', authScope(isAuthenticated)] as const,
+  oAuthProviders: () => ['oauth-providers'] as const,
+  oAuthBindings: () => ['oauth-bindings'] as const,
 }
 
 export function captchaConfigQueryOptions() {
@@ -287,5 +291,20 @@ export function myPasskeysQueryOptions() {
   return queryOptions<PasskeyItem[]>({
     queryKey: queryKeys.myPasskeys(),
     queryFn: () => api.listMyPasskeys().then((r) => r.items),
+  })
+}
+
+export function oAuthProvidersQueryOptions() {
+  return queryOptions<{ providers: OAuthProviderItem[] }>({
+    queryKey: queryKeys.oAuthProviders(),
+    queryFn: () => api.getOAuthProviders(),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function oAuthBindingsQueryOptions() {
+  return queryOptions<OAuthBindDTO[]>({
+    queryKey: queryKeys.oAuthBindings(),
+    queryFn: () => api.getOAuthBindings().then((r) => r.binds),
   })
 }

@@ -13,8 +13,9 @@ import {
   isCaptchaComplete,
 } from '#/components/site/captcha-panel'
 import { safeRedirectPath } from '#/lib/format'
-import { captchaConfigQueryOptions } from '#/lib/query-options'
+import { captchaConfigQueryOptions, oAuthProvidersQueryOptions } from '#/lib/query-options'
 import { useSiteSettings } from '#/lib/site-settings'
+import { setOAuthIntent } from './oauth.$provider'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import { Button } from '#/components/ui/button'
 import {
@@ -32,6 +33,7 @@ import {
 } from '#/components/ui/field'
 import { Input } from '#/components/ui/input'
 import { Separator } from '#/components/ui/separator'
+import { ProviderIcon } from '#/components/site/provider-icons'
 
 export const Route = createFileRoute('/login')({
   validateSearch: (search: Record<string, unknown>) => {
@@ -63,6 +65,7 @@ function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const captchaConfigQuery = useQuery(captchaConfigQueryOptions())
+  const oAuthProvidersQuery = useQuery(oAuthProvidersQueryOptions())
   const loginMutation = useMutation({
     mutationFn: api.login,
   })
@@ -287,6 +290,33 @@ function LoginPage() {
                   : '使用通行密钥登录'}
               </Button>
             </motion.div>
+
+            {oAuthProvidersQuery.data?.providers && oAuthProvidersQuery.data.providers.length > 0 ? (
+              <motion.div
+                animate={{ opacity: 1, y: 0 }}
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+                transition={sectionTransition(0.36)}
+              >
+                <Separator className="my-4" />
+                <div className="text-center text-sm text-muted-foreground mb-3">社交账号登录</div>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {oAuthProvidersQuery.data.providers.map((p) => (
+                    <Button
+                      key={p.provider}
+                      onClick={() => {
+                        setOAuthIntent('login')
+                        window.location.href = `/api/v1/auth/oauth/${p.provider}`
+                      }}
+                      size="sm"
+                      variant="outline"
+                    >
+                      <ProviderIcon className="size-4" provider={p.provider} />
+                      {PROVIDER_LABELS[p.provider] ?? p.provider}
+                    </Button>
+                  ))}
+                </div>
+              </motion.div>
+            ) : null}
           </CardContent>
         </Card>
       </motion.div>
@@ -301,5 +331,13 @@ function isWebAuthnSupported(): boolean {
     typeof PublicKeyCredential.parseCreationOptionsFromJSON === 'function' &&
     typeof PublicKeyCredential.parseRequestOptionsFromJSON === 'function'
   )
+}
+
+const PROVIDER_LABELS: Record<string, string> = {
+  google: 'Google',
+  github: 'GitHub',
+  twitter: 'X',
+  microsoft: 'Microsoft',
+  apple: 'Apple',
 }
 

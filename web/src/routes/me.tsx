@@ -4,7 +4,7 @@ import {
   useLocation,
 } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { FingerprintIcon, MailIcon, PencilIcon, ShieldCheckIcon, Trash2Icon, UserCircleIcon } from 'lucide-react'
+import { FingerprintIcon, Link2Icon, MailIcon, PencilIcon, ShieldCheckIcon, Trash2Icon, UserCircleIcon } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import type { HTMLMotionProps, Transition } from 'motion/react'
 import { useEffect, useState } from 'react'
@@ -15,8 +15,21 @@ import {
   useUnauthorizedHandler,
 } from '#/lib/auth-guards'
 import { formatDateTime, getInitials } from '#/lib/format'
-import { myPasskeysQueryOptions, queryKeys } from '#/lib/query-options'
+import { myPasskeysQueryOptions, oAuthBindingsQueryOptions, oAuthProvidersQueryOptions, queryKeys } from '#/lib/query-options'
+import { ProviderIcon } from '#/components/site/provider-icons'
+import { setOAuthIntent } from './oauth.$provider'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from '#/components/ui/alert-dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar'
 import { Badge } from '#/components/ui/badge'
 import { Button } from '#/components/ui/button'
@@ -124,6 +137,28 @@ function MePage() {
     },
   })
 
+  const oAuthBindingsQuery = useQuery({
+    ...oAuthBindingsQueryOptions(),
+    enabled: auth.status === 'authenticated',
+  })
+  const oAuthProvidersQuery = useQuery({
+    ...oAuthProvidersQueryOptions(),
+  })
+  const unbindOAuthMutation = useMutation({
+    mutationFn: (bindId: number) => api.unbindOAuth(bindId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.oAuthBindings() })
+      toast.success('已解绑社交账号')
+    },
+    onError: (error) => {
+      if (handleUnauthorized(error)) {
+        return
+      }
+      toast.error(error instanceof Error ? error.message : '解绑失败')
+    },
+  })
+
+  const [oauthDeleteTarget, setOauthDeleteTarget] = useState<{ id: number; label: string } | null>(null)
   const [editingPasskeyID, setEditingPasskeyID] = useState<number | null>(null)
   const [editingPasskeyName, setEditingPasskeyName] = useState('')
 
@@ -670,9 +705,119 @@ function MePage() {
                 </CardContent>
               </Card>
             </motion.div>
+
+            <motion.div
+              animate={motionReady ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
+              initial={prefersReducedMotion ? false : SECTION_ENTER_INITIAL}
+              transition={getEntranceTransition(0.28)}
+              {...GPU_ACCELERATED_MOTION_PROPS}
+            >
+              <Card className={FLAT_PROFILE_FORM_CARD_CLASSNAME}>
+                <CardHeader>
+                  <CardTitle className="text-base">社交账号绑定</CardTitle>
+                  <CardDescription>
+                    绑定社交平台账号后可通过对应平台快捷登录。
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {oAuthBindingsQuery.data && oAuthBindingsQuery.data.length > 0 ? (
+                    <div className="space-y-2">
+                      {oAuthBindingsQuery.data.map((bind) => (
+                        <div
+                          className="flex items-center gap-3 rounded-lg border border-border/70 bg-muted/20 px-3 py-2"
+                          key={bind.id}
+                        >
+                          <Link2Icon className="size-4 text-muted-foreground" />
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-medium">
+                              {PROVIDER_LABELS[bind.provider] ?? bind.provider}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {bind.provider_email}
+                            </div>
+                          </div>
+                          <Button
+                            aria-label="解绑"
+                            disabled={unbindOAuthMutation.isPending}
+                            onClick={() =>
+                              setOauthDeleteTarget({
+                                id: bind.id,
+                                label: PROVIDER_LABELS[bind.provider] ?? bind.provider,
+                              })
+                            }
+                            size="icon-sm"
+                            variant="ghost"
+                          >
+                            <Trash2Icon />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      尚未绑定社交账号
+                    </div>
+                  )}
+                  {oAuthProvidersQuery.data?.providers && oAuthProvidersQuery.data.providers.length > 0 ? (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {oAuthProvidersQuery.data.providers
+                        .filter(
+                          (p) =>
+                            !oAuthBindingsQuery.data?.some(
+                              (b) => b.provider === p.provider,
+                            ),
+                        )
+                        .map((p) => (
+                          <Button
+                            key={p.provider}
+                            onClick={() => {
+                              setOAuthIntent('bind')
+                              window.location.href = `/api/v1/auth/oauth/${p.provider}`
+                            }}
+                            size="sm"
+                            variant="outline"
+                          >
+                            <ProviderIcon className="size-4" provider={p.provider} />
+                            绑定 {PROVIDER_LABELS[p.provider] ?? p.provider}
+                          </Button>
+                        ))}
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+            </motion.div>
           </CardContent>
         </Card>
       </motion.div>
+
+      <AlertDialog open={oauthDeleteTarget !== null} onOpenChange={(open) => { if (!open) setOauthDeleteTarget(null) }}>
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogMedia className="bg-background">
+              <Trash2Icon />
+            </AlertDialogMedia>
+            <AlertDialogTitle>解绑社交账号</AlertDialogTitle>
+            <AlertDialogDescription>
+              确定要解绑{oauthDeleteTarget?.label}账号吗？解绑后你将无法通过该账号快捷登录。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={unbindOAuthMutation.isPending}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={unbindOAuthMutation.isPending}
+              onClick={() => {
+                if (oauthDeleteTarget) {
+                  unbindOAuthMutation.mutate(oauthDeleteTarget.id)
+                }
+                setOauthDeleteTarget(null)
+              }}
+              variant="destructive"
+            >
+              {unbindOAuthMutation.isPending ? '解绑中…' : '确定解绑'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   )
 }
@@ -684,5 +829,13 @@ function isWebAuthnSupported(): boolean {
     typeof PublicKeyCredential.parseCreationOptionsFromJSON === 'function' &&
     typeof PublicKeyCredential.parseRequestOptionsFromJSON === 'function'
   )
+}
+
+const PROVIDER_LABELS: Record<string, string> = {
+  google: 'Google',
+  github: 'GitHub',
+  twitter: 'X',
+  microsoft: 'Microsoft',
+  apple: 'Apple',
 }
 

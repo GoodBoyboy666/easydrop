@@ -338,3 +338,19 @@ export interface PasskeyRegisterFinishRequest {
 export interface PasskeyRenameRequest {
   name: string
 }
+
+export interface OAuthProviderItem {
+  provider: string
+  auth_url: string
+}
+
+export interface OAuthBindDTO {
+  id: number
+  provider: string
+  provider_email: string
+}
+
+export interface OAuthCallbackInput {
+  code: string
+  state: string
+}
