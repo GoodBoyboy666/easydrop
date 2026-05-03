@@ -365,7 +365,7 @@ export function AdminCommentsPage() {
                   </AdminMotionItem>
 
                   {index < comments.length - 1 ? (
-                    <Separator className="bg-border/80 data-horizontal:h-0.5" />
+                    <Separator />
                   ) : null}
                 </div>
               ))}

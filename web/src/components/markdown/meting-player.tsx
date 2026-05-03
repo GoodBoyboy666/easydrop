@@ -163,7 +163,7 @@ export function MetingPlayer({ server, type, mid }: MetingPlayerProps) {
   if (!normalizedMid) return null
 
   return (
-    <span className="my-4 block overflow-hidden rounded-xl border border-border/70 bg-card/60">
+    <span className="my-4 block overflow-hidden rounded-xl bg-card/60">
       <div ref={containerRef} />
     </span>
   )

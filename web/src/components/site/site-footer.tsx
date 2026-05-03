@@ -19,7 +19,7 @@ export function SiteFooter() {
             - {hitokoto.source}
           </span>
         </div>
-        <div>© {new Date().getFullYear()} EasyDrop</div>
+        <div>© {new Date().getFullYear()} <a href='https://github.com/GoodBoyboy666/easydrop/' target='_blank' rel="noopener noreferrer">EasyDrop</a></div>
       </div>
     </footer>
   )
