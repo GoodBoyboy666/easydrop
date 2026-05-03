@@ -21,11 +21,11 @@ func registerOAuthRoutes(deps *oauthRouteDeps) {
 	}
 
 	oauthGroup := deps.v1.Group("/auth/oauth")
-	oauthGroup.Use(deps.ordinaryLimit, deps.authWriteLimit)
+	oauthGroup.Use(deps.ordinaryLimit)
 	{
 		oauthGroup.GET("/providers", deps.oauthHandler.ListProviders)
 		oauthGroup.GET("/:provider", deps.oauthHandler.Authorize)
-		oauthGroup.POST("/:provider/callback", deps.oauthHandler.Callback)
+		oauthGroup.POST("/:provider/callback", deps.authWriteLimit, deps.oauthHandler.Callback)
 	}
 
 	oauthBindGroup := deps.loginGroup.Group("/users/me/oauth-binds")
