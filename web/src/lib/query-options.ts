@@ -136,7 +136,9 @@ export const queryKeys = {
   myPasskeys: (isAuthenticated?: boolean) =>
     ['my-passkeys', authScope(isAuthenticated)] as const,
   oAuthProviders: () => ['oauth-providers'] as const,
-  oAuthBindings: () => ['oauth-bindings'] as const,
+  oAuthBindings: (isAuthenticated?: boolean) =>
+    ['oauth-bindings', authScope(isAuthenticated)] as const,
+  oAuthBindingsPrefix: () => ['oauth-bindings'] as const,
 }
 
 export function captchaConfigQueryOptions() {
@@ -302,9 +304,9 @@ export function oAuthProvidersQueryOptions() {
   })
 }
 
-export function oAuthBindingsQueryOptions() {
+export function oAuthBindingsQueryOptions(isAuthenticated?: boolean) {
   return queryOptions<OAuthBindDTO[]>({
-    queryKey: queryKeys.oAuthBindings(),
+    queryKey: queryKeys.oAuthBindings(isAuthenticated),
     queryFn: () => api.getOAuthBindings().then((r) => r.binds),
   })
 }

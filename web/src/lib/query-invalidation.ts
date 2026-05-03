@@ -122,5 +122,5 @@ export async function invalidateInitStatusQueries(queryClient: QueryClient) {
 }
 
 export async function invalidateOAuthBindingsQueries(queryClient: QueryClient) {
-  await invalidateQueryKeyBatch(queryClient, [queryKeys.oAuthBindings()])
+  await invalidateQueryKeyBatch(queryClient, [queryKeys.oAuthBindingsPrefix()])
 }

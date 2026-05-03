@@ -138,7 +138,7 @@ function MePage() {
   })
 
   const oAuthBindingsQuery = useQuery({
-    ...oAuthBindingsQueryOptions(),
+    ...oAuthBindingsQueryOptions(auth.status === 'authenticated'),
     enabled: auth.status === 'authenticated',
   })
   const oAuthProvidersQuery = useQuery({
