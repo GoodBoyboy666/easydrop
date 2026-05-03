@@ -792,7 +792,7 @@ export function AdminUsersPage() {
                   </AdminMotionItem>
 
                   {index < users.length - 1 ? (
-                    <Separator className="bg-border/80 data-horizontal:h-0.5" />
+                    <Separator/>
                   ) : null}
                 </div>
               ))}

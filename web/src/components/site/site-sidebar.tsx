@@ -345,7 +345,7 @@ export function SiteSidebar() {
             }
       }
     >
-      <Card className="shadow-sm">
+      <Card>
         <CardHeader>
           {settingsLoading ? (
             <>
@@ -391,7 +391,7 @@ export function SiteSidebar() {
         </CardContent>
       </Card>
 
-      <Card className="shadow-sm">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MegaphoneIcon className="size-4 text-muted-foreground" />
@@ -410,7 +410,7 @@ export function SiteSidebar() {
         </CardContent>
       </Card>
 
-      <Card className="shadow-sm">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MessageSquareTextIcon className="size-4 text-muted-foreground" />
@@ -502,7 +502,7 @@ export function SiteSidebar() {
         </CardContent>
       </Card>
 
-      <Card className="shadow-sm">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <HashIcon className="size-4 text-muted-foreground" />

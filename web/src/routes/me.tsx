@@ -332,7 +332,7 @@ function MePage() {
         transition={getEntranceTransition(0.04)}
         {...GPU_ACCELERATED_MOTION_PROPS}
       >
-        <Card className="border border-border/70 shadow-sm">
+        <Card>
           <CardHeader>
             <CardTitle>个人信息</CardTitle>
           </CardHeader>

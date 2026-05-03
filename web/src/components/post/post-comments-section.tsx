@@ -51,7 +51,6 @@ import { Field, FieldError, FieldGroup } from '#/components/ui/field'
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -685,7 +684,6 @@ export function PostCommentsSection({
           >
             <CollapsibleContent className="w-full">
               <form
-                className="rounded-xl border border-border/70 bg-muted/40 p-3"
                 onSubmit={handleCommentSubmit}
               >
                 {replyTarget ? (
