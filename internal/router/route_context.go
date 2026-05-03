@@ -262,6 +262,7 @@ func (ctx *routeContext) oauthDeps() *oauthRouteDeps {
 		v1:             ctx.v1,
 		loginGroup:     ctx.loginGroup,
 		oauthHandler:   ctx.oauthHandler,
+		ordinaryLimit:  ctx.ordinaryLimit,
 		authWriteLimit: ctx.authWriteLimit,
 		csrfProtect:    ctx.csrfProtect,
 	}

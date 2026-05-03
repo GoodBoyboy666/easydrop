@@ -30,6 +30,8 @@ var (
 	ErrOAuthEmailExistsUnbound = errors.New("该邮箱已被注册但未绑定此社交账号，请先使用密码登录后在设置中手动绑定")
 	// ErrOAuthBindAlreadyExists 表示该社交平台账户已绑定到其他本地用户。
 	ErrOAuthBindAlreadyExists = errors.New("该社交账号已绑定其他用户")
+	// ErrOAuthProviderBindAlreadyExists 表示当前用户已绑定该社交平台，无法重复绑定。
+	ErrOAuthProviderBindAlreadyExists = errors.New("该社交平台已绑定")
 	// ErrOAuthBindNotFound 表示未找到指定的绑定记录。
 	ErrOAuthBindNotFound = errors.New("未找到该社交账号绑定")
 	// ErrOAuthBindFailed 表示社交账号绑定过程中发生未知错误。
@@ -274,14 +276,14 @@ func (s *oauthService) BindManually(ctx context.Context, userID uint, provider, 
 	if _, err := s.oauthBindRepo.FindByProviderAndUID(ctx, provider, info.ProviderUserID); err == nil {
 		return ErrOAuthBindAlreadyExists
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return fmt.Errorf("检查社交账户绑定关系失败: %w", err)
+		return fmt.Errorf("检查社交账户绑定关系失败")
 	}
 
 	// 校验当前用户未绑定该社交平台。
 	if _, err := s.oauthBindRepo.FindByUserIDAndProvider(ctx, userID, provider); err == nil {
-		return fmt.Errorf("该社交平台已绑定")
+		return ErrOAuthProviderBindAlreadyExists
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return fmt.Errorf("检查用户社交平台绑定状态失败: %w", err)
+		return fmt.Errorf("检查用户社交平台绑定状态失败")
 	}
 
 	bind := &model.OAuthBind{

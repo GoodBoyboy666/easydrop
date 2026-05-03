@@ -10,6 +10,7 @@ type oauthRouteDeps struct {
 	v1              *gin.RouterGroup
 	loginGroup      *gin.RouterGroup
 	oauthHandler    *handler.OAuthHandler
+	ordinaryLimit   gin.HandlerFunc
 	authWriteLimit  gin.HandlerFunc
 	csrfProtect     gin.HandlerFunc
 }
@@ -20,7 +21,7 @@ func registerOAuthRoutes(deps *oauthRouteDeps) {
 	}
 
 	oauthGroup := deps.v1.Group("/auth/oauth")
-	oauthGroup.Use(deps.authWriteLimit)
+	oauthGroup.Use(deps.ordinaryLimit, deps.authWriteLimit)
 	{
 		oauthGroup.GET("/providers", deps.oauthHandler.ListProviders)
 		oauthGroup.GET("/:provider", deps.oauthHandler.Authorize)
