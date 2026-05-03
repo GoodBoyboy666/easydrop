@@ -11,9 +11,20 @@ import (
 	"easydrop/internal/pkg/oauth"
 	"easydrop/internal/repo"
 
+	"github.com/glebarez/sqlite"
 	goog "golang.org/x/oauth2"
 	"gorm.io/gorm"
 )
+
+func openTestDB(t *testing.T) *gorm.DB {
+	t.Helper()
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open test db: %v", err)
+	}
+	db.AutoMigrate(&model.User{}, &model.OAuthBind{})
+	return db
+}
 
 type mockOAuthManager struct {
 	enabledProviders []string
@@ -155,8 +166,30 @@ func newMockOAuthService() (*oauthService, *mockUserRepo, *mockOAuthManager, *mo
 		userRepo:      userRepo,
 		jwtManager:    jwtMgr,
 		settings:      settings,
+		db:            nil,
 	}
 	return svc, userRepo, oauthMgr, bindRepo
+}
+
+func newMockOAuthServiceWithDB(t *testing.T) (*oauthService, *mockOAuthManager) {
+	t.Helper()
+	db := openTestDB(t)
+	oauthMgr := &mockOAuthManager{
+		enabledProviders: []string{"google"},
+	}
+	bindRepo := repo.NewOAuthBindRepo(db)
+	userRepo := repo.NewUserRepo(db)
+	jwtMgr := &mockJWTManager{token: "jwt-oauth-token"}
+	settings := &mockAuthSettingService{valueByKey: map[string]string{consts.SiteAllowRegisterSettingKey: "true"}}
+	svc := &oauthService{
+		oauthManager:  oauthMgr,
+		oauthBindRepo: bindRepo,
+		userRepo:      userRepo,
+		jwtManager:    jwtMgr,
+		settings:      settings,
+		db:            db,
+	}
+	return svc, oauthMgr
 }
 
 func TestOAuthServiceGetEnabledProviders(t *testing.T) {
@@ -214,7 +247,7 @@ func TestOAuthServiceHandleCallbackAlreadyBound(t *testing.T) {
 }
 
 func TestOAuthServiceHandleCallbackNewUserSilentRegister(t *testing.T) {
-	svc, userRepo, oauthMgr, _ := newMockOAuthService()
+	svc, oauthMgr := newMockOAuthServiceWithDB(t)
 
 	oauthMgr.fetchUserInfo = &oauth.ProviderUserInfo{
 		ProviderUserID: "google-uid-new",
@@ -230,30 +263,30 @@ func TestOAuthServiceHandleCallbackNewUserSilentRegister(t *testing.T) {
 		t.Fatalf("expected jwt-oauth-token, got %q", result.AccessToken)
 	}
 
-	// 应该创建了新用户
-	if len(userRepo.users) != 1 {
-		t.Fatalf("expected 1 new user, got %d", len(userRepo.users))
+	// 验证 DB 中确实创建了用户和绑定
+	user, err := svc.userRepo.GetByEmail(context.Background(), "newuser@example.com")
+	if err != nil {
+		t.Fatalf("get user by email: %v", err)
 	}
-	var createdUser *model.User
-	for _, u := range userRepo.users {
-		createdUser = u
-		break
-	}
-	if createdUser.Email != "newuser@example.com" {
-		t.Fatalf("expected newuser@example.com, got %q", createdUser.Email)
-	}
-	if !createdUser.EmailVerified {
+	if !user.EmailVerified {
 		t.Fatal("expected new OAuth user to be email verified")
 	}
-	if !strings.HasPrefix(createdUser.Username, "google_") {
-		t.Fatalf("expected username to start with google_, got %q", createdUser.Username)
+	if !strings.HasPrefix(user.Username, "google_") {
+		t.Fatalf("expected username to start with google_, got %q", user.Username)
+	}
+
+	bind, err := svc.oauthBindRepo.FindByProviderAndUID(context.Background(), "google", "google-uid-new")
+	if err != nil {
+		t.Fatalf("get bind: %v", err)
+	}
+	if bind.UserID != user.ID {
+		t.Fatalf("expected bind.UserID %d, got %d", user.ID, bind.UserID)
 	}
 }
 
 func TestOAuthServiceHandleCallbackNewUserNicknameFallback(t *testing.T) {
-	svc, userRepo, oauthMgr, _ := newMockOAuthService()
+	svc, oauthMgr := newMockOAuthServiceWithDB(t)
 
-	// 昵称为空时用用户名
 	oauthMgr.fetchUserInfo = &oauth.ProviderUserInfo{
 		ProviderUserID: "google-uid-no-nick",
 		Email:          "nonick@example.com",
@@ -264,12 +297,11 @@ func TestOAuthServiceHandleCallbackNewUserNicknameFallback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("HandleCallback returned error: %v", err)
 	}
-	var createdUser *model.User
-	for _, u := range userRepo.users {
-		createdUser = u
-		break
+	user, err := svc.userRepo.GetByEmail(context.Background(), "nonick@example.com")
+	if err != nil {
+		t.Fatalf("get user by email: %v", err)
 	}
-	if createdUser.Nickname == "" {
+	if user.Nickname == "" {
 		t.Fatal("expected nickname to fall back to username, got empty")
 	}
 }
@@ -522,7 +554,7 @@ func TestOAuthServiceGetAuthURLDisabledProvider(t *testing.T) {
 }
 
 func TestOAuthServiceHandleCallbackRegisterClosed(t *testing.T) {
-	userRepo := &mockUserRepo{users: map[uint]*model.User{}}
+	db := openTestDB(t)
 	oauthMgr := &mockOAuthManager{
 		enabledProviders: []string{"google"},
 		fetchUserInfo: &oauth.ProviderUserInfo{
@@ -531,7 +563,8 @@ func TestOAuthServiceHandleCallbackRegisterClosed(t *testing.T) {
 			Nickname:       "NewUser",
 		},
 	}
-	bindRepo := &mockOAuthBindRepo{}
+	bindRepo := repo.NewOAuthBindRepo(db)
+	userRepo := repo.NewUserRepo(db)
 	jwtMgr := &mockJWTManager{token: "jwt-oauth-token"}
 	settings := &mockAuthSettingService{valueByKey: map[string]string{consts.SiteAllowRegisterSettingKey: "false"}}
 	svc := &oauthService{
@@ -540,6 +573,7 @@ func TestOAuthServiceHandleCallbackRegisterClosed(t *testing.T) {
 		userRepo:      userRepo,
 		jwtManager:    jwtMgr,
 		settings:      settings,
+		db:            db,
 	}
 
 	_, err := svc.HandleCallback(context.Background(), "google", "code-1", "state-1", "state-1")

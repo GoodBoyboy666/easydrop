@@ -66,6 +66,7 @@ type oauthService struct {
 	userRepo      repo.UserRepo
 	jwtManager    jwt.Manager
 	settings      SettingService
+	db            *gorm.DB
 }
 
 // NewOAuthService 创建社交登录服务实例。
@@ -75,6 +76,7 @@ func NewOAuthService(
 	userRepo repo.UserRepo,
 	jwtManager jwt.Manager,
 	settings SettingService,
+	db *gorm.DB,
 ) OAuthService {
 	return &oauthService{
 		oauthManager:  oauthManager,
@@ -82,6 +84,7 @@ func NewOAuthService(
 		userRepo:      userRepo,
 		jwtManager:    jwtManager,
 		settings:      settings,
+		db:            db,
 	}
 }
 
@@ -192,7 +195,7 @@ func (s *oauthService) HandleCallback(ctx context.Context, provider, code, state
 		return nil, ErrInternal
 	}
 
-	// 创建本地用户，OAuth 注册的邮箱视为已验证。
+	// 在同一事务中创建用户和绑定，防止任一失败导致孤立账户。
 	user := &model.User{
 		Username:      username,
 		Nickname:      nickname,
@@ -202,20 +205,21 @@ func (s *oauthService) HandleCallback(ctx context.Context, provider, code, state
 		EmailVerified: true,
 	}
 
-	if err := s.userRepo.Create(ctx, user); err != nil {
-		log.Printf("创建OAuth用户失败: %v", err)
-		return nil, ErrInternal
-	}
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if createErr := tx.Create(user).Error; createErr != nil {
+			return createErr
+		}
 
-	// 创建社交账号绑定记录。
-	newBind := &model.OAuthBind{
-		UserID:         user.ID,
-		Provider:       provider,
-		ProviderUserID: info.ProviderUserID,
-		ProviderEmail:  info.Email,
-	}
-	if err := s.oauthBindRepo.Create(ctx, newBind); err != nil {
-		log.Printf("创建OAuth绑定失败: %v", err)
+		bind := &model.OAuthBind{
+			UserID:         user.ID,
+			Provider:       provider,
+			ProviderUserID: info.ProviderUserID,
+			ProviderEmail:  info.Email,
+		}
+		return tx.Create(bind).Error
+	})
+	if err != nil {
+		log.Printf("创建OAuth用户及绑定失败: %v", err)
 		return nil, ErrInternal
 	}
 
