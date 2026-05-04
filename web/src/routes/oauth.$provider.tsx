@@ -103,10 +103,6 @@ function OAuthCallbackPage() {
     } else {
       loginMutation.mutate()
     }
-
-    return () => {
-      started = false
-    }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return <OAuthLoading intent={displayIntent} provider={provider} />
