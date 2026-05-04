@@ -32,7 +32,7 @@ func registerOAuthRoutes(deps *oauthRouteDeps) {
 	oauthBindGroup.Use(deps.ordinaryLimit)
 	{
 		oauthBindGroup.GET("", deps.oauthHandler.ListBindings)
-		oauthBindGroup.DELETE("/:id", deps.oauthHandler.Unbind)
-		oauthBindGroup.POST("/:provider", deps.oauthHandler.BindManually)
+		oauthBindGroup.DELETE("/:id", deps.authWriteLimit, deps.oauthHandler.Unbind)
+		oauthBindGroup.POST("/:provider", deps.authWriteLimit, deps.oauthHandler.BindManually)
 	}
 }
