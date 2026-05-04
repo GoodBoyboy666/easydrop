@@ -147,7 +147,7 @@ function MePage() {
   const unbindOAuthMutation = useMutation({
     mutationFn: (bindId: number) => api.unbindOAuth(bindId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.oAuthBindings() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.oAuthBindingsPrefix() })
       toast.success('已解绑社交账号')
     },
     onError: (error) => {
