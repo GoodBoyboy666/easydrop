@@ -79,6 +79,7 @@ func NewDB(cfg *Config) (*gorm.DB, error) {
 	err = db.AutoMigrate(
 		&model.Attachment{},
 		&model.Comment{},
+		&model.OAuthBind{},
 		&model.PasskeyCredential{},
 		&model.Post{},
 		&model.Setting{},

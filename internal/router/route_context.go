@@ -32,6 +32,7 @@ type routeContext struct {
 	settingAdminHandler    *handler.SettingAdminHandler
 	tagHandler             *handler.TagHandler
 	passkeyHandler         *handler.PasskeyHandler
+	oauthHandler           *handler.OAuthHandler
 
 	requireLogin             gin.HandlerFunc
 	requireAdmin             gin.HandlerFunc
@@ -70,6 +71,7 @@ func newRouteContext(r *gin.Engine, app *di.App) *routeContext {
 		settingAdminHandler:      app.SettingAdminHandler,
 		tagHandler:               app.TagHandler,
 		passkeyHandler:           app.PasskeyHandler,
+		oauthHandler:             app.OAuthHandler,
 		requireLogin:             fallbackMiddleware(http.StatusInternalServerError, "认证中间件未正确初始化"),
 		requireAdmin:             fallbackMiddleware(http.StatusInternalServerError, "认证中间件未正确初始化"),
 		csrfProtect:              passthroughMiddleware(),
@@ -248,5 +250,20 @@ func (ctx *routeContext) passkeyDeps() *passkeyRouteDeps {
 		profileWriteLimit:        ctx.profileWriteLimit,
 		csrfProtect:              ctx.csrfProtect,
 		issueCSRFCookieOnSuccess: ctx.issueCSRFCookieOnSuccess,
+	}
+}
+
+func (ctx *routeContext) oauthDeps() *oauthRouteDeps {
+	if ctx == nil || ctx.v1 == nil || ctx.loginGroup == nil {
+		return nil
+	}
+
+	return &oauthRouteDeps{
+		v1:             ctx.v1,
+		loginGroup:     ctx.loginGroup,
+		oauthHandler:   ctx.oauthHandler,
+		ordinaryLimit:  ctx.ordinaryLimit,
+		authWriteLimit: ctx.authWriteLimit,
+		csrfProtect:    ctx.csrfProtect,
 	}
 }

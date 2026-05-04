@@ -20,6 +20,7 @@ import { Route as ChangeEmailRouteImport } from './routes/change-email'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PostsIdRouteImport } from './routes/posts.$id'
+import { Route as OauthProviderRouteImport } from './routes/oauth.$provider'
 import { Route as MeCommentsRouteImport } from './routes/me.comments'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
@@ -82,6 +83,11 @@ const PostsIdRoute = PostsIdRouteImport.update({
   path: '/posts/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OauthProviderRoute = OauthProviderRouteImport.update({
+  id: '/oauth/$provider',
+  path: '/oauth/$provider',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MeCommentsRoute = MeCommentsRouteImport.update({
   id: '/comments',
   path: '/comments',
@@ -130,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/me/comments': typeof MeCommentsRoute
+  '/oauth/$provider': typeof OauthProviderRoute
   '/posts/$id': typeof PostsIdRoute
 }
 export interface FileRoutesByTo {
@@ -149,6 +156,7 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/me/comments': typeof MeCommentsRoute
+  '/oauth/$provider': typeof OauthProviderRoute
   '/posts/$id': typeof PostsIdRoute
 }
 export interface FileRoutesById {
@@ -169,6 +177,7 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/me/comments': typeof MeCommentsRoute
+  '/oauth/$provider': typeof OauthProviderRoute
   '/posts/$id': typeof PostsIdRoute
 }
 export interface FileRouteTypes {
@@ -190,6 +199,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/users'
     | '/me/comments'
+    | '/oauth/$provider'
     | '/posts/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -209,6 +219,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/users'
     | '/me/comments'
+    | '/oauth/$provider'
     | '/posts/$id'
   id:
     | '__root__'
@@ -228,6 +239,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/users'
     | '/me/comments'
+    | '/oauth/$provider'
     | '/posts/$id'
   fileRoutesById: FileRoutesById
 }
@@ -242,6 +254,7 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
+  OauthProviderRoute: typeof OauthProviderRoute
   PostsIdRoute: typeof PostsIdRoute
 }
 
@@ -322,6 +335,13 @@ declare module '@tanstack/react-router' {
       path: '/posts/$id'
       fullPath: '/posts/$id'
       preLoaderRoute: typeof PostsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/oauth/$provider': {
+      id: '/oauth/$provider'
+      path: '/oauth/$provider'
+      fullPath: '/oauth/$provider'
+      preLoaderRoute: typeof OauthProviderRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/me/comments': {
@@ -408,6 +428,7 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   VerifyEmailRoute: VerifyEmailRoute,
+  OauthProviderRoute: OauthProviderRoute,
   PostsIdRoute: PostsIdRoute,
 }
 export const routeTree = rootRouteImport

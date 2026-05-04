@@ -19,6 +19,7 @@ import (
 	"easydrop/internal/pkg/database"
 	"easydrop/internal/pkg/email"
 	"easydrop/internal/pkg/jwt"
+	"easydrop/internal/pkg/oauth"
 	"easydrop/internal/pkg/ratelimit"
 	"easydrop/internal/pkg/redis"
 	"easydrop/internal/pkg/storage"
@@ -68,10 +69,11 @@ type StaticConfig struct {
 	Storage    storage.Config           `mapstructure:"storage" yaml:"storage"`
 	Token      token.Config             `mapstructure:"token" yaml:"token"`
 	WebAuthn   webauthn.Config          `mapstructure:"webauthn" yaml:"webauthn"`
+	OAuth      oauth.Config             `mapstructure:"oauth" yaml:"oauth"`
 }
 
 // StaticProviderSet 提供配置加载的 Wire 注入入口。
-var StaticProviderSet = wire.NewSet(Load, ProvideDBConfig, ProvideRedisConfig, ProvideRateLimitConfig, ProvideEmailConfig, ProvideJWTConfig, ProvideAuthCookieConfig, ProvideCaptchaConfig, ProvideAvatarConfig, ProvideStorageConfig, ProvideTokenConfig, ProvideWebAuthnConfig, ProvideCSPConfig)
+var StaticProviderSet = wire.NewSet(Load, ProvideDBConfig, ProvideRedisConfig, ProvideRateLimitConfig, ProvideEmailConfig, ProvideJWTConfig, ProvideAuthCookieConfig, ProvideCaptchaConfig, ProvideAvatarConfig, ProvideStorageConfig, ProvideTokenConfig, ProvideWebAuthnConfig, ProvideCSPConfig, ProvideOAuthConfig)
 
 func newStaticConfigViper(configDir string, enableEnv bool) *viper.Viper {
 	v := viper.New()
@@ -132,6 +134,8 @@ func setStaticConfigDefaults(v *viper.Viper) {
 	v.SetDefault("webauthn.rp_id", "")
 	v.SetDefault("webauthn.rp_origin", []string{})
 	v.SetDefault("webauthn.timeout", "60s")
+	v.SetDefault("oauth.frontend_redirect_url", "http://localhost:3000")
+	v.SetDefault("oauth.providers", map[string]any{})
 }
 
 func readStaticConfig(v *viper.Viper) error {
@@ -271,4 +275,9 @@ func ProvideWebAuthnConfig(cfg *StaticConfig) *webauthn.Config {
 // ProvideCSPConfig 提供 CSP 配置。
 func ProvideCSPConfig(cfg *StaticConfig) *CSPConfig {
 	return &cfg.Server.CSP
+}
+
+// ProvideOAuthConfig 提供 OAuth 配置。
+func ProvideOAuthConfig(cfg *StaticConfig) *oauth.Config {
+	return &cfg.OAuth
 }

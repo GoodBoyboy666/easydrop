@@ -120,3 +120,7 @@ export async function invalidateAdminSettingQueries(queryClient: QueryClient) {
 export async function invalidateInitStatusQueries(queryClient: QueryClient) {
   await invalidateQueryKeyBatch(queryClient, [queryKeys.initStatus()])
 }
+
+export async function invalidateOAuthBindingsQueries(queryClient: QueryClient) {
+  await invalidateQueryKeyBatch(queryClient, [queryKeys.oAuthBindingsPrefix()])
+}

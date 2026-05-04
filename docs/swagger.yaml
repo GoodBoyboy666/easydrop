@@ -216,6 +216,36 @@ definitions:
       message:
         type: string
     type: object
+  dto.OAuthBindDTO:
+    properties:
+      id:
+        type: integer
+      provider:
+        type: string
+      provider_email:
+        type: string
+    type: object
+  dto.OAuthBindManualInput:
+    properties:
+      code:
+        type: string
+      state:
+        type: string
+    type: object
+  dto.OAuthCallbackInput:
+    properties:
+      code:
+        type: string
+      state:
+        type: string
+    type: object
+  dto.OAuthProviderItem:
+    properties:
+      auth_url:
+        type: string
+      provider:
+        type: string
+    type: object
   dto.PasskeyItem:
     properties:
       created_at:
@@ -1735,6 +1765,89 @@ paths:
       summary: 用户登出
       tags:
       - auth
+  /auth/oauth/{provider}:
+    get:
+      description: 生成 OAuth 授权 URL 并重定向到社交平台授权页面
+      parameters:
+      - description: 社交平台名称 (google/github/twitter/microsoft/apple)
+        in: path
+        name: provider
+        required: true
+        type: string
+      responses:
+        "302":
+          description: 重定向到社交平台授权页
+          schema:
+            type: string
+        "400":
+          description: 未指定社交登录方式
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: 该社交登录方式未配置或未启用
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: 发起社交登录
+      tags:
+      - oauth
+  /auth/oauth/{provider}/callback:
+    post:
+      consumes:
+      - application/json
+      description: 前端从 OAuth 提供方回跳 URL 中取得 code 与 state 后，POST 到此后端完成登录/注册，返回 JWT
+        并设置认证 Cookie
+      parameters:
+      - description: 社交平台名称 (google/github/twitter/microsoft/apple)
+        in: path
+        name: provider
+        required: true
+        type: string
+      - description: 回调参数
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.OAuthCallbackInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.AuthResult'
+        "400":
+          description: 参数格式错误或 state 校验失败
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: 该社交登录方式未配置或未启用
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "409":
+          description: 邮箱已存在但未绑定
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: 处理社交登录回调
+      tags:
+      - oauth
+  /auth/oauth/providers:
+    get:
+      description: 返回当前已配置并启用的社交登录方式列表
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              providers:
+                items:
+                  $ref: '#/definitions/dto.OAuthProviderItem'
+                type: array
+            type: object
+      summary: 获取社交登录方式
+      tags:
+      - oauth
   /auth/passkey/login/begin:
     post:
       consumes:
@@ -1818,6 +1931,8 @@ paths:
           description: 服务内部错误
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: 开始注册通行密钥
       tags:
       - passkey
@@ -2647,6 +2762,104 @@ paths:
       summary: 请求修改当前用户邮箱
       tags:
       - user
+  /users/me/oauth-binds:
+    get:
+      description: 返回当前用户已绑定的所有社交账号信息
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              binds:
+                items:
+                  $ref: '#/definitions/dto.OAuthBindDTO'
+                type: array
+            type: object
+        "401":
+          description: 未登录
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 查看已绑定的社交账号
+      tags:
+      - oauth
+  /users/me/oauth-binds/{id}:
+    delete:
+      description: 解除当前用户与指定社交账号的绑定
+      parameters:
+      - description: 绑定记录 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.MessageResponse'
+        "400":
+          description: 无效的绑定ID
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: 未登录
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: 未找到绑定记录
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 解绑社交账号
+      tags:
+      - oauth
+  /users/me/oauth-binds/{provider}:
+    post:
+      consumes:
+      - application/json
+      description: 已登录用户主动绑定一个社交平台账户（用于解决邮箱冲突场景）
+      parameters:
+      - description: 社交平台名称 (google/github/twitter/microsoft/apple)
+        in: path
+        name: provider
+        required: true
+        type: string
+      - description: 绑定参数
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.OAuthBindManualInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.MessageResponse'
+        "400":
+          description: 参数格式错误或 state 校验失败
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: 未登录
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "409":
+          description: 该社交账号已绑定其他用户或已绑定该平台
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 手动绑定社交账号
+      tags:
+      - oauth
   /users/me/passkeys:
     get:
       consumes:
@@ -2672,6 +2885,8 @@ paths:
           description: 服务内部错误
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: 列出通行密钥
       tags:
       - passkey
@@ -2709,6 +2924,8 @@ paths:
           description: 服务内部错误
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: 删除通行密钥
       tags:
       - passkey
@@ -2751,6 +2968,8 @@ paths:
           description: 服务内部错误
           schema:
             $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: 重命名通行密钥
       tags:
       - passkey

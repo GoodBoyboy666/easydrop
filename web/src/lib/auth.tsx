@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, isUnauthorizedApiError } from '#/lib/api'
 import { FullScreenLoading } from '#/components/ui/full-screen-loading'
@@ -18,6 +18,7 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient()
   const [sessionCheckEnabled, setSessionCheckEnabled] = useState(true)
+  const initializedRef = useRef(false)
   const currentUserQuery = useQuery({
     ...currentUserQueryOptions(),
     enabled: sessionCheckEnabled,
@@ -26,14 +27,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!sessionCheckEnabled || !currentUserQuery.error) {
+      // 首次查询完成（成功或并非 401 异常等其他终态）也标记已初始化
+      if (sessionCheckEnabled && !currentUserQuery.isPending) {
+        initializedRef.current = true
+      }
       return
     }
 
     if (isUnauthorizedApiError(currentUserQuery.error)) {
       setSessionCheckEnabled(false)
       queryClient.removeQueries({ queryKey: queryKeys.currentUser() })
+      initializedRef.current = true
     }
   }, [currentUserQuery.error, queryClient, sessionCheckEnabled])
+
+  // 首次查询成功标记初始化
+  useEffect(() => {
+    if (sessionCheckEnabled && currentUserQuery.data) {
+      initializedRef.current = true
+    }
+  }, [currentUserQuery.data, sessionCheckEnabled])
 
   async function refreshUser() {
     setSessionCheckEnabled(true)
@@ -96,7 +109,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {authState.status === 'loading' ? <FullScreenLoading /> : children}
+      {authState.status === 'loading' && !initializedRef.current ? (
+        <FullScreenLoading />
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   )
 }
