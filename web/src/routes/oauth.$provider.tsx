@@ -90,6 +90,7 @@ function OAuthCallbackPage() {
     if (!code || !state) {
       toast.error('社交登录授权失败，缺少必要参数')
       void navigate({ to: '/login' })
+      started = false
       return
     }
 
