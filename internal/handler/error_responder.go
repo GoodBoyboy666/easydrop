@@ -109,7 +109,8 @@ func statusForError(err error) int {
 		return http.StatusBadRequest
 	case errors.Is(err, service.ErrOAuthEmailExistsUnbound):
 		return http.StatusConflict
-	case errors.Is(err, service.ErrOAuthBindAlreadyExists):
+	case errors.Is(err, service.ErrOAuthBindAlreadyExists),
+		errors.Is(err, service.ErrOAuthProviderBindAlreadyExists):
 		return http.StatusConflict
 	case errors.Is(err, service.ErrOAuthNotConfigured):
 		return http.StatusNotFound
