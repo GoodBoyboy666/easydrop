@@ -53,14 +53,16 @@ function OAuthCallbackPage() {
       void navigate({ to: redirectTo })
     },
     onError: (error) => {
+      const redirectTarget = sessionStorage.getItem(OAUTH_REDIRECT_KEY)
+      sessionStorage.removeItem(OAUTH_REDIRECT_KEY)
       if (error instanceof ApiError && error.status === 409) {
         toast.error('该邮箱已注册但未绑定此社交账号，请先使用密码登录后在设置中手动绑定', { duration: 8000 })
-        void navigate({ to: '/login' })
+        void navigate({ to: redirectTarget ? `/login?redirect=${encodeURIComponent(redirectTarget)}` : '/login' })
         return
       }
       const msg = error instanceof Error ? error.message : '登录失败'
       toast.error(msg)
-      void navigate({ to: '/login' })
+      void navigate({ to: redirectTarget ? `/login?redirect=${encodeURIComponent(redirectTarget)}` : '/login' })
     },
   })
 
@@ -89,7 +91,9 @@ function OAuthCallbackPage() {
 
     if (!code || !state) {
       toast.error('社交登录授权失败，缺少必要参数')
-      void navigate({ to: '/login' })
+      const redirectTarget = sessionStorage.getItem(OAUTH_REDIRECT_KEY)
+      sessionStorage.removeItem(OAUTH_REDIRECT_KEY)
+      void navigate({ to: redirectTarget ? `/login?redirect=${encodeURIComponent(redirectTarget)}` : '/login' })
       started = false
       return
     }
