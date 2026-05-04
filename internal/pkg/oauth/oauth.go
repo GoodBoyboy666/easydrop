@@ -391,6 +391,9 @@ func (m *manager) fetchTwitterUser(ctx context.Context, token *goog.Token) (*Pro
 
 // fetchMicrosoftUser 通过 Microsoft Graph API 获取用户信息。
 func (m *manager) fetchMicrosoftUser(ctx context.Context, token *goog.Token) (*ProviderUserInfo, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "https://graph.microsoft.com/v1.0/me", nil)
 	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
 	resp, err := http.DefaultClient.Do(req)
