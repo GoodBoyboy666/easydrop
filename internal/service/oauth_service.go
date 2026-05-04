@@ -114,8 +114,9 @@ func (s *oauthService) GetEnabledProviders() []dto.OAuthProviderItem {
 //  2. 用授权码换取 access_token。
 //  3. 获取社交平台用户信息（邮箱、昵称、平台唯一ID）。
 //  4. 查找 (provider, providerUserID) 绑定：
-//     - 已绑定 → 校验用户状态 → 签发 JWT。
-//     - 未绑定 → 按邮箱查找用户：
+//     - 已绑定 → 校验用户状态 → 签发 JWT（无需邮箱，兼容 Apple 后续授权不返回邮箱）。
+//  5. 未绑定时要求提供方必须返回邮箱，否则拒绝。
+//  6. 按邮箱查找用户：
 //     - 邮箱不存在 → 静默注册用户（自动生成用户名、随机密码）→ 创建绑定 → 签发 JWT。
 //     - 邮箱已存在 → 返回 ErrOAuthEmailExistsUnbound，提示需手动绑定。
 func (s *oauthService) HandleCallback(ctx context.Context, provider, code, stateFromQuery, stateFromCookie string) (*dto.AuthResult, error) {
@@ -139,11 +140,8 @@ func (s *oauthService) HandleCallback(ctx context.Context, provider, code, state
 	if err != nil {
 		return nil, err
 	}
-	if info.Email == "" {
-		return nil, oauth.ErrEmailNotReturned
-	}
 
-	// 情况一：已绑定 → 直接登录。
+	// 情况一：已绑定 → 直接登录（无需邮箱，兼容 Apple 后续授权不返回邮箱）。
 	bind, err := s.oauthBindRepo.FindByProviderAndUID(ctx, provider, info.ProviderUserID)
 	if err == nil {
 		user, err := s.userRepo.GetByID(ctx, bind.UserID)
@@ -159,6 +157,11 @@ func (s *oauthService) HandleCallback(ctx context.Context, provider, code, state
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		log.Printf("查询OAuth绑定失败: %v", err)
 		return nil, ErrInternal
+	}
+
+	// 未绑定时后续流程依赖邮箱，提供方未返回则拒绝。
+	if info.Email == "" {
+		return nil, oauth.ErrEmailNotReturned
 	}
 
 	// 情况二：邮箱已存在但未绑定 → 拒绝登录，要求手动绑定。
