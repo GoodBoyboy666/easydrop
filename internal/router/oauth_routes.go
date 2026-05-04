@@ -29,6 +29,7 @@ func registerOAuthRoutes(deps *oauthRouteDeps) {
 	}
 
 	oauthBindGroup := deps.loginGroup.Group("/users/me/oauth-binds")
+	oauthBindGroup.Use(deps.ordinaryLimit)
 	{
 		oauthBindGroup.GET("", deps.oauthHandler.ListBindings)
 		oauthBindGroup.DELETE("/:id", deps.oauthHandler.Unbind)
