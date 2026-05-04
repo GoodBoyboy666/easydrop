@@ -294,7 +294,10 @@ func (m *manager) fetchGitHubUser(ctx context.Context, token *goog.Token) (*Prov
 
 	// 主接口未返回邮箱时，通过 emails 接口获取。
 	if email == "" {
-		email, _ = m.fetchGitHubPrimaryEmail(ctx, token)
+		email, err = m.fetchGitHubPrimaryEmail(ctx, token)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrFetchUserInfoFailed, err)
+		}
 	}
 	if email == "" {
 		return nil, ErrEmailNotReturned
