@@ -236,7 +236,9 @@ func (m *manager) oauth2Config(provider string) (*goog.Config, error) {
 func (m *manager) fetchGoogleUser(ctx context.Context, token *goog.Token) (*ProviderUserInfo, error) {
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "https://www.googleapis.com/oauth2/v2/userinfo", nil)
 	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
-	resp, err := http.DefaultClient.Do(req)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrFetchUserInfoFailed, err)
 	}
