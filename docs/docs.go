@@ -1873,6 +1873,131 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/oauth/providers": {
+            "get": {
+                "description": "返回当前已配置并启用的社交登录方式列表",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "oauth"
+                ],
+                "summary": "获取社交登录方式",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "providers": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/definitions/dto.OAuthProviderItem"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/oauth/{provider}": {
+            "get": {
+                "description": "生成 OAuth 授权 URL 并重定向到社交平台授权页面",
+                "tags": [
+                    "oauth"
+                ],
+                "summary": "发起社交登录",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "社交平台名称 (google/github/twitter/microsoft/apple)",
+                        "name": "provider",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "重定向到社交平台授权页",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "未指定社交登录方式",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "该社交登录方式未配置或未启用",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/oauth/{provider}/callback": {
+            "post": {
+                "description": "前端从 OAuth 提供方回跳 URL 中取得 code 与 state 后，POST 到此后端完成登录/注册，返回 JWT 并设置认证 Cookie",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "oauth"
+                ],
+                "summary": "处理社交登录回调",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "社交平台名称 (google/github/twitter/microsoft/apple)",
+                        "name": "provider",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "回调参数",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.OAuthCallbackInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.AuthResult"
+                        }
+                    },
+                    "400": {
+                        "description": "参数格式错误或 state 校验失败",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "该社交登录方式未配置或未启用",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "邮箱已存在但未绑定",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/passkey/login/begin": {
             "post": {
                 "description": "发起无用户名通行密钥登录流程，返回需传递给浏览器的断言选项和会话 ID。\n用户将在浏览器中选择要使用的通行密钥进行身份验证。",
@@ -1962,6 +2087,11 @@ const docTemplate = `{
         },
         "/auth/passkey/register/begin": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "发起通行密钥注册流程，返回需传递给浏览器的创建选项和会话 ID。",
                 "consumes": [
                     "application/json"
@@ -3270,8 +3400,168 @@ const docTemplate = `{
                 }
             }
         },
+        "/users/me/oauth-binds": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "返回当前用户已绑定的所有社交账号信息",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "oauth"
+                ],
+                "summary": "查看已绑定的社交账号",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "binds": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/definitions/dto.OAuthBindDTO"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "未登录",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/me/oauth-binds/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "解除当前用户与指定社交账号的绑定",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "oauth"
+                ],
+                "summary": "解绑社交账号",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "绑定记录 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "无效的绑定ID",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未登录",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "未找到绑定记录",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/me/oauth-binds/{provider}": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "已登录用户主动绑定一个社交平台账户（用于解决邮箱冲突场景）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "oauth"
+                ],
+                "summary": "手动绑定社交账号",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "社交平台名称 (google/github/twitter/microsoft/apple)",
+                        "name": "provider",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "绑定参数",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.OAuthBindManualInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "参数格式错误或 state 校验失败",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "未登录",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "该社交账号已绑定其他用户或已绑定该平台",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/users/me/passkeys": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "获取当前用户所有已注册的通行密钥列表（仅元数据，不含密钥材料）。",
                 "consumes": [
                     "application/json"
@@ -3315,6 +3605,11 @@ const docTemplate = `{
         },
         "/users/me/passkeys/{id}": {
             "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "删除指定的通行密钥，删除后该密钥将无法用于登录。",
                 "consumes": [
                     "application/json"
@@ -3369,6 +3664,11 @@ const docTemplate = `{
                 }
             },
             "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "修改指定通行密钥的显示名称，名称长度限制为 1-15 个字符。",
                 "consumes": [
                     "application/json"
@@ -3879,6 +4179,53 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.OAuthBindDTO": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "provider": {
+                    "type": "string"
+                },
+                "provider_email": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.OAuthBindManualInput": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.OAuthCallbackInput": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.OAuthProviderItem": {
+            "type": "object",
+            "properties": {
+                "auth_url": {
+                    "type": "string"
+                },
+                "provider": {
                     "type": "string"
                 }
             }
