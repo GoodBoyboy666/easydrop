@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	goog "golang.org/x/oauth2"
@@ -177,7 +178,7 @@ func (m *manager) redirectURL(provider string) string {
 	if base == "" {
 		base = "http://localhost:3000"
 	}
-	return base + "/oauth/" + provider
+	return strings.TrimRight(base, "/") + "/oauth/" + provider
 }
 
 // oauth2Config 根据 provider 名称构建对应的 oauth2.Config。
