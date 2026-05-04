@@ -135,6 +135,7 @@ func setStaticConfigDefaults(v *viper.Viper) {
 	v.SetDefault("webauthn.rp_origin", []string{})
 	v.SetDefault("webauthn.timeout", "60s")
 	v.SetDefault("oauth.frontend_redirect_url", "http://localhost:3000")
+	v.SetDefault("oauth.providers", map[string]any{})
 }
 
 func readStaticConfig(v *viper.Viper) error {
