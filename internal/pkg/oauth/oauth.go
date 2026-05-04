@@ -67,6 +67,8 @@ type ProviderUserInfo struct {
 	ProviderUserID string
 	// Email 是社交平台返回的用户邮箱。
 	Email string
+	// EmailVerified 表示提供商确认该邮箱已通过验证。
+	EmailVerified bool
 	// Nickname 是社交平台返回的用户昵称或显示名。
 	Nickname string
 }
@@ -247,9 +249,10 @@ func (m *manager) fetchGoogleUser(ctx context.Context, token *goog.Token) (*Prov
 	body, _ := io.ReadAll(resp.Body)
 
 	var result struct {
-		ID    string `json:"id"`
-		Email string `json:"email"`
-		Name  string `json:"name"`
+		ID            string `json:"id"`
+		Email         string `json:"email"`
+		VerifiedEmail bool   `json:"verified_email"`
+		Name          string `json:"name"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrFetchUserInfoFailed, err)
@@ -260,6 +263,7 @@ func (m *manager) fetchGoogleUser(ctx context.Context, token *goog.Token) (*Prov
 	return &ProviderUserInfo{
 		ProviderUserID: result.ID,
 		Email:          result.Email,
+		EmailVerified:  result.VerifiedEmail,
 		Nickname:       result.Name,
 	}, nil
 }
@@ -307,6 +311,7 @@ func (m *manager) fetchGitHubUser(ctx context.Context, token *goog.Token) (*Prov
 	return &ProviderUserInfo{
 		ProviderUserID: providerUserID,
 		Email:          email,
+		EmailVerified:  true,
 		Nickname:       nickname,
 	}, nil
 }
@@ -377,6 +382,7 @@ func (m *manager) fetchTwitterUser(ctx context.Context, token *goog.Token) (*Pro
 	return &ProviderUserInfo{
 		ProviderUserID: result.Data.ID,
 		Email:          result.Data.Email,
+		EmailVerified:  true,
 		Nickname:       result.Data.Name,
 	}, nil
 }
@@ -401,8 +407,9 @@ func (m *manager) fetchMicrosoftUser(ctx context.Context, token *goog.Token) (*P
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrFetchUserInfoFailed, err)
 	}
-	// 优先使用 Mail，其次使用 UserPrincipalName。
+	// 优先使用 Mail（已验证邮箱），其次使用 UserPrincipalName（未经验证）。
 	email := result.Mail
+	emailVerified := email != ""
 	if email == "" {
 		email = result.UserPrincipalName
 	}
@@ -412,6 +419,7 @@ func (m *manager) fetchMicrosoftUser(ctx context.Context, token *goog.Token) (*P
 	return &ProviderUserInfo{
 		ProviderUserID: result.ID,
 		Email:          email,
+		EmailVerified:  emailVerified,
 		Nickname:       result.DisplayName,
 	}, nil
 }
@@ -457,6 +465,7 @@ func (m *manager) fetchAppleUser(token *goog.Token) (*ProviderUserInfo, error) {
 	return &ProviderUserInfo{
 		ProviderUserID: sub,
 		Email:          email,
+		EmailVerified:  email != "",
 		Nickname:       name,
 	}, nil
 }

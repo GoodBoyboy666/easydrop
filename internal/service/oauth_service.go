@@ -202,7 +202,7 @@ func (s *oauthService) HandleCallback(ctx context.Context, provider, code, state
 		Email:         info.Email,
 		Password:      string(hash),
 		Status:        1,
-		EmailVerified: true,
+		EmailVerified: info.EmailVerified,
 	}
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {

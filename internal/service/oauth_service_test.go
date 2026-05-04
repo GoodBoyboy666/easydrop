@@ -252,6 +252,7 @@ func TestOAuthServiceHandleCallbackNewUserSilentRegister(t *testing.T) {
 	oauthMgr.fetchUserInfo = &oauth.ProviderUserInfo{
 		ProviderUserID: "google-uid-new",
 		Email:          "newuser@example.com",
+		EmailVerified:  true,
 		Nickname:       "NewUser",
 	}
 
@@ -290,6 +291,7 @@ func TestOAuthServiceHandleCallbackNewUserNicknameFallback(t *testing.T) {
 	oauthMgr.fetchUserInfo = &oauth.ProviderUserInfo{
 		ProviderUserID: "google-uid-no-nick",
 		Email:          "nonick@example.com",
+		EmailVerified:  true,
 		Nickname:       "",
 	}
 
