@@ -208,7 +208,7 @@ func (m *manager) oauth2Config(provider string) (*goog.Config, error) {
 			TokenURL:  "https://api.twitter.com/2/oauth2/token",
 			AuthStyle: goog.AuthStyleInHeader,
 		}
-		cfg.Scopes = []string{"tweet.read", "users.read", "offline.access"}
+		cfg.Scopes = []string{"tweet.read", "users.read", "offline.access", "email"}
 	case "microsoft":
 		cfg.Endpoint = googmicrosoft.AzureADEndpoint("common")
 		cfg.Scopes = []string{"https://graph.microsoft.com/User.Read"}
@@ -345,9 +345,8 @@ func (m *manager) fetchGitHubPrimaryEmail(ctx context.Context, token *goog.Token
 }
 
 // fetchTwitterUser 通过 Twitter API v2 获取用户信息。
-// 注意：Twitter OAuth 2.0 不直接返回邮箱，此处用 username@twitter.com 作为占位。
 func (m *manager) fetchTwitterUser(ctx context.Context, token *goog.Token) (*ProviderUserInfo, error) {
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.twitter.com/2/users/me?user.fields=profile_image_url", nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.twitter.com/2/users/me?user.fields=email", nil)
 	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -361,6 +360,7 @@ func (m *manager) fetchTwitterUser(ctx context.Context, token *goog.Token) (*Pro
 			ID       string `json:"id"`
 			Name     string `json:"name"`
 			Username string `json:"username"`
+			Email    string `json:"email"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
@@ -369,11 +369,13 @@ func (m *manager) fetchTwitterUser(ctx context.Context, token *goog.Token) (*Pro
 	if result.Data.ID == "" {
 		return nil, ErrFetchUserInfoFailed
 	}
+	if result.Data.Email == "" {
+		return nil, ErrEmailNotReturned
+	}
 
-	email := result.Data.Username + "@twitter.com"
 	return &ProviderUserInfo{
 		ProviderUserID: result.Data.ID,
-		Email:          email,
+		Email:          result.Data.Email,
 		Nickname:       result.Data.Name,
 	}, nil
 }
