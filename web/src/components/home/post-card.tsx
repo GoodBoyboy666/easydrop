@@ -385,7 +385,7 @@ export function PostCard({
         </DialogContent>
       </Dialog>
 
-      <Card className="shadow-sm">
+      <Card>
         <CardHeader className="gap-4 border-b border-border/60">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-start gap-3">
@@ -481,7 +481,6 @@ export function PostCard({
           <div className="flex flex-col gap-3">
             {editingPost ? (
               <form
-                className="rounded-xl border border-border/70 bg-muted/40 p-3"
                 onSubmit={handleEditPostSubmit}
               >
                 <FieldGroup>
@@ -489,7 +488,7 @@ export function PostCard({
                     <Suspense
                       fallback={
                         <div
-                          className="flex items-center justify-center rounded-xl border border-border/60 bg-card/70 px-3 text-sm text-muted-foreground"
+                          className="flex items-center justify-center rounded-xl bg-card/70 px-3 text-sm text-muted-foreground"
                           style={{ height: 180 }}
                         >
                           编辑器加载中…

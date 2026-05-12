@@ -334,7 +334,7 @@ function MyCommentsPage() {
               transition={getEntranceTransition(0.12 + index * 0.03)}
               {...GPU_ACCELERATED_MOTION_PROPS}
             >
-              <Card className="border border-border/70 bg-card/90">
+              <Card>
                 <CardContent className="flex flex-col gap-3 pt-4">
                   <Skeleton className="h-4 w-32" />
                   <Skeleton
@@ -404,7 +404,7 @@ function MyCommentsPage() {
                 transition={getEntranceTransition(Math.min(index * 0.03, 0.18))}
                 {...GPU_ACCELERATED_MOTION_PROPS}
               >
-                <Card className="border border-border/70 shadow-sm">
+                <Card>
                   <CardHeader className="px-4">
                     <CardTitle className="text-sm">
                       <Link

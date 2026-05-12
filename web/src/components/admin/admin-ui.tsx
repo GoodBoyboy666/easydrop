@@ -274,7 +274,7 @@ export function AdminStatCard({
 
   return (
     <motion.div {...getAdminMotionProps(prefersReducedMotion)}>
-      <Card className="border border-border/70 bg-card shadow-sm backdrop-blur-sm">
+      <Card className="bg-card backdrop-blur-sm">
         <CardHeader>
           <CardDescription>{title}</CardDescription>
           <CardTitle className="text-2xl">{value}</CardTitle>
@@ -297,7 +297,7 @@ export function AdminSection({
 
   return (
     <motion.div {...getAdminMotionProps(prefersReducedMotion, 0.04)}>
-      <Card className="border border-border/70 bg-card shadow-sm backdrop-blur-sm">
+      <Card className="bg-card backdrop-blur-sm">
         <CardHeader>
           <CardTitle>{title}</CardTitle>
           {description ? (

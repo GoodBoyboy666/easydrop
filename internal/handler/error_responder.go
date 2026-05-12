@@ -6,6 +6,7 @@ import (
 
 	"easydrop/internal/dto"
 	"easydrop/internal/pkg/initsecret"
+	"easydrop/internal/pkg/oauth"
 	"easydrop/internal/pkg/validator"
 	"easydrop/internal/service"
 
@@ -78,7 +79,10 @@ func statusForError(err error) int {
 		errors.Is(err, service.ErrAttachmentExtensionNotAllowed),
 		errors.Is(err, service.ErrAttachmentMIMETypeNotAllowed),
 		errors.Is(err, initsecret.ErrRequired),
-		errors.Is(err, service.ErrSettingKeyRequired):
+		errors.Is(err, service.ErrSettingKeyRequired),
+		errors.Is(err, service.ErrPasskeyLimitReached),
+		errors.Is(err, service.ErrPasskeyNameEmpty),
+		errors.Is(err, service.ErrPasskeyNameTooLong):
 		return http.StatusBadRequest
 	case errors.Is(err, service.ErrInvalidCredentials):
 		return http.StatusUnauthorized
@@ -97,8 +101,26 @@ func statusForError(err error) int {
 	case errors.Is(err, service.ErrUserNotFound),
 		errors.Is(err, service.ErrPostNotFound),
 		errors.Is(err, service.ErrCommentNotFound),
-		errors.Is(err, service.ErrAttachmentNotFound):
+		errors.Is(err, service.ErrAttachmentNotFound),
+		errors.Is(err, service.ErrPasskeyNotFound),
+		errors.Is(err, service.ErrOAuthBindNotFound):
 		return http.StatusNotFound
+	case errors.Is(err, service.ErrOAuthStateMismatch):
+		return http.StatusBadRequest
+	case errors.Is(err, service.ErrOAuthEmailExistsUnbound):
+		return http.StatusConflict
+	case errors.Is(err, service.ErrOAuthBindAlreadyExists),
+		errors.Is(err, service.ErrOAuthProviderBindAlreadyExists):
+		return http.StatusConflict
+	case errors.Is(err, service.ErrOAuthNotConfigured):
+		return http.StatusNotFound
+	case errors.Is(err, oauth.ErrProviderDisabled),
+		errors.Is(err, oauth.ErrProviderNotConfigured):
+		return http.StatusNotFound
+	case errors.Is(err, oauth.ErrTokenExchangeFailed),
+		errors.Is(err, oauth.ErrFetchUserInfoFailed),
+		errors.Is(err, oauth.ErrEmailNotReturned):
+		return http.StatusBadGateway
 	default:
 		return http.StatusInternalServerError
 	}

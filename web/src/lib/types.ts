@@ -310,3 +310,47 @@ export interface AuthState {
 }
 
 export type PublicSettingsMap = Record<string, string>
+
+export interface PasskeyItem {
+  id: number
+  name: string
+  created_at: string
+}
+
+export interface PasskeyLoginBeginResponse {
+  options: PublicKeyCredentialRequestOptions
+  session_id: string
+}
+
+export interface PasskeyRegisterBeginResponse {
+  options: PublicKeyCredentialCreationOptions
+  session_id: string
+}
+
+export interface PasskeyLoginFinishRequest {
+  session_id: string
+}
+
+export interface PasskeyRegisterFinishRequest {
+  session_id: string
+}
+
+export interface PasskeyRenameRequest {
+  name: string
+}
+
+export interface OAuthProviderItem {
+  provider: string
+  auth_url: string
+}
+
+export interface OAuthBindDTO {
+  id: number
+  provider: string
+  provider_email: string
+}
+
+export interface OAuthCallbackInput {
+  code: string
+  state: string
+}

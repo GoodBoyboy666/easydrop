@@ -8,10 +8,12 @@ import (
 	"easydrop/internal/pkg/email"
 	"easydrop/internal/pkg/initsecret"
 	"easydrop/internal/pkg/jwt"
+	"easydrop/internal/pkg/oauth"
 	"easydrop/internal/pkg/ratelimit"
 	"easydrop/internal/pkg/redis"
 	"easydrop/internal/pkg/storage"
 	"easydrop/internal/pkg/token"
+	"easydrop/internal/pkg/webauthn"
 
 	"github.com/google/wire"
 )
@@ -28,4 +30,6 @@ var Pkgset = wire.NewSet(
 	initsecret.NewGuard,
 	captcha.CaptchaSet,
 	cookie.NewAuthCookie,
+	webauthn.NewManager,
+	oauth.NewManager,
 )

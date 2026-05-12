@@ -17,10 +17,12 @@ import (
 	"easydrop/internal/pkg/email"
 	"easydrop/internal/pkg/initsecret"
 	"easydrop/internal/pkg/jwt"
+	"easydrop/internal/pkg/oauth"
 	"easydrop/internal/pkg/ratelimit"
 	"easydrop/internal/pkg/redis"
 	"easydrop/internal/pkg/storage"
 	"easydrop/internal/pkg/token"
+	"easydrop/internal/pkg/webauthn"
 	"easydrop/internal/repo"
 	"easydrop/internal/service"
 )
@@ -113,7 +115,7 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	commentRepo := repo.NewCommentRepo(db)
 	postRepo := repo.NewPostRepo(db)
 	postVisibilityPolicy := service.NewPostVisibilityPolicy()
-	commentService := service.NewCommentService(commentRepo, postRepo, userRepo, storageManager, postVisibilityPolicy, verifier, avatarConfig)
+	commentService := service.NewCommentService(commentRepo, postRepo, userRepo, storageManager, postVisibilityPolicy, verifier, avatarConfig, emailService)
 	commentHandler := handler.NewCommentHandler(commentService, errorResponder)
 	commentAdminHandler := handler.NewCommentAdminHandler(commentService, errorResponder)
 	overviewRepo := repo.NewOverviewRepo(db)
@@ -123,9 +125,24 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	postService := service.NewPostService(postRepo, commentRepo, tagRepo, storageManager, avatarConfig)
 	postAdminHandler := handler.NewPostAdminHandler(postService, errorResponder)
 	postHandler := handler.NewPostHandler(postService, errorResponder)
+	feedService := service.NewFeedService(postRepo, settingService)
+	feedHandler := handler.NewFeedHandler(feedService, errorResponder)
 	settingAdminHandler := handler.NewSettingAdminHandler(settingService, errorResponder)
 	tagService := service.NewTagService(tagRepo)
 	tagHandler := handler.NewTagHandler(tagService)
-	app := NewApp(staticConfig, initService, guard, auth, csrf, securityHeaders, rateLimit, requestBodyLimit, authHandler, captchaHandler, initHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, overviewAdminHandler, postAdminHandler, postHandler, settingAdminHandler, tagHandler)
+	passkeyRepo := repo.NewPasskeyRepo(db)
+	webauthnConfig := config.ProvideWebAuthnConfig(staticConfig)
+	webauthnManager, err := webauthn.NewManager(webauthnConfig, client)
+	if err != nil {
+		return nil, err
+	}
+	passkeyService := service.NewPasskeyService(passkeyRepo, userRepo, webauthnManager)
+	passkeyHandler := handler.NewPasskeyHandler(passkeyService, manager, authCookie, errorResponder)
+	oauthConfig := config.ProvideOAuthConfig(staticConfig)
+	oauthManager := oauth.NewManager(oauthConfig)
+	oAuthBindRepo := repo.NewOAuthBindRepo(db)
+	oAuthService := service.NewOAuthService(oauthManager, oAuthBindRepo, userRepo, manager, settingService, db)
+	oAuthHandler := handler.NewOAuthHandler(oAuthService, authCookie, errorResponder)
+	app := NewApp(staticConfig, initService, guard, auth, csrf, securityHeaders, rateLimit, requestBodyLimit, authHandler, captchaHandler, initHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, overviewAdminHandler, postAdminHandler, postHandler, feedHandler, settingAdminHandler, tagHandler, passkeyHandler, oAuthHandler)
 	return app, nil
 }

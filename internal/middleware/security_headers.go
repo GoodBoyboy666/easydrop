@@ -84,15 +84,17 @@ func (m *securityHeaders) buildCSPPolicy() string {
 	frameSrc := []string{"'self'"}
 	connectSrc := []string{"'self'"}
 	imgSrc := []string{"'self'"}
+	mediaSrc := []string{"'self'"}
 
 	for _, source := range m.resolveAdditionalCSPSources() {
 		scriptSrc = appendUniqueSource(scriptSrc, source)
 		frameSrc = appendUniqueSource(frameSrc, source)
 		connectSrc = appendUniqueSource(connectSrc, source)
 		imgSrc = appendUniqueSource(imgSrc, source)
+		mediaSrc = appendUniqueSource(mediaSrc, source)
 	}
 
-	return "default-src 'self'; style-src 'self' 'unsafe-inline'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src " + strings.Join(scriptSrc, " ") + "; frame-src " + strings.Join(frameSrc, " ") + "; connect-src " + strings.Join(connectSrc, " ") + "; img-src " + strings.Join(imgSrc, " ")
+	return "default-src 'self'; style-src 'self' 'unsafe-inline'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src " + strings.Join(scriptSrc, " ") + "; frame-src " + strings.Join(frameSrc, " ") + "; connect-src " + strings.Join(connectSrc, " ") + "; img-src " + strings.Join(imgSrc, " ") + "; media-src " + strings.Join(mediaSrc, " ")
 }
 
 func (m *securityHeaders) resolveAdditionalCSPSources() []string {

@@ -28,8 +28,11 @@ type routeContext struct {
 	overviewAdminHandler   *handler.OverviewAdminHandler
 	postAdminHandler       *handler.PostAdminHandler
 	postHandler            *handler.PostHandler
+	feedHandler            *handler.FeedHandler
 	settingAdminHandler    *handler.SettingAdminHandler
 	tagHandler             *handler.TagHandler
+	passkeyHandler         *handler.PasskeyHandler
+	oauthHandler           *handler.OAuthHandler
 
 	requireLogin             gin.HandlerFunc
 	requireAdmin             gin.HandlerFunc
@@ -64,8 +67,11 @@ func newRouteContext(r *gin.Engine, app *di.App) *routeContext {
 		overviewAdminHandler:     app.OverviewAdminHandler,
 		postAdminHandler:         app.PostAdminHandler,
 		postHandler:              app.PostHandler,
+		feedHandler:              app.FeedHandler,
 		settingAdminHandler:      app.SettingAdminHandler,
 		tagHandler:               app.TagHandler,
+		passkeyHandler:           app.PasskeyHandler,
+		oauthHandler:             app.OAuthHandler,
 		requireLogin:             fallbackMiddleware(http.StatusInternalServerError, "认证中间件未正确初始化"),
 		requireAdmin:             fallbackMiddleware(http.StatusInternalServerError, "认证中间件未正确初始化"),
 		csrfProtect:              passthroughMiddleware(),
@@ -200,6 +206,18 @@ func (ctx *routeContext) publicDeps() *publicRouteDeps {
 	}
 }
 
+func (ctx *routeContext) feedDeps() *feedRouteDeps {
+	if ctx == nil || ctx.v1 == nil {
+		return nil
+	}
+
+	return &feedRouteDeps{
+		v1:            ctx.v1,
+		feedHandler:   ctx.feedHandler,
+		ordinaryLimit: ctx.ordinaryLimit,
+	}
+}
+
 func (ctx *routeContext) adminDeps() *adminRouteDeps {
 	if ctx == nil || ctx.adminGroup == nil {
 		return nil
@@ -215,5 +233,37 @@ func (ctx *routeContext) adminDeps() *adminRouteDeps {
 		settingAdminHandler:    ctx.settingAdminHandler,
 		ordinaryLimit:          ctx.ordinaryLimit,
 		uploadLimit:            ctx.uploadLimit,
+	}
+}
+
+func (ctx *routeContext) passkeyDeps() *passkeyRouteDeps {
+	if ctx == nil || ctx.v1 == nil || ctx.loginGroup == nil {
+		return nil
+	}
+
+	return &passkeyRouteDeps{
+		v1:                       ctx.v1,
+		loginGroup:               ctx.loginGroup,
+		passkeyHandler:           ctx.passkeyHandler,
+		ordinaryLimit:            ctx.ordinaryLimit,
+		authWriteLimit:           ctx.authWriteLimit,
+		profileWriteLimit:        ctx.profileWriteLimit,
+		csrfProtect:              ctx.csrfProtect,
+		issueCSRFCookieOnSuccess: ctx.issueCSRFCookieOnSuccess,
+	}
+}
+
+func (ctx *routeContext) oauthDeps() *oauthRouteDeps {
+	if ctx == nil || ctx.v1 == nil || ctx.loginGroup == nil {
+		return nil
+	}
+
+	return &oauthRouteDeps{
+		v1:             ctx.v1,
+		loginGroup:     ctx.loginGroup,
+		oauthHandler:   ctx.oauthHandler,
+		ordinaryLimit:  ctx.ordinaryLimit,
+		authWriteLimit: ctx.authWriteLimit,
+		csrfProtect:    ctx.csrfProtect,
 	}
 }

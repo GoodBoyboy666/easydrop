@@ -145,3 +145,33 @@ storage:
 
 token:
   key_prefix: "token"
+
+webauthn:
+  rp_display_name: "EasyDrop"
+  rp_id: "localhost"
+  rp_origin:
+    - "http://localhost:3000"
+  timeout: 60s
+
+oauth:
+  # OAuth 回调地址与前端的地址
+  frontend_redirect_url: "http://localhost:3000"
+  providers:
+    google:
+      client_id: ""
+      client_secret: ""
+    github:
+      client_id: ""
+      client_secret: ""
+    twitter:
+      client_id: ""
+      client_secret: ""
+    microsoft:
+      client_id: ""
+      client_secret: ""
+    apple:
+      client_id: ""
+      client_secret: ""
+      team_id: ""
+      key_id: ""
+      private_key: ""

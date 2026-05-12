@@ -53,10 +53,11 @@ type commentService struct {
 	visibilityPolicy PostVisibilityPolicy
 	captcha          captcha.Verifier
 	gravatarBaseURL  string
+	emailService     EmailService
 }
 
 // NewCommentService 创建评论服务实例。
-func NewCommentService(commentRepo repo.CommentRepo, postRepo repo.PostRepo, userRepo repo.UserRepo, storageManager storage.Manager, visibilityPolicy PostVisibilityPolicy, captchaVerifier captcha.Verifier, avatarConfig *avatarcfg.Config) CommentService {
+func NewCommentService(commentRepo repo.CommentRepo, postRepo repo.PostRepo, userRepo repo.UserRepo, storageManager storage.Manager, visibilityPolicy PostVisibilityPolicy, captchaVerifier captcha.Verifier, avatarConfig *avatarcfg.Config, emailService EmailService) CommentService {
 	gravatarBaseURL := ""
 	if avatarConfig != nil {
 		gravatarBaseURL = avatarConfig.GravatarBaseURL
@@ -70,6 +71,7 @@ func NewCommentService(commentRepo repo.CommentRepo, postRepo repo.PostRepo, use
 		visibilityPolicy: visibilityPolicy,
 		captcha:          captchaVerifier,
 		gravatarBaseURL:  normalizeGravatarBaseURL(gravatarBaseURL),
+		emailService:     emailService,
 	}
 }
 
@@ -109,11 +111,13 @@ func (s *commentService) Create(ctx context.Context, input dto.CommentCreateInpu
 	var parentID *uint
 	var rootID *uint
 	var replyToUserID *uint
+	var parentComment *model.Comment
 	if input.ParentID != nil {
 		if *input.ParentID == 0 {
 			return nil, ErrInvalidCommentParent
 		}
-		parentComment, err := s.commentRepo.GetByID(ctx, *input.ParentID)
+		var err error
+		parentComment, err = s.commentRepo.GetByID(ctx, *input.ParentID)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return nil, ErrInvalidCommentParent
@@ -163,6 +167,10 @@ func (s *commentService) Create(ctx context.Context, input dto.CommentCreateInpu
 		log.Printf("解析评论头像失败: %v", err)
 		return nil, ErrInternal
 	}
+
+	// 异步发送评论回复邮件通知。
+	s.sendCommentNotifications(createdComment, post, parentComment)
+
 	return &d, nil
 }
 
@@ -400,6 +408,46 @@ func (s *commentService) verifyCaptcha(ctx context.Context, input *dto.CaptchaIn
 		return ErrCaptchaFailed
 	}
 	return nil
+}
+
+// sendCommentNotifications 异步发送评论回复邮件通知（通知说说作者与被回复用户）。
+func (s *commentService) sendCommentNotifications(comment *model.Comment, post *model.Post, parentComment *model.Comment) {
+	if s.emailService == nil {
+		return
+	}
+	if comment == nil || post == nil {
+		return
+	}
+
+	// 评论者自己的信息。
+	commenterID := comment.UserID
+	commenterNickname := comment.User.Nickname
+	commentContent := comment.Content
+	postID := post.ID
+
+	go func() {
+		bgCtx := context.Background()
+		postAuthor := post.User
+
+		// 通知被回复用户（该评论为回复，且评论者不是被回复用户本人）。
+		if parentComment != nil {
+			replyTarget := parentComment.User
+			if replyTarget.ID != commenterID && replyTarget.Email != "" && replyTarget.Status == 1 {
+				if err := s.emailService.SendCommentNotification(bgCtx, replyTarget.Email, commentContent, commenterNickname, postID, true); err != nil {
+					log.Printf("发送评论回复通知邮件失败 (to=%s): %v", replyTarget.Email, err)
+				}
+			}
+		}
+
+		// 通知说说作者（评论者不是作者，且被回复者不是作者本人时）。
+		if postAuthor.ID != commenterID && postAuthor.Email != "" && postAuthor.Status == 1 {
+			if parentComment == nil || parentComment.UserID != postAuthor.ID {
+				if err := s.emailService.SendCommentNotification(bgCtx, postAuthor.Email, commentContent, commenterNickname, postID, false); err != nil {
+					log.Printf("发送说说评论通知邮件失败 (to=%s): %v", postAuthor.Email, err)
+				}
+			}
+		}
+	}()
 }
 
 // toCommentDTO 将评论模型转换为 DTO。

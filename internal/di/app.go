@@ -30,8 +30,11 @@ type App struct {
 	OverviewAdminHandler   *handler.OverviewAdminHandler
 	PostAdminHandler       *handler.PostAdminHandler
 	PostHandler            *handler.PostHandler
+	FeedHandler            *handler.FeedHandler
 	SettingAdminHandler    *handler.SettingAdminHandler
 	TagHandler             *handler.TagHandler
+	PasskeyHandler         *handler.PasskeyHandler
+	OAuthHandler           *handler.OAuthHandler
 }
 
 // NewApp 构造 App 聚合对象。
@@ -56,8 +59,11 @@ func NewApp(
 	overviewAdminHandler *handler.OverviewAdminHandler,
 	postAdminHandler *handler.PostAdminHandler,
 	postHandler *handler.PostHandler,
+	feedHandler *handler.FeedHandler,
 	settingAdminHandler *handler.SettingAdminHandler,
 	tagHandler *handler.TagHandler,
+	passkeyHandler *handler.PasskeyHandler,
+	oauthHandler *handler.OAuthHandler,
 
 ) *App {
 	return &App{
@@ -81,7 +87,10 @@ func NewApp(
 		OverviewAdminHandler:   overviewAdminHandler,
 		PostAdminHandler:       postAdminHandler,
 		PostHandler:            postHandler,
+		FeedHandler:            feedHandler,
 		SettingAdminHandler:    settingAdminHandler,
 		TagHandler:             tagHandler,
+		PasskeyHandler:         passkeyHandler,
+		OAuthHandler:           oauthHandler,
 	}
 }

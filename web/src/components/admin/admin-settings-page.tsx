@@ -217,7 +217,7 @@ export function AdminSettingsPage() {
                   <div className="mt-2 h-4 w-9/12 rounded bg-muted/30" />
                 </div>
                 {index < 5 ? (
-                  <Separator className="bg-border/80 data-horizontal:h-0.5" />
+                  <Separator />
                 ) : null}
               </div>
             ))}
@@ -348,7 +348,7 @@ export function AdminSettingsPage() {
                         </AdminMotionItem>
 
                         {index < group.items.length - 1 ? (
-                          <Separator className="bg-border/80 data-horizontal:h-0.5" />
+                          <Separator />
                         ) : null}
                       </div>
                     )

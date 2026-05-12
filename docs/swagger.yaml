@@ -216,6 +216,80 @@ definitions:
       message:
         type: string
     type: object
+  dto.OAuthBindDTO:
+    properties:
+      id:
+        type: integer
+      provider:
+        type: string
+      provider_email:
+        type: string
+    type: object
+  dto.OAuthBindManualInput:
+    properties:
+      code:
+        type: string
+      state:
+        type: string
+    type: object
+  dto.OAuthCallbackInput:
+    properties:
+      code:
+        type: string
+      state:
+        type: string
+    type: object
+  dto.OAuthProviderItem:
+    properties:
+      auth_url:
+        type: string
+      provider:
+        type: string
+    type: object
+  dto.PasskeyItem:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  dto.PasskeyLoginBeginResponse:
+    properties:
+      options:
+        additionalProperties: {}
+        type: object
+      session_id:
+        type: string
+    type: object
+  dto.PasskeyLoginFinishRequest:
+    properties:
+      session_id:
+        type: string
+    type: object
+  dto.PasskeyRegisterBeginResponse:
+    properties:
+      options:
+        additionalProperties: {}
+        type: object
+      session_id:
+        type: string
+    type: object
+  dto.PasskeyRegisterFinishRequest:
+    properties:
+      session_id:
+        type: string
+    type: object
+  dto.PasskeyRenameRequest:
+    properties:
+      name:
+        maxLength: 15
+        minLength: 1
+        type: string
+    required:
+    - name
+    type: object
   dto.PasswordResetConfirmInput:
     properties:
       new_password:
@@ -1691,6 +1765,213 @@ paths:
       summary: 用户登出
       tags:
       - auth
+  /auth/oauth/{provider}:
+    get:
+      description: 生成 OAuth 授权 URL 并重定向到社交平台授权页面
+      parameters:
+      - description: 社交平台名称 (google/github/twitter/microsoft/apple)
+        in: path
+        name: provider
+        required: true
+        type: string
+      responses:
+        "302":
+          description: 重定向到社交平台授权页
+          schema:
+            type: string
+        "400":
+          description: 未指定社交登录方式
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: 该社交登录方式未配置或未启用
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: 发起社交登录
+      tags:
+      - oauth
+  /auth/oauth/{provider}/callback:
+    post:
+      consumes:
+      - application/json
+      description: 前端从 OAuth 提供方回跳 URL 中取得 code 与 state 后，POST 到此后端完成登录/注册，返回 JWT
+        并设置认证 Cookie
+      parameters:
+      - description: 社交平台名称 (google/github/twitter/microsoft/apple)
+        in: path
+        name: provider
+        required: true
+        type: string
+      - description: 回调参数
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.OAuthCallbackInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.AuthResult'
+        "400":
+          description: 参数格式错误或 state 校验失败
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: 该社交登录方式未配置或未启用
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "409":
+          description: 邮箱已存在但未绑定
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: 处理社交登录回调
+      tags:
+      - oauth
+  /auth/oauth/providers:
+    get:
+      description: 返回当前已配置并启用的社交登录方式列表
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              providers:
+                items:
+                  $ref: '#/definitions/dto.OAuthProviderItem'
+                type: array
+            type: object
+      summary: 获取社交登录方式
+      tags:
+      - oauth
+  /auth/passkey/login/begin:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        发起无用户名通行密钥登录流程，返回需传递给浏览器的断言选项和会话 ID。
+        用户将在浏览器中选择要使用的通行密钥进行身份验证。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.PasskeyLoginBeginResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: 开始通行密钥登录
+      tags:
+      - passkey
+  /auth/passkey/login/finish:
+    post:
+      consumes:
+      - application/json
+      description: 验证浏览器返回的断言响应，认证通过后签发 JWT 访问令牌。
+      parameters:
+      - description: 登录完成请求，body 需包含 session_id 及完整的 WebAuthn 断言响应
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.PasskeyLoginFinishRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.AuthResult'
+        "400":
+          description: 参数校验失败或会话无效
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: 通行密钥验证失败
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: 用户状态异常
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: 完成通行密钥登录
+      tags:
+      - passkey
+  /auth/passkey/register/begin:
+    post:
+      consumes:
+      - application/json
+      description: 发起通行密钥注册流程，返回需传递给浏览器的创建选项和会话 ID。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.PasskeyRegisterBeginResponse'
+        "400":
+          description: 数量已达上限
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: 未登录
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 开始注册通行密钥
+      tags:
+      - passkey
+  /auth/passkey/register/finish:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        验证浏览器返回的认证器响应，保存通行密钥凭证到数据库。
+        新创建的通行密钥将自动命名为 "通行密钥 N"。
+      parameters:
+      - description: 注册完成请求，body 需包含 session_id 及完整的 WebAuthn 响应
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.PasskeyRegisterFinishRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.MessageResponse'
+        "400":
+          description: 参数校验失败、会话无效或数量已达上限
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: 未登录
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: 完成注册通行密钥
+      tags:
+      - passkey
   /auth/password-reset/confirm:
     post:
       consumes:
@@ -1878,6 +2159,42 @@ paths:
       summary: 前端查询评论列表
       tags:
       - comment
+  /feed/atom:
+    get:
+      description: 返回站点最新20条公开说说的Atom订阅源
+      produces:
+      - application/atom+xml
+      - application/json
+      responses:
+        "200":
+          description: Atom XML
+          schema:
+            type: string
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Atom订阅
+      tags:
+      - feed
+  /feed/rss:
+    get:
+      description: 返回站点最新20条公开说说的RSS 2.0订阅源
+      produces:
+      - application/rss+xml
+      - application/json
+      responses:
+        "200":
+          description: RSS XML
+          schema:
+            type: string
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: RSS订阅
+      tags:
+      - feed
   /init:
     post:
       consumes:
@@ -2445,6 +2762,217 @@ paths:
       summary: 请求修改当前用户邮箱
       tags:
       - user
+  /users/me/oauth-binds:
+    get:
+      description: 返回当前用户已绑定的所有社交账号信息
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              binds:
+                items:
+                  $ref: '#/definitions/dto.OAuthBindDTO'
+                type: array
+            type: object
+        "401":
+          description: 未登录
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 查看已绑定的社交账号
+      tags:
+      - oauth
+  /users/me/oauth-binds/{id}:
+    delete:
+      description: 解除当前用户与指定社交账号的绑定
+      parameters:
+      - description: 绑定记录 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.MessageResponse'
+        "400":
+          description: 无效的绑定ID
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: 未登录
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: 未找到绑定记录
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 解绑社交账号
+      tags:
+      - oauth
+  /users/me/oauth-binds/{provider}:
+    post:
+      consumes:
+      - application/json
+      description: 已登录用户主动绑定一个社交平台账户（用于解决邮箱冲突场景）
+      parameters:
+      - description: 社交平台名称 (google/github/twitter/microsoft/apple)
+        in: path
+        name: provider
+        required: true
+        type: string
+      - description: 绑定参数
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.OAuthBindManualInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.MessageResponse'
+        "400":
+          description: 参数格式错误或 state 校验失败
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: 未登录
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "409":
+          description: 该社交账号已绑定其他用户或已绑定该平台
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 手动绑定社交账号
+      tags:
+      - oauth
+  /users/me/passkeys:
+    get:
+      consumes:
+      - application/json
+      description: 获取当前用户所有已注册的通行密钥列表（仅元数据，不含密钥材料）。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            properties:
+              items:
+                items:
+                  $ref: '#/definitions/dto.PasskeyItem'
+                type: array
+            type: object
+        "401":
+          description: 未登录
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 列出通行密钥
+      tags:
+      - passkey
+  /users/me/passkeys/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 删除指定的通行密钥，删除后该密钥将无法用于登录。
+      parameters:
+      - description: 通行密钥 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.MessageResponse'
+        "400":
+          description: 参数校验失败
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: 未登录
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: 通行密钥不存在
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 删除通行密钥
+      tags:
+      - passkey
+    patch:
+      consumes:
+      - application/json
+      description: 修改指定通行密钥的显示名称，名称长度限制为 1-15 个字符。
+      parameters:
+      - description: 通行密钥 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 新名称
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.PasskeyRenameRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.MessageResponse'
+        "400":
+          description: 参数校验失败
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: 未登录
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: 通行密钥不存在
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: 服务内部错误
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: 重命名通行密钥
+      tags:
+      - passkey
   /users/me/password:
     patch:
       consumes:

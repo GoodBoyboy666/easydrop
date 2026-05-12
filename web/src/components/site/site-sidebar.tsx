@@ -4,7 +4,7 @@ import { motion, useReducedMotion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { HashIcon, MegaphoneIcon, MessageSquareTextIcon } from 'lucide-react'
+import { HashIcon, MegaphoneIcon, MessageSquareTextIcon, RssIcon } from 'lucide-react'
 import { useAuth } from '#/lib/auth'
 import { formatRelativeTime, getInitials } from '#/lib/format'
 import {
@@ -16,6 +16,7 @@ import { useSiteSettings } from '#/lib/site-settings'
 import type { CommentDTO } from '#/lib/types'
 import { MarkdownContent } from '#/components/markdown/markdown-content'
 import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
+import { Button } from '#/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar'
 import { Badge } from '#/components/ui/badge'
 import {
@@ -344,10 +345,19 @@ export function SiteSidebar() {
             }
       }
     >
-      <Card className="shadow-sm">
+      <Card>
         <CardHeader>
-          <CardTitle>{siteOwner}</CardTitle>
-          <CardDescription>{siteOwnerDescription}</CardDescription>
+          {settingsLoading ? (
+            <>
+              <Skeleton className="mb-1 h-5 w-28" />
+              <Skeleton className="h-3.5 w-44" />
+            </>
+          ) : (
+            <>
+              <CardTitle>{siteOwner}</CardTitle>
+              <CardDescription>{siteOwnerDescription}</CardDescription>
+            </>
+          )}
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {settingsError ? (
@@ -371,15 +381,17 @@ export function SiteSidebar() {
             ))}
           </div>
 
-          {settingsLoading ? (
-            <div className="text-xs text-muted-foreground">
-              正在同步站点配置…
-            </div>
-          ) : null}
+          <Button size="sm" className="w-full" asChild>
+            <a href="/api/v1/feed/atom" target="_blank" rel="noopener noreferrer">
+              <RssIcon />
+              订阅
+            </a>
+          </Button>
+
         </CardContent>
       </Card>
 
-      <Card className="shadow-sm">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MegaphoneIcon className="size-4 text-muted-foreground" />
@@ -387,11 +399,18 @@ export function SiteSidebar() {
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm leading-7 text-muted-foreground">
-          {normalizedAnnouncement}
+          {settingsLoading ? (
+            <div className="flex flex-col gap-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
+            </div>
+          ) : (
+            normalizedAnnouncement
+          )}
         </CardContent>
       </Card>
 
-      <Card className="shadow-sm">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MessageSquareTextIcon className="size-4 text-muted-foreground" />
@@ -483,7 +502,7 @@ export function SiteSidebar() {
         </CardContent>
       </Card>
 
-      <Card className="shadow-sm">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <HashIcon className="size-4 text-muted-foreground" />
