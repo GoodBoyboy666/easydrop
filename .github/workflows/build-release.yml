@@ -49,7 +49,7 @@ jobs:
       - name: 安装前端依赖并构建
         working-directory: web
         run: |
-          pnpm install --frozen-lockfile
+          pnpm ci
           pnpm build
 
       - name: 读取发布元数据
