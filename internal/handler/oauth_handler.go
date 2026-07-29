@@ -19,17 +19,24 @@ const (
 
 // OAuthHandler 处理社交登录相关的 HTTP 请求。
 type OAuthHandler struct {
-	oauthService   service.OAuthService
-	authCookie     cookiepkg.AuthCookie
-	errorResponder ErrorResponder
+	oauthService           service.OAuthService
+	authCookie             cookiepkg.AuthCookie
+	oauthStateCookieSecure bool
+	errorResponder         ErrorResponder
 }
 
 // NewOAuthHandler 创建社交登录处理器。
-func NewOAuthHandler(oauthService service.OAuthService, authCookie cookiepkg.AuthCookie, errorResponder ErrorResponder) *OAuthHandler {
+func NewOAuthHandler(oauthService service.OAuthService, authCookie cookiepkg.AuthCookie, authCookieConfig *cookiepkg.Config, errorResponder ErrorResponder) *OAuthHandler {
+	secure := false
+	if authCookieConfig != nil {
+		secure = authCookieConfig.Secure
+	}
+
 	return &OAuthHandler{
-		oauthService:   oauthService,
-		authCookie:     authCookie,
-		errorResponder: ensureErrorResponder(errorResponder),
+		oauthService:           oauthService,
+		authCookie:             authCookie,
+		oauthStateCookieSecure: secure,
+		errorResponder:         ensureErrorResponder(errorResponder),
 	}
 }
 
@@ -68,7 +75,7 @@ func (h *OAuthHandler) Authorize(c *gin.Context) {
 	}
 
 	state := oauth.GenerateState()
-	setOAuthStateCookie(c, state)
+	setOAuthStateCookie(c, state, h.oauthStateCookieSecure)
 
 	authURL, err := h.oauthService.GetAuthURL(c.Request.Context(), provider, state)
 	if err != nil {
@@ -105,7 +112,7 @@ func (h *OAuthHandler) Callback(c *gin.Context) {
 	}
 
 	stateFromCookie, _ := c.Cookie(oauthStateCookieName)
-	clearOAuthStateCookie(c)
+	clearOAuthStateCookie(c, h.oauthStateCookieSecure)
 
 	result, err := h.oauthService.HandleCallback(c.Request.Context(), provider, input.Code, input.State, stateFromCookie)
 	if err != nil {
@@ -208,7 +215,7 @@ func (h *OAuthHandler) BindManually(c *gin.Context) {
 		return
 	}
 	stateFromCookie, _ := c.Cookie(oauthStateCookieName)
-	clearOAuthStateCookie(c)
+	clearOAuthStateCookie(c, h.oauthStateCookieSecure)
 
 	if err := h.oauthService.BindManually(c.Request.Context(), userID, provider, input.Code, input.State, stateFromCookie); err != nil {
 		h.errorResponder.Respond(c, err)
@@ -217,12 +224,28 @@ func (h *OAuthHandler) BindManually(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.MessageResponse{Message: "绑定成功"})
 }
 
-func setOAuthStateCookie(c *gin.Context, state string) {
-	c.SetCookie(oauthStateCookieName, state, oauthStateMaxAge, "/api/v1", "", false, true)
+func setOAuthStateCookie(c *gin.Context, state string, secure bool) {
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     oauthStateCookieName,
+		Value:    state,
+		Path:     "/api/v1",
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   oauthStateMaxAge,
+	})
 }
 
-func clearOAuthStateCookie(c *gin.Context) {
-	c.SetCookie(oauthStateCookieName, "", -1, "/api/v1", "", false, true)
+func clearOAuthStateCookie(c *gin.Context, secure bool) {
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     oauthStateCookieName,
+		Value:    "",
+		Path:     "/api/v1",
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
 }
 
 func getUserIDFromContext(c *gin.Context) (uint, bool) {
