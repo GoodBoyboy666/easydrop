@@ -142,7 +142,7 @@ func Initialize(configDir string, strict bool) (*App, error) {
 	oauthManager := oauth.NewManager(oauthConfig)
 	oAuthBindRepo := repo.NewOAuthBindRepo(db)
 	oAuthService := service.NewOAuthService(oauthManager, oAuthBindRepo, userRepo, manager, settingService, db)
-	oAuthHandler := handler.NewOAuthHandler(oAuthService, authCookie, errorResponder)
+	oAuthHandler := handler.NewOAuthHandler(oAuthService, authCookie, cookieConfig, errorResponder)
 	app := NewApp(staticConfig, initService, guard, auth, csrf, securityHeaders, rateLimit, requestBodyLimit, authHandler, captchaHandler, initHandler, userHandler, userAdminHandler, attachmentHandler, attachmentAdminHandler, commentHandler, commentAdminHandler, overviewAdminHandler, postAdminHandler, postHandler, feedHandler, settingAdminHandler, tagHandler, passkeyHandler, oAuthHandler)
 	return app, nil
 }
