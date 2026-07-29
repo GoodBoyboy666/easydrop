@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"strconv"
 
 	"easydrop/internal/dto"
 	"easydrop/internal/middleware"
 	cookiepkg "easydrop/internal/pkg/cookie"
+	"easydrop/internal/pkg/idparser"
 	"easydrop/internal/pkg/jwt"
 	"easydrop/internal/service"
 
@@ -221,7 +221,7 @@ func (h *PasskeyHandler) Rename(c *gin.Context) {
 		return
 	}
 
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	id, err := idparser.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "通行密钥ID无效"})
 		return
@@ -233,7 +233,7 @@ func (h *PasskeyHandler) Rename(c *gin.Context) {
 		return
 	}
 
-	if err := h.passkeyService.Rename(c.Request.Context(), userID, uint(id), req.Name); err != nil {
+	if err := h.passkeyService.Rename(c.Request.Context(), userID, id, req.Name); err != nil {
 		h.errorResponder.Respond(c, err)
 		return
 	}
@@ -262,13 +262,13 @@ func (h *PasskeyHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	id, err := idparser.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "通行密钥ID无效"})
 		return
 	}
 
-	if err := h.passkeyService.Delete(c.Request.Context(), userID, uint(id)); err != nil {
+	if err := h.passkeyService.Delete(c.Request.Context(), userID, id); err != nil {
 		h.errorResponder.Respond(c, err)
 		return
 	}
