@@ -2,10 +2,10 @@ package handler
 
 import (
 	"net/http"
-	"strconv"
 
 	"easydrop/internal/dto"
 	cookiepkg "easydrop/internal/pkg/cookie"
+	"easydrop/internal/pkg/idparser"
 	"easydrop/internal/pkg/oauth"
 	"easydrop/internal/service"
 
@@ -173,12 +173,12 @@ func (h *OAuthHandler) Unbind(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{Message: "未登录"})
 		return
 	}
-	bindID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	bindID, err := idparser.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Message: "无效的绑定ID"})
 		return
 	}
-	if err := h.oauthService.Unbind(c.Request.Context(), userID, uint(bindID)); err != nil {
+	if err := h.oauthService.Unbind(c.Request.Context(), userID, bindID); err != nil {
 		h.errorResponder.Respond(c, err)
 		return
 	}
