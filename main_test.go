@@ -57,7 +57,10 @@ func TestPrintBuildInfoBanner(t *testing.T) {
 		}
 	}
 
-	if !strings.Contains(output, "┌") || !strings.Contains(output, "┘") {
+	// pterm v0.12.84 起默认边框改为圆角，这里同时兼容尖角与圆角两种样式。
+	hasTopBorder := strings.Contains(output, "┌") || strings.Contains(output, "╭")
+	hasBottomBorder := strings.Contains(output, "┘") || strings.Contains(output, "╯")
+	if !hasTopBorder || !hasBottomBorder {
 		t.Fatalf("expected pterm box border in output, got %q", output)
 	}
 }
