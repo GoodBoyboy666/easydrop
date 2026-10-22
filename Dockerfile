@@ -13,7 +13,7 @@ COPY web/ ./
 RUN pnpm build
 
 
-FROM --platform=$BUILDPLATFORM golang:1.25-bookworm AS backend-builder
+FROM --platform=$BUILDPLATFORM golang:1.27-bookworm AS backend-builder
 
 WORKDIR /src
 

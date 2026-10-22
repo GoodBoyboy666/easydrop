@@ -7,12 +7,12 @@ import {
   RedditShareButton,
   TelegramIcon,
   TelegramShareButton,
-  TwitterIcon,
-  TwitterShareButton,
   WeiboIcon,
   WeiboShareButton,
   WhatsappIcon,
   WhatsappShareButton,
+  XIcon,
+  XShareButton,
 } from 'react-share'
 
 interface PostSharePlatformsProps {
@@ -30,13 +30,13 @@ export function PostSharePlatforms({
   return (
     <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
       <div className="flex flex-col items-center gap-1">
-        <TwitterShareButton
+        <XShareButton
           className={SHARE_BUTTON_CLASS_NAME}
           title={shareTitle}
           url={shareUrl}
         >
-          <TwitterIcon round size={38} />
-        </TwitterShareButton>
+          <XIcon round size={38} />
+        </XShareButton>
         <span className="text-xs text-muted-foreground">X</span>
       </div>
 

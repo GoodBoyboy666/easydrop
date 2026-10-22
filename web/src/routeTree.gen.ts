@@ -9,63 +9,28 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as VerifyEmailRouteImport } from './routes/verify-email'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as RegisterRouteImport } from './routes/register'
-import { Route as MeRouteImport } from './routes/me'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as InitRouteImport } from './routes/init'
-import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as ChangeEmailRouteImport } from './routes/change-email'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as PostsIdRouteImport } from './routes/posts.$id'
-import { Route as OauthProviderRouteImport } from './routes/oauth.$provider'
-import { Route as MeCommentsRouteImport } from './routes/me.comments'
-import { Route as AdminUsersRouteImport } from './routes/admin.users'
-import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
-import { Route as AdminPostsRouteImport } from './routes/admin.posts'
-import { Route as AdminCommentsRouteImport } from './routes/admin.comments'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as ChangeEmailRouteImport } from './routes/change-email'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as InitRouteImport } from './routes/init'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as MeRouteImport } from './routes/me'
+import { Route as RegisterRouteImport } from './routes/register'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as AdminAttachmentsRouteImport } from './routes/admin.attachments'
+import { Route as AdminCommentsRouteImport } from './routes/admin.comments'
+import { Route as AdminPostsRouteImport } from './routes/admin.posts'
+import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as MeCommentsRouteImport } from './routes/me.comments'
+import { Route as OauthProviderRouteImport } from './routes/oauth.$provider'
+import { Route as PostsIdRouteImport } from './routes/posts.$id'
 
-const VerifyEmailRoute = VerifyEmailRouteImport.update({
-  id: '/verify-email',
-  path: '/verify-email',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RegisterRoute = RegisterRouteImport.update({
-  id: '/register',
-  path: '/register',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MeRoute = MeRouteImport.update({
-  id: '/me',
-  path: '/me',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InitRoute = InitRouteImport.update({
-  id: '/init',
-  path: '/init',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
-  id: '/forgot-password',
-  path: '/forgot-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ChangeEmailRoute = ChangeEmailRouteImport.update({
-  id: '/change-email',
-  path: '/change-email',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -73,39 +38,49 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const ChangeEmailRoute = ChangeEmailRouteImport.update({
+  id: '/change-email',
+  path: '/change-email',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PostsIdRoute = PostsIdRouteImport.update({
-  id: '/posts/$id',
-  path: '/posts/$id',
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OauthProviderRoute = OauthProviderRouteImport.update({
-  id: '/oauth/$provider',
-  path: '/oauth/$provider',
+const InitRoute = InitRouteImport.update({
+  id: '/init',
+  path: '/init',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MeCommentsRoute = MeCommentsRouteImport.update({
-  id: '/comments',
-  path: '/comments',
-  getParentRoute: () => MeRoute,
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AdminUsersRoute = AdminUsersRouteImport.update({
-  id: '/users',
-  path: '/users',
-  getParentRoute: () => AdminRoute,
+const MeRoute = MeRouteImport.update({
+  id: '/me',
+  path: '/me',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AdminSettingsRoute = AdminSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AdminRoute,
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AdminPostsRoute = AdminPostsRouteImport.update({
-  id: '/posts',
-  path: '/posts',
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifyEmailRoute = VerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminAttachmentsRoute = AdminAttachmentsRouteImport.update({
+  id: '/attachments',
+  path: '/attachments',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminCommentsRoute = AdminCommentsRouteImport.update({
@@ -113,10 +88,35 @@ const AdminCommentsRoute = AdminCommentsRouteImport.update({
   path: '/comments',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminAttachmentsRoute = AdminAttachmentsRouteImport.update({
-  id: '/attachments',
-  path: '/attachments',
+const AdminPostsRoute = AdminPostsRouteImport.update({
+  id: '/posts',
+  path: '/posts',
   getParentRoute: () => AdminRoute,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const MeCommentsRoute = MeCommentsRouteImport.update({
+  id: '/comments',
+  path: '/comments',
+  getParentRoute: () => MeRoute,
+} as any)
+const OauthProviderRoute = OauthProviderRouteImport.update({
+  id: '/oauth/$provider',
+  path: '/oauth/$provider',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PostsIdRoute = PostsIdRouteImport.update({
+  id: '/posts/$id',
+  path: '/posts/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -260,60 +260,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/verify-email': {
-      id: '/verify-email'
-      path: '/verify-email'
-      fullPath: '/verify-email'
-      preLoaderRoute: typeof VerifyEmailRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/register': {
-      id: '/register'
-      path: '/register'
-      fullPath: '/register'
-      preLoaderRoute: typeof RegisterRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/me': {
-      id: '/me'
-      path: '/me'
-      fullPath: '/me'
-      preLoaderRoute: typeof MeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/init': {
-      id: '/init'
-      path: '/init'
-      fullPath: '/init'
-      preLoaderRoute: typeof InitRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/forgot-password': {
-      id: '/forgot-password'
-      path: '/forgot-password'
-      fullPath: '/forgot-password'
-      preLoaderRoute: typeof ForgotPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/change-email': {
-      id: '/change-email'
-      path: '/change-email'
-      fullPath: '/change-email'
-      preLoaderRoute: typeof ChangeEmailRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -323,53 +274,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/change-email': {
+      id: '/change-email'
+      path: '/change-email'
+      fullPath: '/change-email'
+      preLoaderRoute: typeof ChangeEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/posts/$id': {
-      id: '/posts/$id'
-      path: '/posts/$id'
-      fullPath: '/posts/$id'
-      preLoaderRoute: typeof PostsIdRouteImport
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/oauth/$provider': {
-      id: '/oauth/$provider'
-      path: '/oauth/$provider'
-      fullPath: '/oauth/$provider'
-      preLoaderRoute: typeof OauthProviderRouteImport
+    '/init': {
+      id: '/init'
+      path: '/init'
+      fullPath: '/init'
+      preLoaderRoute: typeof InitRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/me/comments': {
-      id: '/me/comments'
-      path: '/comments'
-      fullPath: '/me/comments'
-      preLoaderRoute: typeof MeCommentsRouteImport
-      parentRoute: typeof MeRoute
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/admin/users': {
-      id: '/admin/users'
-      path: '/users'
-      fullPath: '/admin/users'
-      preLoaderRoute: typeof AdminUsersRouteImport
-      parentRoute: typeof AdminRoute
+    '/me': {
+      id: '/me'
+      path: '/me'
+      fullPath: '/me'
+      preLoaderRoute: typeof MeRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/admin/settings': {
-      id: '/admin/settings'
-      path: '/settings'
-      fullPath: '/admin/settings'
-      preLoaderRoute: typeof AdminSettingsRouteImport
-      parentRoute: typeof AdminRoute
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/admin/posts': {
-      id: '/admin/posts'
-      path: '/posts'
-      fullPath: '/admin/posts'
-      preLoaderRoute: typeof AdminPostsRouteImport
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/attachments': {
+      id: '/admin/attachments'
+      path: '/attachments'
+      fullPath: '/admin/attachments'
+      preLoaderRoute: typeof AdminAttachmentsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/comments': {
@@ -379,12 +344,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCommentsRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/admin/attachments': {
-      id: '/admin/attachments'
-      path: '/attachments'
-      fullPath: '/admin/attachments'
-      preLoaderRoute: typeof AdminAttachmentsRouteImport
+    '/admin/posts': {
+      id: '/admin/posts'
+      path: '/posts'
+      fullPath: '/admin/posts'
+      preLoaderRoute: typeof AdminPostsRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/me/comments': {
+      id: '/me/comments'
+      path: '/comments'
+      fullPath: '/me/comments'
+      preLoaderRoute: typeof MeCommentsRouteImport
+      parentRoute: typeof MeRoute
+    }
+    '/oauth/$provider': {
+      id: '/oauth/$provider'
+      path: '/oauth/$provider'
+      fullPath: '/oauth/$provider'
+      preLoaderRoute: typeof OauthProviderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/posts/$id': {
+      id: '/posts/$id'
+      path: '/posts/$id'
+      fullPath: '/posts/$id'
+      preLoaderRoute: typeof PostsIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
